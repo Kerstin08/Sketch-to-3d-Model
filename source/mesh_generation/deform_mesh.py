@@ -1,5 +1,6 @@
 import drjit as dr
 import mitsuba as mi
+import normal_depth_integrator
 from mitsuba.scalar_rgb import Transform4f as T
 from matplotlib import pyplot as plt
 
@@ -12,18 +13,17 @@ def offsetVerts(params, opt):
     params.update()
 
 aov_integrator = {
-    'type': 'aov',
+    'type': 'normal_depth',
     'aovs': "nn:sh_normal,dd.y:depth"
 }
 
 integrator = {
-        'type': 'direct'
+        'type': 'normal_depth'
 }
 
 # refscene
 ref_scene = mi.load_dict({
     'type': 'scene',
-    'integrator': integrator,
     'sensor':  {
         'type': 'perspective',
         'to_world': T.look_at(
@@ -63,7 +63,6 @@ ref_scene = mi.load_dict({
 # object
 scene = mi.load_dict({
     'type': 'scene',
-    'integrator': integrator,
     'sensor':  {
         'type': 'perspective',
         'to_world': T.look_at(
@@ -100,7 +99,9 @@ scene = mi.load_dict({
     }
 })
 
-img_ref = mi.render(ref_scene, seed=0, spp=1024)
+
+img_ref = mi.render(ref_scene, seed=0, spp=1024, integrator=mi.load_dict(integrator))
+mi.util.convert_to_bitmap(img_ref)
 #bitmap = mi.Bitmap(img_ref_all, channel_names=['R', 'G', 'B'] + scene.integrator().aov_names())
 #channels = dict(bitmap.split())
 #img_ref = channels['pos']
@@ -108,27 +109,28 @@ img_ref = mi.render(ref_scene, seed=0, spp=1024)
 params = mi.traverse(scene)
 print(params)
 initial_vertex_positions = dr.unravel(mi.Point3f, params['sphere.vertex_positions'])
+initial_vertex_normals = dr.unravel(mi.Point3f, params['sphere.vertex_normals'])
 
 opt = mi.ad.Adam(lr=0.025)
 vertex_count = params['sphere.vertex_count']
 opt['deform_verts'] = dr.full(mi.Point3f, 0, vertex_count)
 
-img_init = mi.render(scene, seed=0, spp=1024)
-#bitmap = mi.Bitmap(img_ref_all, channel_names=['R', 'G', 'B'] + scene.integrator().aov_names())
-#channels = dict(bitmap.split())
-#img_init = mi.TensorXf(channels['pos'])
+img_init = mi.render(scene, seed=0, spp=1024, integrator=mi.load_dict(integrator))
 
 loss_hist = []
-for it in range(3):
+for it in range(20):
     offsetVerts(params, opt)
 
-    img = mi.render(scene, params, seed=it, spp=16)
-    #bitmap = mi.Bitmap(img, channel_names=['R', 'G', 'B'] + scene.integrator().aov_names())
-    #channels = dict(bitmap.split())
-    #img_in = mi.TensorXf(channels['pos'])
-
+    img = mi.render(scene, params, integrator=mi.load_dict(integrator), seed=it, spp=16)
 
     loss = dr.sum(dr.sqr(img - img_ref)) / len(img)
+
+    # use differentiated normals for that later on
+    # maybe don't use this loss, it is also based on the alpha channel of the normal values
+    ## predicted_vertex_normals = dr.unravel(mi.Point3f, params['sphere.vertex_normals'])
+    ## d_initial = 2*initial_vertex_normals - 1
+    ## d_predicted = 2*predicted_vertex_normals - 1
+    ## angular_loss = dr.sum(dr.sqrt(1 - d_predicted * d_initial * (d_predicted * d_initial).A)) / len(img)
 
     dr.backward(loss)
 
@@ -141,7 +143,7 @@ for it in range(3):
     axs[1][1].imshow(mi.util.convert_to_bitmap(img_ref))
     axs[1][1].axis('off')
     axs[1][1].set_title('Reference Image');
-    axs[1][0].imshow(mi.util.convert_to_bitmap(mi.render(scene, spp=1024)))
+    axs[1][0].imshow(mi.util.convert_to_bitmap(img))
     axs[1][0].axis('off')
     axs[1][0].set_title('Optimized image')
     axs[0][1].imshow(mi.util.convert_to_bitmap(img_init))
