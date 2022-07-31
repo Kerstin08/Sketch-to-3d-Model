@@ -5,10 +5,10 @@ import mitsuba as mi
 
 mi.set_variant('cuda_ad_rgb')
 
-from mitsuba.python.ad.integrators.common import RBIntegrator, mis_weight
+from mitsuba.python.ad.integrators.common import ADIntegrator
 
 
-class NormalDepthIntegrator(RBIntegrator):
+class NormalReparamIntegrator(ADIntegrator):
     def __init__(self, props):
         super().__init__(props)
 
@@ -59,6 +59,9 @@ class NormalDepthIntegrator(RBIntegrator):
                scene: mi.Scene,
                sampler: mi.Sampler,
                ray: mi.Ray3f,
+               reparam: Optional[
+                   Callable[[mi.Ray3f, mi.Bool],
+                            Tuple[mi.Ray3f, mi.Float]]],
                active: mi.Bool,
                **kwargs # Absorbs unused arguments
     ) -> Tuple[mi.Spectrum, mi.Bool, mi.Spectrum]:
@@ -66,13 +69,17 @@ class NormalDepthIntegrator(RBIntegrator):
         See ``ADIntegrator.sample()`` for a description of this interface and
         the role of the various parameters and return values.
         """
-        ray_reparam = mi.Ray3f(ray)
         L = mi.Spectrum(0)
+        ray_reparam = mi.Ray3f(ray)
+        if mode != dr.ADMode.Primal:
+            # Camera ray reparameterization determinant multiplied in ADIntegrator.sample_rays()
+            ray_reparam.d, _ = reparam(ray, depth=0, active=active)
+
         pi = scene.ray_intersect_preliminary(ray_reparam, active)
         si = pi.compute_surface_interaction(ray_reparam)
         L += si.n
 
-        return L, True, None
+        return L, active, None
 
-mi.register_integrator("normal_depth", lambda props: NormalDepthIntegrator(props))
+mi.register_integrator("normal_reparam", lambda props: NormalReparamIntegrator(props))
 

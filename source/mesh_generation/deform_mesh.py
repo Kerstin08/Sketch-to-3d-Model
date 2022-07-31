@@ -1,6 +1,6 @@
 import drjit as dr
 import mitsuba as mi
-import normal_depth_integrator
+import normal_reparam_integrator
 from mitsuba.scalar_rgb import Transform4f as T
 from matplotlib import pyplot as plt
 
@@ -18,7 +18,7 @@ aov_integrator = {
 }
 
 integrator = {
-        'type': 'normal_depth'
+        'type': 'normal_reparam'
 }
 
 # refscene
