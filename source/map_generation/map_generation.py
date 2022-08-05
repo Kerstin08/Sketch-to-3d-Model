@@ -6,44 +6,45 @@ class MapGen():
     def __init__(self):
         self.G = Generator()
         self.D = Discriminator()
-        # Todo: refine learning rate
+        # Todo: refine learning rate & epochs
+        # --> maybe not needed if pytorch lightning is used
         self.learning_rate = 0.001
-        # Todo: check if optimizers are okay
-        self.optim_G = torch.optim.Adam(self.G.parameters(), self.learning_rate)
-        self.optim_D = torch.optim.Adam(self.D.parameters(), self.learning_rate)
-
-    # Todo: check if both models need to be saved and loaded during training and test
-    # Todo: depending on max epochs maybe remove older checkpoints to not run out of space
-    # Todo: maybe make util class for save and loading of checkpoints, since those will be used for multiple models
-    def generate_checkpointData(self, model, optim, epoch, checkpointPath, modelPrefix):
-        checkpoint = {
-            "epoch": epoch,
-            "model_state": model.state_dict(),
-            "optimizer_state": optim.state_dict()
-        }
-        checkpointPath = checkpointPath + modelPrefix + str(epoch) + ".pth"
-        return checkpoint, checkpointPath
-
-    def save_models(self, epoch, checkpointPath):
-        checkpoint_G, checkpointPath_G = self.generate_checkpointData(self.G, self.optim_G, epoch, checkpointPath, "_G_")
-        torch.save(checkpoint_G, checkpointPath_G)
-        checkpoint_D, checkpointPath_D = self.generate_checkpointData(self.D, self.optim_D, epoch, checkpointPath, "_D_")
-        torch.save(checkpoint_D, checkpointPath_D)
-
-    # Todo: something is not right with epoch, need other solution for that depending on how they are implemented in train/test
-    # --> either save it in class itself or not within model
-    def load_models(self, epoch, checkpointPath):
-        checkpointPath_G = checkpointPath + "_G_" + str(epoch) + ".pth"
-        loaded_checkpoint_G = torch.load(checkpointPath_G)
-        self.G.loaded_checkpoint.load_state_dict(loaded_checkpoint_G["model_state"])
-        self.optim_G.load_state_dict(loaded_checkpoint_G["optimizer_state"])
-        checkpointPath_D = checkpointPath + "_D_" + str(epoch) + ".pth"
-        loaded_checkpoint_D = torch.load(checkpointPath_D)
-        self.D.loaded_checkpoint.load_state_dict(loaded_checkpoint_D["model_state"])
-        self.optim_D.load_state_dict(loaded_checkpoint_D["optimizer_state"])
+        self.epochs = 150
+        self.optim_G = torch.optim.RMSprop(self.G.parameters(), self.learning_rate)
+        self.optim_D = torch.optim.RMSprop(self.D.parameters(), self.learning_rate)
+        self.batch_size = 1
+        self.n_critic = 5
+        # Todo: set data, something with real a, real b, etc.
 
     def train(self):
-        pass
+        for epoch in range(self.epochs):
+            data = 0 #load data
+            batch_idxs = min(len(data), 1e8) // (self.batch_size * self.n_critic)
+            for idx in range(0, batch_idxs):
+                # generate fake images
+                fake_images = self.G()
+                # train discriminator on fake images
+                pred_false = self.D(fake_images.detach())
+                d_loss_fake = torch.mean(pred_false)
+                # train discriminator on real images
+                pred_true = self.D()
+                d_loss_real = torch.mean(pred_true)
+
+                # loss as defined by Wasserstein paper
+                d_loss = -d_loss_fake + d_loss_real
+                self.optim_D.zero_grad()
+                d_loss.backward()
+
+                # Train the generator every n_critic iterations --> Wasserstein GAN
+                if idx % self.n_critic == 0:
+                    # mix traditional loss (pixelwise_l1 loss with wasserstein loss)
+                    # mask loss (as described in Su paper) not needed, since we do not have an user-defined mask
+                    # use BCEloss as described in Isola paper in order counteract the blurriness L1 introduces (see Isola et al. 1127)
+                    pixelwise_loss = torch.nn.L1Loss(0, 0) #real images - fake images
+                    # Todo: find correct value to regularize pixelwise loss
+                    g_loss = d_loss_fake + pixelwise_loss * 100 #+ torch.nn.BCEWithLogitsLoss(pred_false)
+                    self.optim_G.zero_grad()
+                    g_loss.backward()
 
     def test(self):
         pass
@@ -140,7 +141,7 @@ class Generator(nn.Module):
 class Discriminator(nn.Module):
     def __init__(self):
         super(Discriminator, self).__init__()
-        self.conv1 = nn.Conv2d(3, 64, 4)
+        self.conv1 = nn.Conv2d(6, 64, 4)
         self.conv2 = nn.Conv2d(64, 128, 4)
         self.conv2_bn = nn.BatchNorm2d(128)
         self.conv3 = nn.Conv2d(128, 256, 4)
