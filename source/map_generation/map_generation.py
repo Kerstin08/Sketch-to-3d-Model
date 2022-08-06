@@ -1,6 +1,8 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import dataset_generation.DataSet as DataSet
+from torch.utils.data import DataLoader
 
 class MapGen():
     def __init__(self):
@@ -12,22 +14,20 @@ class MapGen():
         self.epochs = 150
         self.optim_G = torch.optim.RMSprop(self.G.parameters(), self.learning_rate)
         self.optim_D = torch.optim.RMSprop(self.D.parameters(), self.learning_rate)
-        self.batch_size = 1
         self.n_critic = 5
-        # Todo: set data, something with real a, real b, etc.
 
-    def train(self):
+    def train(self, input_dir, target_dir):
+        # Todo: test if this dataloading thingy works
+        dataSet = DataSet.DS(input_dir, target_dir)
         for epoch in range(self.epochs):
-            data = 0 #load data
-            batch_idxs = min(len(data), 1e8) // (self.batch_size * self.n_critic)
-            for idx in range(0, batch_idxs):
+            for idx, data in enumerate(dataSet):
                 # generate fake images
-                fake_images = self.G()
+                fake_images = self.G(data['input'])
                 # train discriminator on fake images
                 pred_false = self.D(fake_images.detach())
                 d_loss_fake = torch.mean(pred_false)
                 # train discriminator on real images
-                pred_true = self.D()
+                pred_true = self.D(data['target'])
                 d_loss_real = torch.mean(pred_true)
 
                 # loss as defined by Wasserstein paper
