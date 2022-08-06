@@ -18,18 +18,18 @@ def run(input_dir):
     sketch_path = make_folder("sketch_", input_dir)
     n_path = make_folder("n_", input_dir)
     d_path = make_folder("d_", input_dir)
+    sketch_output_dirs = {"rendering": sketch_path, "sketch": sketch_path}
+    aov_output_dirs = {"dd.y": d_path, "nn": n_path}
 
     for root, _, fnames in sorted(os.walk(input_dir)):
         for fname in fnames:
             if fname.rsplit(".", 1)[1] == "ply":
                 model_path = os.path.join(root, fname)
                 # generate sketches
-                lineGen.run("rendering", model_path, sketch_path, 4)
+                lineGen.run("rendering", model_path, sketch_output_dirs, 4)
                 # Todo: use list of output dirs insted of single dir, since when rendering aovs apparently when only depth is given this is not rendered
-                # generate depth
-                render.run("aov", model_path, d_path, {"dd.y": "depth"}, 4)
-                # generate normals
-                render.run("aov", model_path, n_path, {"nn": "sh_normal"}, 4)
+                # generate depth and normal
+                render.run("aov", model_path, aov_output_dirs, {"dd.y": "depth", "nn": "sh_normal"}, 4)
 
 def diff_args(args):
     run(args.input_dir)

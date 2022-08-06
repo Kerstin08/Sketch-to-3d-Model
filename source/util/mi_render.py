@@ -1,3 +1,4 @@
+import json
 import os.path
 
 import source.util.mi_create_scenedesc as create_scenedesc
@@ -8,14 +9,15 @@ from mitsuba.scalar_rgb import Point3f as P
 mi.set_variant('cuda_ad_rgb')
 
 
-def rendering(scene, mesh_name, output_dir):
+def rendering(scene, mesh_name, output_dirs):
     img = mi.render(scene, seed=0, spp=1024)
     bitmap = mi.util.convert_to_bitmap(img)
     filename = mesh_name + "_rendering.png"
+    output_dir = output_dirs["rendering"]
     path = os.path.join(output_dir, filename)
     mi.util.write_bitmap(path, bitmap)
 
-def avo(scene, aovs, mesh_name, output_dir):
+def avo(scene, aovs, mesh_name, output_dirs):
     img = mi.render(scene, seed=0, spp=1024)
     bitmap = mi.Bitmap(img, channel_names=['R', 'G', 'B'] + scene.integrator().aov_names())
     channels = dict(bitmap.split())
@@ -23,19 +25,21 @@ def avo(scene, aovs, mesh_name, output_dir):
         depth = channels['dd.y']
         bitmap = mi.Bitmap(depth, channel_names=['R', 'G', 'B'])
         filename = mesh_name + "_depth.png"
+        output_dir = output_dirs['dd.y']
         path = os.path.join(output_dir, filename)
         mi.util.write_bitmap(path, bitmap)
     if "sh_normal" in aovs.values():
         normal = channels['nn']
         filename = mesh_name + "_normal.png"
+        output_dir = output_dirs['nn']
         path = os.path.join(output_dir, filename)
         mi.util.write_bitmap(path, normal)
 
-def create_aov(aovs, shape, camera, mesh_name, output_dir):
+def create_aov(aovs, shape, camera, mesh_name, output_dirs):
     integrator_aov = create_scenedesc.create_intergrator_aov(aovs)
     scene_desc = {"type": "scene", "shape": shape, "camera": camera, "integrator": integrator_aov}
     scene = mi.load_dict(scene_desc)
-    return avo(scene, aovs, mesh_name, output_dir)
+    return avo(scene, aovs, mesh_name, output_dirs)
 
 def create_rendering(emitter_samples, shape, camera, mesh_name, output_dir):
     integrator_rendering = create_scenedesc.create_integrator_direct(emitter_samples)
@@ -62,22 +66,22 @@ def run(type, input_mesh, output_dir, aovs=[], emitter_samples=0):
         raise Exception("Given type not known!")
 
 def diff_ars(args):
-    run(args.type, args.input_mesh, args.output_dir, args.aovs, args.emitter_samples)
+    run(args.type, args.input_mesh, args.output_dirs, args.aovs, args.emitter_samples)
 
 def main(args):
     parser = argparse.ArgumentParser(prog="scene_rendering")
     parser.add_argument("--type", type=str, help="use \"aov\", \"rendering\" or \"combined\"")
     parser.add_argument("--input_mesh", type=str)
-    parser.add_argument("--output_dir", type=str, help="define path for output dir")
+    parser.add_argument("--output_dirs", type=dict, default={'nn': '..\\..\\output', 'dd.y': '..\\..\\output', 'rendering': '..\\..\\output'})
     parser.add_argument("--aovs", type=dir, default={"nn": "sh_normal", "dd.y": "depth"})
     parser.add_argument("--emitter_samples", type=int, default=4)
     args = parser.parse_args(args)
     diff_ars(args)
 
 if __name__ == '__main__':
+    output_dirs = {'nn': '..\\..\\output', 'dd.y': '..\\..\\output', 'rendering': '..\\..\\output'}
     params = [
         '--type', 'combined',
         '--input_mesh', '..\\..\\resources\\meshes\\teapot.ply',
-        '--output_dir', '..\\..\\output'
     ]
     main(params)
