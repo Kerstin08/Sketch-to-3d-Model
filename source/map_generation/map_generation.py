@@ -1,11 +1,14 @@
+import os.path
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import dataset_generation.DataSet as DataSet
+import source.util.save_load_networks as Save_Load_Network
 from torch.utils.data import DataLoader
 
 class MapGen():
-    def __init__(self):
+    def __init__(self, checkpiont_dict):
         self.G = Generator()
         self.D = Discriminator()
         # Todo: refine learning rate & epochs
@@ -15,6 +18,7 @@ class MapGen():
         self.optim_G = torch.optim.RMSprop(self.G.parameters(), self.learning_rate)
         self.optim_D = torch.optim.RMSprop(self.D.parameters(), self.learning_rate)
         self.n_critic = 5
+        self.checkpiont_dict = checkpiont_dict
 
     def train(self, input_dir, target_dir):
         # Todo: test if this dataloading thingy works
@@ -45,6 +49,16 @@ class MapGen():
                     g_loss = d_loss_fake + pixelwise_loss * 100 #+ torch.nn.BCEWithLogitsLoss(pred_false)
                     self.optim_G.zero_grad()
                     g_loss.backward()
+            if (self.epochs/5)%100 == 0:
+                gen_checkpoint_path = os.path.join(self.checkpiont_dict, "Gen_" + str(epoch) + ".pth")
+                disc_checkpoint_path = os.path.join(self.checkpiont_dict, "Disc_" + str(epoch) + ".pth")
+                Save_Load_Network.save_models(self.G, self.optim_G, epoch, gen_checkpoint_path)
+                Save_Load_Network.save_models(self.D, self.optim_D, epoch, disc_checkpoint_path)
+
+    gen_checkpoint_path = os.path.join(self.checkpiont_dict, "Gen_trained" + ".pth")
+    disc_checkpoint_path = os.path.join(self.checkpiont_dict, "Disc_trained" + + ".pth")
+    Save_Load_Network.save_models(self.G, self.optim_G, epoch, gen_checkpoint_path)
+    Save_Load_Network.save_models(self.D, self.optim_D, epoch, disc_checkpoint_path)
 
     def test(self):
         pass
