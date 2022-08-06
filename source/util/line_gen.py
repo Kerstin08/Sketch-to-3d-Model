@@ -25,7 +25,6 @@ def run(type, input_mesh, output_dirs, emitter_samples):
 
 
     edges = cv.Canny(img, 10, 130)
-    # Todo: fix the random errors occuring here at random
     cv.imwrite(path, cv.bitwise_not(edges))
     os.remove(path_temp)
 

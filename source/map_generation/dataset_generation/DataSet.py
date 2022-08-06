@@ -6,7 +6,7 @@ from enum import Enum
 from PIL import Image
 
 class DS(Dataset):
-    def __init__(self, dir_target, dir_input, type):
+    def __init__(self, dir_target, dir_input):
         self.dir_target = dir_target
         self.dir_input = dir_input
         self.image_paths_target = sorted(self.create_dataSet(dir_target))

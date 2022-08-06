@@ -27,7 +27,6 @@ def run(input_dir):
                 model_path = os.path.join(root, fname)
                 # generate sketches
                 lineGen.run("rendering", model_path, sketch_output_dirs, 4)
-                # Todo: use list of output dirs insted of single dir, since when rendering aovs apparently when only depth is given this is not rendered
                 # generate depth and normal
                 render.run("aov", model_path, aov_output_dirs, {"dd.y": "depth", "nn": "sh_normal"}, 4)
 
