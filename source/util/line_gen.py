@@ -1,24 +1,42 @@
 import argparse
+import time
+
 from matplotlib import pyplot as plt
 import source.util.mi_render as render
 import os
 os.environ["OPENCV_IO_ENABLE_OPENEXR"] = "1"
 import cv2 as cv
 
-def run(type, input_mesh, emitter_samples):
-    render.run(type, input_mesh, emitter_samples)
+def run(type, input_mesh, output_dir, emitter_samples):
+    render.run(type, input_mesh, output_dir, emitter_samples)
+    mesh_name = (input_mesh.rsplit("\\", 1)[-1]).rsplit(".", 1)[0]
+    filename_temp = mesh_name + "_rendering.png"
+    path_temp = os.path.join(output_dir, filename_temp)
 
-    img = cv.imread('../../output/rendering.png', 0)
+    max_time_to_wait = 10
+    while not os.path.exists(path_temp):
+        time.sleep(1)
+        max_time_to_wait -= 1
+        if max_time_to_wait < 0:
+            raise RuntimeError("Temp rendering is not generated!")
+
+    img = cv.imread(path_temp, 0)
     edges = cv.Canny(img, 10, 130)
-    plt.imsave("../../output/lines_canny.jpg", edges, cmap='binary')
+    os.remove(path_temp)
+    filename = mesh_name + "_sketch.png"
+    path = os.path.join(output_dir, filename)
+    # Todo: fix the random errors occuring here at random
+    plt.imsave(path, edges, cmap='binary')
+
 
 def diff_args(args):
-    run(args.type, args.input_mesh, args.emitter_samples)
+    run(args.type, args.input_mesh, args.output_dir, args.emitter_samples)
 
 def main(args):
     parser = argparse.ArgumentParser(prog="scene_rendering")
     parser.add_argument("--type", type=str, help="use \"aov\", \"rendering\" or \"combined\"")
     parser.add_argument("--input_mesh", type=str)
+    parser.add_argument("--output_dir", type=str, help="define path for output dir")
     parser.add_argument("--emitter_samples", type=int, default=4)
     args = parser.parse_args(args)
     diff_args(args)
@@ -27,6 +45,7 @@ def main(args):
 if __name__ == '__main__':
     params = [
         '--type', 'rendering',
-        '--input_mesh', '../../resources/meshes/teapot.ply',
+        '--input_mesh', '..\\..\\resources\\meshes\\teapot.ply',
+        '--output_dir', '..\\..\\output'
     ]
     main(params)
