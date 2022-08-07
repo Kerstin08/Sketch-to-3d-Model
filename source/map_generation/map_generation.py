@@ -3,12 +3,21 @@ import os.path
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torchvision
+
 import dataset_generation.DataSet as DataSet
 import source.util.save_load_networks as Save_Load_Network
-from torch.utils.data import DataLoader
+from torchvision.utils import make_grid
+from enum import Enum
+import shutil
+
+class Type(Enum):
+    normal = 1,
+    depth = 2
+
 
 class MapGen():
-    def __init__(self, checkpiont_dict):
+    def __init__(self, type):
         self.G = Generator()
         self.D = Discriminator()
         # Todo: refine learning rate & epochs
@@ -18,11 +27,29 @@ class MapGen():
         self.optim_G = torch.optim.RMSprop(self.G.parameters(), self.learning_rate)
         self.optim_D = torch.optim.RMSprop(self.D.parameters(), self.learning_rate)
         self.n_critic = 5
-        self.checkpiont_dict = checkpiont_dict
+        self.type = type
 
-    def train(self, input_dir, target_dir):
-        # Todo: test if this dataloading thingy works
-        dataSet = DataSet.DS(input_dir, target_dir)
+    def gen_filenames(self, epoch=-1):
+        if epoch>0:
+            if self.type == Type.normal:
+                filename_G = "Gen_N_" + str(epoch) + ".pth"
+                filename_D = "Disc_N_" + str(epoch) + ".pth"
+            else:
+                filename_G = "Gen_D_" + str(epoch) + ".pth"
+                filename_D = "Disc_D_" + str(epoch) + ".pth"
+        else:
+            if self.type == Type.normal:
+                filename_G = "Gen_N_trained.pth"
+                filename_D = "Disc_N_trained.pth"
+            else:
+                filename_G = "Gen_D_trained.pth"
+                filename_D = "Disc_D_trained.pth"
+        return filename_G, filename_D
+
+    def train(self, input_dir, target_dir, checkpiont_dict):
+        dataSet = DataSet.DS(input_dir, target_dir, checkpiont_dict)
+        self.G.train()
+        self.D.train()
         for epoch in range(self.epochs):
             for idx, data in enumerate(dataSet):
                 # generate fake images
@@ -50,20 +77,43 @@ class MapGen():
                     self.optim_G.zero_grad()
                     g_loss.backward()
             if (self.epochs/5)%100 == 0:
-                gen_checkpoint_path = os.path.join(self.checkpiont_dict, "Gen_" + str(epoch) + ".pth")
-                disc_checkpoint_path = os.path.join(self.checkpiont_dict, "Disc_" + str(epoch) + ".pth")
+                filename_G, filename_D = self.gen_filenames(epoch)
+                gen_checkpoint_path = os.path.join(checkpiont_dict, filename_G)
+                disc_checkpoint_path = os.path.join(checkpiont_dict, filename_D)
                 Save_Load_Network.save_models(self.G, self.optim_G, epoch, gen_checkpoint_path)
                 Save_Load_Network.save_models(self.D, self.optim_D, epoch, disc_checkpoint_path)
 
-    gen_checkpoint_path = os.path.join(self.checkpiont_dict, "Gen_trained" + ".pth")
-    disc_checkpoint_path = os.path.join(self.checkpiont_dict, "Disc_trained" + + ".pth")
-    Save_Load_Network.save_models(self.G, self.optim_G, epoch, gen_checkpoint_path)
-    Save_Load_Network.save_models(self.D, self.optim_D, epoch, disc_checkpoint_path)
+        filename_G, filename_D = self.gen_filenames()
+        gen_checkpoint_path = os.path.join(checkpiont_dict, filename_G)
+        disc_checkpoint_path = os.path.join(checkpiont_dict, filename_D)
+        Save_Load_Network.save_models(self.G, self.optim_G, self.epochs, gen_checkpoint_path)
+        Save_Load_Network.save_models(self.D, self.optim_D, self.epochs, disc_checkpoint_path)
 
-    def test(self):
-        pass
-
-
+    def test(self, input_dir, target_dir, output_dir, generate_comparison):
+        self.G.eval()
+        dataSet = DataSet.DS(input_dir, target_dir)
+        with torch.no_grad():
+            for idx, data in enumerate(dataSet):
+                predicted_image = self.G(data['input'])
+                imagename = data['input_path'].rsplit("\\", 1)[-1]
+                if generate_comparison:
+                    if len(output_dir) <= 0:
+                        raise RuntimeError("Directory to store comparison images is not given")
+                    Grid = make_grid([data['input'], data['target'], predicted_image])
+                    img = torchvision.transforms.ToPILImage(Grid)
+                    image_path = os.path.join(output_dir, "comparison_" + imagename)
+                    img.save(image_path)
+                else:
+                    if self.type == Type.normal:
+                        output_dir_generated = os.path.join(output_dir, "predicted_normals")
+                    else:
+                        output_dir_generated = os.path.join(output_dir, "predicted_depth")
+                    if os.path.exists(output_dir_generated):
+                        shutil.rmtree(output_dir_generated)
+                    os.mkdir(output_dir_generated)
+                    img = torchvision.transforms.ToPILImage(predicted_image)
+                    image_path = os.path.join(output_dir, idx + imagename)
+                    img.save(image_path)
 # Generator
 class Generator(nn.Module):
     def __init__(self):
