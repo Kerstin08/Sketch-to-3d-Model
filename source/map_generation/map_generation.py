@@ -6,6 +6,7 @@ import torch.nn.functional as F
 import torchvision
 
 import dataset_generation.DataSet as DataSet
+from torch.utils.data import DataLoader
 import source.util.save_load_networks as Save_Load_Network
 from torchvision.utils import make_grid
 from enum import Enum
@@ -17,17 +18,19 @@ class Type(Enum):
 
 
 class MapGen():
-    def __init__(self, type):
+    def __init__(self, type, epoch, n_critic, weight_L1, batch_size):
         self.G = Generator()
         self.D = Discriminator()
         # Todo: refine learning rate & epochs
         # --> maybe not needed if pytorch lightning is used
         self.learning_rate = 0.001
-        self.epochs = 150
+        self.epochs = epoch
         self.optim_G = torch.optim.RMSprop(self.G.parameters(), self.learning_rate)
         self.optim_D = torch.optim.RMSprop(self.D.parameters(), self.learning_rate)
-        self.n_critic = 5
+        self.n_critic = n_critic
         self.type = type
+        self.weight_L1 = weight_L1
+        self.batch_size = batch_size
 
     def gen_filenames(self, epoch=-1):
         if epoch>0:
@@ -47,18 +50,20 @@ class MapGen():
         return filename_G, filename_D
 
     def train(self, input_dir, target_dir, checkpiont_dict):
-        dataSet = DataSet.DS(input_dir, target_dir, checkpiont_dict)
+        dataSet = DataSet.DS(input_dir, target_dir)
+        dataloader = DataLoader(dataSet, batch_size=self.batch_size,
+                                shuffle=True, num_workers=0)
         self.G.train()
         self.D.train()
         for epoch in range(self.epochs):
-            for idx, data in enumerate(dataSet):
+            for i_batch, sample_batched in enumerate(dataloader):
                 # generate fake images
-                fake_images = self.G(data['input'])
+                fake_images = self.G(sample_batched['input'])
                 # train discriminator on fake images
                 pred_false = self.D(fake_images.detach())
                 d_loss_fake = torch.mean(pred_false)
                 # train discriminator on real images
-                pred_true = self.D(data['target'])
+                pred_true = self.D(sample_batched['target'])
                 d_loss_real = torch.mean(pred_true)
 
                 # loss as defined by Wasserstein paper
@@ -66,17 +71,16 @@ class MapGen():
                 self.optim_D.zero_grad()
                 d_loss.backward()
 
-                # Train the generator every n_critic iterations --> Wasserstein GAN
-                if idx % self.n_critic == 0:
+                # Train the generator every n_critic batch --> Wasserstein GAN
+                if i_batch % self.n_critic == 0:
                     # mix traditional loss (pixelwise_l1 loss with wasserstein loss)
                     # mask loss (as described in Su paper) not needed, since we do not have an user-defined mask
                     # use BCEloss as described in Isola paper in order counteract the blurriness L1 introduces (see Isola et al. 1127)
-                    pixelwise_loss = torch.nn.L1Loss(0, 0) #real images - fake images
-                    # Todo: find correct value to regularize pixelwise loss
-                    g_loss = d_loss_fake + pixelwise_loss * 100 #+ torch.nn.BCEWithLogitsLoss(pred_false)
+                    pixelwise_loss = torch.nn.L1Loss(sample_batched['input'], fake_images)
+                    g_loss = d_loss_fake + pixelwise_loss * self.weight_L1 #+ torch.nn.BCEWithLogitsLoss(pred_false)
                     self.optim_G.zero_grad()
                     g_loss.backward()
-            if (self.epochs/5)%100 == 0:
+            if (self.epochs/5) % 100 == 0:
                 filename_G, filename_D = self.gen_filenames(epoch)
                 gen_checkpoint_path = os.path.join(checkpiont_dict, filename_G)
                 disc_checkpoint_path = os.path.join(checkpiont_dict, filename_D)

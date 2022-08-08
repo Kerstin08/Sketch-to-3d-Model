@@ -3,7 +3,10 @@ import torch
 import source.util.save_load_networks as Save_Load_Network
 import argparse
 
-def run(train, use_generated_model, input_dir, target_dir, output_path, type, generated_Gen="", generated_Disc="", use_comparison=False):
+def run(train, use_generated_model, input_dir, target_dir, output_path,
+        type, epoch, batch_size, n_critic, weight_L1,
+        generated_Gen="", generated_Disc="", use_comparison=False):
+
     if len(input_dir) <= 0 and len(target_dir) <= 0:
         raise RuntimeError("Input and Target image dirs are not given!")
 
@@ -14,8 +17,7 @@ def run(train, use_generated_model, input_dir, target_dir, output_path, type, ge
     else:
         raise RuntimeError("Given type should either be \"normal\" or \"depth\"!")
 
-    # Todo: Extend the init method in order to pass epochs, etc.
-    model = map_generation.MapGen(given_type)
+    model = map_generation.MapGen(given_type, epoch, n_critic, weight_L1, batch_size)
 
     if len(output_path) <= 0:
         raise RuntimeError("Checkpoint Path is not given!")
@@ -39,16 +41,32 @@ def run(train, use_generated_model, input_dir, target_dir, output_path, type, ge
 
 
 def diff_args(args):
-    run(args.train, args.use_generated_model, args.input_dir, args.target_dir, args.generated_Gen, args.generated_Disc, args.use_comparison)
+    run(args.train,
+        args.use_generated_model,
+        args.input_dir,
+        args.target_dir,
+        args.output_dir,
+        args.type,
+        args.epoch,
+        args.batch_size,
+        args.n_critic,
+        args.weight_L1,
+        args.generated_Gen,
+        args.generated_Disc,
+        args.use_comparison)
 
 def main(args):
     parser = argparse.ArgumentParser(prog="dataset_generation")
-    parser.add_argument("--train", type=bool, help="If models are trained")
-    parser.add_argument("--use_generated_model", type=bool, help="If models are trained from scratch or already trained models are used")
-    parser.add_argument("--input_dir", type=bool, help="Directory where the input sketches for training are stored")
-    parser.add_argument("--target_dir", type=bool, help="Directory where the normal or depth maps for training are stored")
-    parser.add_argument("--output_path", type=str, help="Directory where the normal or depth maps for training are stored")
-    parser.add_argument("--type", type=str, help="use \"normal\" or \"depth\" in order to train\\generate depth or normal images")
+    parser.add_argument("--train", type=bool, default=True, help="If models are trained")
+    parser.add_argument("--use_generated_model", type=bool, default=False, help="If models are trained from scratch or already trained models are used")
+    parser.add_argument("--input_dir", type=bool, default="..\\..\\resources\\sketch_meshes", help="Directory where the input sketches for training are stored")
+    parser.add_argument("--target_dir", type=bool, default="..\\..\\resources\\n_meshes", help="Directory where the normal or depth maps for training are stored")
+    parser.add_argument("--output_dir", type=str, default="..\\..\\output", help="Directory where the checkpoints or the test output is stored")
+    parser.add_argument("--type", type=str, default="normal", help="use \"normal\" or \"depth\" in order to train\\generate depth or normal images")
+    parser.add_argument("--epoch", type=int, default=100, help="# of epoch")
+    parser.add_argument("--batch_size", type=int, default=1, help="# of epoch")
+    parser.add_argument("--n_critic", type=int, default=5, help="# of n_critic")
+    parser.add_argument("--weight_L1", type=int, default=5, help="L1 weight")
     parser.add_argument("--generated_Gen", type=str, help="Directory where the normal or depth maps for training are stored")
     parser.add_argument("--generated_Disc", type=str, help="Directory where the normal or depth maps for training are stored")
     parser.add_argument("--use_comparison", type=bool, help="If test is used determine if comparison images should be generated")
@@ -59,9 +77,12 @@ if __name__ == '__main__':
     params = [
         '--train', True,
         '--use_generated_model', False,
-        '--input_dir', "../../resources/sketch_meshes",
-        '--target_dir', "../../resources/n_meshes"
-        '--output_path', "../../checkpoints",
-        '--type', "normal"
+        '--input_dir', "..\\..\\resources\\sketch_meshes",
+        '--target_dir', "..\\..\\resources\\n_meshes"
+        '--output_dir', "..\\..\\checkpoints",
+        '--type', "normal",
+        '--epochs', 100,
+        '--batch_size', 1
+
     ]
     main(params)
