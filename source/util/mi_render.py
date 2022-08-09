@@ -48,20 +48,24 @@ def create_rendering(emitter_samples, shape, camera, mesh_name, output_dir):
     scene = mi.load_dict(scene_desc)
     rendering(scene, mesh_name, output_dir)
 
-def run(type, input_mesh, output_dir, aovs=[], emitter_samples=0):
+def run(type, input_mesh, output_dirs, aovs=[], emitter_samples=0):
     mesh_name = (input_mesh.rsplit("\\", 1)[-1]).rsplit(".", 1)[0]
     shape = create_scenedesc.create_shape(input_mesh, T.scale(0.1))
     camera = create_scenedesc.create_camera(T.look_at(target=(0, 0, 0),
                                                                    origin=(0, 0, 2),
                                                                    up=(0, 1, 0),
                                                                    ))
+    for key, value in output_dirs.items():
+        if not os.path.exists(value):
+            os.mkdir(value)
+
     if type == "aov":
-        create_aov(aovs, shape, camera, mesh_name, output_dir)
+        create_aov(aovs, shape, camera, mesh_name, output_dirs)
     elif type == "rendering":
-        create_rendering(emitter_samples, shape, camera, mesh_name, output_dir)
+        create_rendering(emitter_samples, shape, camera, mesh_name, output_dirs)
     elif type == "combined":
-        create_aov(aovs, shape, camera, mesh_name, output_dir)
-        create_rendering(emitter_samples, shape, camera, mesh_name, output_dir)
+        create_aov(aovs, shape, camera, mesh_name, output_dirs)
+        create_rendering(emitter_samples, shape, camera, mesh_name, output_dirs)
     else:
         raise Exception("Given type not known!")
 

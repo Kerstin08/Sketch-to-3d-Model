@@ -1,14 +1,16 @@
+import os.path
+
 import map_generation
-import torch
+import warnings
 import source.util.save_load_networks as Save_Load_Network
 import argparse
 
 def run(train, use_generated_model, input_dir, target_dir, output_path,
-        type, epoch, batch_size, n_critic, weight_L1,
+        type, epoch, batch_size, n_critic, weight_L1, weight_BCELoss,
         generated_Gen="", generated_Disc="", use_comparison=False):
 
-    if len(input_dir) <= 0 and len(target_dir) <= 0:
-        raise RuntimeError("Input and Target image dirs are not given!")
+    if len(input_dir) <= 0 or len(target_dir) <= 0 or not os.path.exists(input_dir) or not os.path.exists(target_dir):
+        raise RuntimeError("Input and Target image dirs are not given or do not exist!")
 
     if type == "depth":
         given_type = map_generation.Type.depth
@@ -17,13 +19,15 @@ def run(train, use_generated_model, input_dir, target_dir, output_path,
     else:
         raise RuntimeError("Given type should either be \"normal\" or \"depth\"!")
 
-    model = map_generation.MapGen(given_type, epoch, n_critic, weight_L1, batch_size)
+    model = map_generation.MapGen(given_type, epoch, n_critic, weight_L1, weight_BCELoss, batch_size)
 
     if len(output_path) <= 0:
-        raise RuntimeError("Checkpoint Path is not given!")
+        raise RuntimeError("Output Path is not given!")
+    if not os.path.exists(output_path):
+        os.mkdir(output_path)
 
     if use_generated_model:
-        if len(generated_Gen) <= 0 and len(generated_Disc) <= 0:
+        if len(generated_Gen) <= 0 and len(generated_Disc) <= 0 and os.path.exists(generated_Gen) and os.path.exists(generated_Disc):
             saved_epoch_gen = Save_Load_Network.load_models(model.G, model.optim_G, generated_Gen)
             print("Generator previously trained for " + str(saved_epoch_gen) + "epochs!")
             saved_epoch_disc = Save_Load_Network.load_models(model.D, model.optim_D, generated_Disc)
@@ -37,6 +41,8 @@ def run(train, use_generated_model, input_dir, target_dir, output_path,
         model.train(input_dir, target_dir, output_path)
 
     else:
+        if not use_generated_model:
+            warnings.warn("Map generation is called on untrained models!")
         model.test(input_dir, target_dir, output_path, use_comparison)
 
 
@@ -51,6 +57,7 @@ def diff_args(args):
         args.batch_size,
         args.n_critic,
         args.weight_L1,
+        args.weight_BCELoss,
         args.generated_Gen,
         args.generated_Disc,
         args.use_comparison)
@@ -66,7 +73,8 @@ def main(args):
     parser.add_argument("--epoch", type=int, default=100, help="# of epoch")
     parser.add_argument("--batch_size", type=int, default=1, help="# of epoch")
     parser.add_argument("--n_critic", type=int, default=5, help="# of n_critic")
-    parser.add_argument("--weight_L1", type=int, default=5, help="L1 weight")
+    parser.add_argument("--weight_L1", type=int, default=500, help="L1 weight")
+    parser.add_argument("--weight_BCELoss", type=int, default=100, help="L1 weight")
     parser.add_argument("--generated_Gen", type=str, help="Directory where the normal or depth maps for training are stored")
     parser.add_argument("--generated_Disc", type=str, help="Directory where the normal or depth maps for training are stored")
     parser.add_argument("--use_comparison", type=bool, help="If test is used determine if comparison images should be generated")

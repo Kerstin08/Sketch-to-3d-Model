@@ -8,6 +8,10 @@ os.environ["OPENCV_IO_ENABLE_OPENEXR"] = "1"
 import cv2 as cv
 
 def run(type, input_mesh, output_dirs, emitter_samples):
+    for key, value in output_dirs.items():
+        if not os.path.exists(value):
+            os.mkdir(value)
+
     render.run(type, input_mesh, output_dirs, emitter_samples)
     mesh_name = (input_mesh.rsplit("\\", 1)[-1]).rsplit(".", 1)[0]
     filename_temp = mesh_name + "_rendering.png"

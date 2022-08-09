@@ -12,13 +12,16 @@ from torchvision.utils import make_grid
 from enum import Enum
 import shutil
 
+from torch.utils.tensorboard import SummaryWriter
+writer = SummaryWriter("runs/mnist")
+
 class Type(Enum):
     normal = 1,
     depth = 2
 
 
 class MapGen():
-    def __init__(self, type, epoch, n_critic, weight_L1, batch_size):
+    def __init__(self, type, epoch, n_critic, weight_L1, weight_BCELoss, batch_size):
         self.G = Generator()
         self.D = Discriminator()
         # Todo: refine learning rate & epochs
@@ -30,6 +33,7 @@ class MapGen():
         self.n_critic = n_critic
         self.type = type
         self.weight_L1 = weight_L1
+        self.weight_BCELoss = weight_BCELoss
         self.batch_size = batch_size
 
     def gen_filenames(self, epoch=-1):
@@ -55,6 +59,9 @@ class MapGen():
                                 shuffle=True, num_workers=0)
         self.G.train()
         self.D.train()
+        d_running_loss = 0
+        g_running_loss = 0
+        num_total_steps = len(dataloader)
         for epoch in range(self.epochs):
             for i_batch, sample_batched in enumerate(dataloader):
                 # generate fake images
@@ -70,16 +77,22 @@ class MapGen():
                 d_loss = -d_loss_fake + d_loss_real
                 self.optim_D.zero_grad()
                 d_loss.backward()
-
+                d_running_loss += d_loss.item()
                 # Train the generator every n_critic batch --> Wasserstein GAN
                 if i_batch % self.n_critic == 0:
                     # mix traditional loss (pixelwise_l1 loss with wasserstein loss)
                     # mask loss (as described in Su paper) not needed, since we do not have an user-defined mask
                     # use BCEloss as described in Isola paper in order counteract the blurriness L1 introduces (see Isola et al. 1127)
                     pixelwise_loss = torch.nn.L1Loss(sample_batched['input'], fake_images)
-                    g_loss = d_loss_fake + pixelwise_loss * self.weight_L1 #+ torch.nn.BCEWithLogitsLoss(pred_false)
+                    g_loss = d_loss_fake + pixelwise_loss * self.weight_L1 + torch.nn.BCEWithLogitsLoss(pred_false) * self.weight_BCELoss
                     self.optim_G.zero_grad()
                     g_loss.backward()
+
+                    writer.add_scalar('discriminator_trainingLoss', d_running_loss / 100, epoch * num_total_steps + i_batch)
+                    writer.add_scalar('generator_trainingLoss', g_running_loss / 100, epoch * num_total_steps + i_batch)
+                    writer.add_scalar('generator_trainingAccuracy', pixelwise_loss, epoch * num_total_steps + i_batch)
+
+
             if (self.epochs/5) % 100 == 0:
                 filename_G, filename_D = self.gen_filenames(epoch)
                 gen_checkpoint_path = os.path.join(checkpiont_dict, filename_G)
@@ -92,6 +105,8 @@ class MapGen():
         disc_checkpoint_path = os.path.join(checkpiont_dict, filename_D)
         Save_Load_Network.save_models(self.G, self.optim_G, self.epochs, gen_checkpoint_path)
         Save_Load_Network.save_models(self.D, self.optim_D, self.epochs, disc_checkpoint_path)
+        writer.close()
+
 
     def test(self, input_dir, target_dir, output_dir, generate_comparison):
         self.G.eval()

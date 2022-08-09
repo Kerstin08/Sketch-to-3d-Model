@@ -1,6 +1,6 @@
 def create_shape(input_mesh, transform):
     shape = {
-        "type": "obj",
+        "type": "ply",
         "filename": input_mesh,
         "to_world": transform,
         "bsdf": {
