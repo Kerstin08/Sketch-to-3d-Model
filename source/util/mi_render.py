@@ -57,6 +57,8 @@ def run(type, input_mesh, input_metadata, output_dirs, fov, aovs=[], emitter_sam
     max_list = meta_data["max"]
     size = max(abs(max_list[0] - min_list[0]), abs(max_list[1] - min_list[1]), abs(max_list[2] - min_list[2]))
     distance = math.tan(math.radians(fov))*size
+    far_distance = math.tan(math.radians(fov))*size*2
+    near_distance = far_distance-(size*1.25)
     centroid = np.array([0, distance, -distance])
     mesh_name = (input_mesh.rsplit("\\", 1)[-1]).rsplit(".", 1)[0]
     shape = create_scenedesc.create_shape(input_mesh, T.rotate([0, 1, 0], 45))
@@ -64,7 +66,7 @@ def run(type, input_mesh, input_metadata, output_dirs, fov, aovs=[], emitter_sam
                                                                    origin=tuple(centroid),
                                                                    up=(0, 1, 0),
                                                                    ),
-                                            fov
+                                            fov, near_distance, far_distance
                                             )
     for key, value in output_dirs.items():
         if not os.path.exists(value):
@@ -99,7 +101,7 @@ if __name__ == '__main__':
     output_dirs = {'nn': '..\\..\\output', 'dd.y': '..\\..\\output', 'rendering': '..\\..\\output'}
     params = [
         '--type', 'combined',
-        '--input_mesh', '..\\..\\resources\\\ShapeNetCore.v2\\03207941\\69b0a23eb87e1c396694e76612a795a6\\models\\model_normalized.obj',
-        '--input_metadata', '..\\..\\resources\\\ShapeNetCore.v2\\03207941\\69b0a23eb87e1c396694e76612a795a6\\models\\model_normalized.json',
+        '--input_mesh', '..\\..\\resources\\\ShapeNetCore.v2\\02808440\\1c6117c2eef53221b362845c6edb57fc\\models\\model_normalized.obj',
+        '--input_metadata', '..\\..\\resources\\\ShapeNetCore.v2\\02808440\\1c6117c2eef53221b362845c6edb57fc\\models\\model_normalized.json',
         ]
     main(params)
