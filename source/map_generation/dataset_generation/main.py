@@ -13,7 +13,7 @@ def make_folder(prefix, dir):
     os.makedirs(path)
     return path
 
-def run(input_dir, output_dir):
+def run(input_dir, output_dir, fov):
     # generate folders
     sketch_path = make_folder("sketch_", input_dir)
     n_path = make_folder("n_", output_dir)
@@ -26,23 +26,24 @@ def run(input_dir, output_dir):
             if fname.rsplit(".", 1)[1] == "ply":
                 model_path = os.path.join(root, fname)
                 # generate sketches
-                lineGen.run("rendering", model_path, sketch_output_dirs, 4)
+                lineGen.run("rendering", model_path, sketch_output_dirs, fov, 4)
                 # generate depth and normal
-                render.run("aov", model_path, aov_output_dirs, {"dd.y": "depth", "nn": "sh_normal"}, 4)
+                render.run("aov", model_path, aov_output_dirs, fov, {"dd.y": "depth", "nn": "sh_normal"}, 4)
 
 def diff_args(args):
-    run(args.input_dir, args.output_dir)
+    run(args.input_dir, args.output_dir, args.fov)
 
 def main(args):
     parser = argparse.ArgumentParser(prog="dataset_generation")
     parser.add_argument("--input_dir", type=str, help="path to reference objects")
     parser.add_argument("--output_dir", type=str, help="path to output objects")
+    parser.add_argument("--fov", type=int, default=50)
     args = parser.parse_args(args)
     diff_args(args)
 
 if __name__ == '__main__':
     params = [
-        '--input_dir', '..\\..\\..\\resources\\meshes',
+        '--input_dir', '..\\..\\..\\ShapeNetCore.v2\\04554684',
         '--output_dir', '..\\..\\..\\output\\mapgen',
     ]
     main(params)

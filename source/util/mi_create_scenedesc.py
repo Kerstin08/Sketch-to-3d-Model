@@ -1,6 +1,6 @@
 def create_shape(input_mesh, transform):
     shape = {
-        "type": "ply",
+        "type": "obj",
         "filename": input_mesh,
         "to_world": transform,
         "bsdf": {
@@ -31,17 +31,16 @@ def create_emitter():
     return emitter
 
 # Todo: define near and far clip in order to compute depth correctly
-def create_camera(transform):
+def create_camera(transform, fov):
     camera = {"type": "perspective",
               "to_world": transform,
-              "near_clip": 1,
-              "far_clip": 2,
+              "fov": fov,
               "film": {
                   "type": "hdrfilm",
                   "width": 256,
                   "height": 256,
                   'rfilter': {'type': 'gaussian'},
-                  "pixel_format": "rgb"
+                  "pixel_format": "rgb",
               },
               "sampler":
                   {"type": "independent",
