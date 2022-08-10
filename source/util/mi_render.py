@@ -50,15 +50,14 @@ def create_rendering(emitter_samples, shape, camera, mesh_name, output_dir):
     scene = mi.load_dict(scene_desc)
     rendering(scene, mesh_name, output_dir)
 
-def run(type, input_mesh, input_metadata, output_dirs, fov, aovs=[], emitter_samples=0):
-    with open(input_metadata, 'r', encoding='utf-8') as f:
-        meta_data = json.loads(f.read())
-    min_list = meta_data["min"]
-    max_list = meta_data["max"]
-    size = max(abs(max_list[0] - min_list[0]), abs(max_list[1] - min_list[1]), abs(max_list[2] - min_list[2]))
+def run(type, input_mesh, output_dirs, fov, aovs=[], emitter_samples=0):
+    # Use 1 as size, since the diagonal of the bounding box of the normalized mesh should be 1
+    # Do not use bounding box values from meta data, since not fullfill the cirteria of having a distance of 1,
+    # leading to huge distances and therefore tiny renderings
+    size = 1
     distance = math.tan(math.radians(fov))*size
     far_distance = math.tan(math.radians(fov))*size*2
-    near_distance = far_distance-(size*1.25)
+    near_distance = far_distance-(size*1.35)
     centroid = np.array([0, distance, -distance])
     mesh_name = (input_mesh.rsplit("\\", 1)[-1]).rsplit(".", 1)[0]
     shape = create_scenedesc.create_shape(input_mesh, T.rotate([0, 1, 0], 45))
@@ -101,7 +100,7 @@ if __name__ == '__main__':
     output_dirs = {'nn': '..\\..\\output', 'dd.y': '..\\..\\output', 'rendering': '..\\..\\output'}
     params = [
         '--type', 'combined',
-        '--input_mesh', '..\\..\\resources\\\ShapeNetCore.v2\\02808440\\1c6117c2eef53221b362845c6edb57fc\\models\\model_normalized.obj',
-        '--input_metadata', '..\\..\\resources\\\ShapeNetCore.v2\\02808440\\1c6117c2eef53221b362845c6edb57fc\\models\\model_normalized.json',
+        '--input_mesh', '..\\..\\resources\\\ShapeNetCore.v2\\03636649\\1a3127ade9d7eca4fde8830b9596d8b9\\models\\model_normalized.obj',
+        '--input_metadata', '..\\..\\resources\\\ShapeNetCore.v2\\03636649\\1a3127ade9d7eca4fde8830b9596d8b9\\models\\model_normalized.json',
         ]
     main(params)
