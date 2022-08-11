@@ -2,20 +2,18 @@ import source.util.mi_render as render
 import source.util.line_gen as lineGen
 import argparse
 import os
-import shutil
-import glob
 
 def make_folder(prefix, dir):
     original_path_split = dir.rsplit("\\", 1)
     dir_name = prefix + original_path_split[1]
     path = os.path.join(original_path_split[0], dir_name)
-    if os.path.exists(path):
-        shutil.rmtree(path)
-    os.makedirs(path)
+    if not os.path.exists(path):
+        os.makedirs(path)
     return path
 
 def gen_images(path, sketch_output_dirs, aov_output_dirs, fov, modelname_split_indicator_before="", modelname_split_indicator_after=""):
     if os.path.isfile(path) and path.rsplit(".", 1)[1] == "obj":
+        print(f'Processing ' + path, end='\r')
         if len(modelname_split_indicator_before) > 0 or len(modelname_split_indicator_after) > 0:
             ouput_name = path
             if len(modelname_split_indicator_before) > 0:
@@ -70,7 +68,7 @@ def main(args):
 
 if __name__ == '__main__':
     params = [
-        '--input_dir', '..\\..\\..\\resources\\ShapeNetCore.v2\\02843684',
+        '--input_dir', '..\\..\\..\\resources\\ShapeNetCore.v2\\02773838',
         '--output_dir', '..\\..\\..\\output\\mapgen',
         '--modelname_split_indicator_before', 'ShapeNetCore.v2\\',
         '--modelname_split_indicator_after', '\\models',

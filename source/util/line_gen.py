@@ -1,7 +1,6 @@
 import argparse
 import time
 
-from matplotlib import pyplot as plt
 import source.util.mi_render as render
 import os
 os.environ["OPENCV_IO_ENABLE_OPENEXR"] = "1"
@@ -21,12 +20,14 @@ def run(type, input_mesh, output_dirs, fov, emitter_samples, output_name=""):
     filename = output_name + "_sketch.png"
     path = os.path.join(output_dirs["sketch"], filename)
     img = None
-    max_time_to_wait = 10
+    time_to_wait = 10
     while img is None:
         time.sleep(1)
         img = cv.imread(path_temp, 0)
-        if max_time_to_wait < 0:
-            raise RuntimeError("Temp rendering is not generated!")
+        time_to_wait -= 1
+        if time_to_wait < 0:
+            print("Temp rendering could not be generated!")
+            return
 
 
     edges = cv.Canny(img, 10, 130)

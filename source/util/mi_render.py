@@ -1,4 +1,3 @@
-import json
 import math
 import os.path
 import numpy as np
@@ -7,7 +6,6 @@ import source.util.mi_create_scenedesc as create_scenedesc
 import argparse
 import mitsuba as mi
 from mitsuba.scalar_rgb import Transform4f as T
-from mitsuba.scalar_rgb import Point3f as P
 mi.set_variant('cuda_ad_rgb')
 
 
@@ -40,24 +38,35 @@ def avo(scene, aovs, output_name, output_dirs):
 def create_aov(aovs, shape, camera, output_name, output_dirs):
     integrator_aov = create_scenedesc.create_intergrator_aov(aovs)
     scene_desc = {"type": "scene", "shape": shape, "camera": camera, "integrator": integrator_aov}
-    scene = mi.load_dict(scene_desc)
+    # Sometimes mesh data is not incorrect and could not be loaded
+    try:
+        scene = mi.load_dict(scene_desc)
+    except Exception as e:
+        print("Exception occured in " + shape["filename"])
+        print(e)
+        return
     return avo(scene, aovs, output_name, output_dirs)
 
 def create_rendering(emitter_samples, shape, camera, output_name, output_dir):
     integrator_rendering = create_scenedesc.create_integrator_direct(emitter_samples)
     emitter = create_scenedesc.create_emitter()
     scene_desc = {"type": "scene", "shape": shape, "camera": camera, "integrator": integrator_rendering, "emitter": emitter}
-    scene = mi.load_dict(scene_desc)
+    # Sometimes mesh data is not incorrect and could not be loaded
+    try:
+        scene = mi.load_dict(scene_desc)
+    except Exception as e:
+        print("Exception occured in " + shape["filename"])
+        print(e)
+        return
     rendering(scene, output_name, output_dir)
 
 def run(type, input_mesh, output_dirs, fov, aovs=[], emitter_samples=0, output_name=""):
     # Use 1 as size, since the diagonal of the bounding box of the normalized mesh should be 1
     # Do not use bounding box values from meta data, since not fullfill the cirteria of having a distance of 1,
     # leading to huge distances and therefore tiny renderings
-    size = 1
-    distance = math.tan(math.radians(fov))*size
-    far_distance = math.tan(math.radians(fov))*size*2
-    near_distance = far_distance-(size*1.35)
+    distance = math.tan(math.radians(fov))
+    far_distance = math.tan(math.radians(fov))*2
+    near_distance = far_distance-(1.35)
     centroid = np.array([0, distance, -distance])
     if len(output_name) <= 0:
         output_name = (input_mesh.rsplit("\\", 1)[-1]).rsplit(".", 1)[0]
