@@ -7,17 +7,18 @@ import os
 os.environ["OPENCV_IO_ENABLE_OPENEXR"] = "1"
 import cv2 as cv
 
-def run(type, input_mesh, output_dirs, fov, emitter_samples):
+def run(type, input_mesh, output_dirs, fov, emitter_samples, output_name=""):
     for key, value in output_dirs.items():
         if not os.path.exists(value):
             os.mkdir(value)
 
-    render.run(type, input_mesh, output_dirs, fov, emitter_samples)
-    mesh_name = (input_mesh.rsplit("\\", 1)[-1]).rsplit(".", 1)[0]
-    filename_temp = mesh_name + "_rendering.png"
+    if len(output_name) <= 0:
+        output_name = (input_mesh.rsplit("\\", 1)[-1]).rsplit(".", 1)[0]
+    render.run(type, input_mesh, output_dirs, fov, emitter_samples=emitter_samples, output_name=output_name)
+    filename_temp = output_name + "_rendering.png"
     path_temp = os.path.join(output_dirs["rendering"], filename_temp)
 
-    filename = mesh_name + "_sketch.png"
+    filename = output_name + "_sketch.png"
     path = os.path.join(output_dirs["sketch"], filename)
     img = None
     max_time_to_wait = 10
