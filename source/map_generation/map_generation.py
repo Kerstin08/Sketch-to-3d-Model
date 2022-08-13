@@ -33,6 +33,8 @@ class MapGen(pl.LightningModule):
         self.d_running_loss = 0
         self.g_running_loss = 0
         self.lr = lr
+        self.L1 = torch.nn.L1Loss()
+        self.BCE = torch.nn.BCEWithLogitsLoss()
 
     def gen_filenames(self, epoch=-1):
         if epoch>0:
@@ -68,13 +70,12 @@ class MapGen(pl.LightningModule):
         input_predicted = torch.cat((sample_batched['input'], fake_images), 1)
         pred_false = self.D(input_predicted.detach())
         d_loss_fake = torch.mean(pred_false)
-        pixelwise_loss = torch.nn.L1Loss(sample_batched['input'], fake_images)
-        g_loss = d_loss_fake + pixelwise_loss * self.weight_L1 + torch.nn.BCEWithLogitsLoss(
-            pred_false) * self.weight_BCELoss
+        pixelwise_loss = self.L1(sample_batched['input'], fake_images)
+        g_loss = d_loss_fake + pixelwise_loss * self.weight_L1 + self.BCE(pred_false, torch.ones(pred_false.size())) * self.weight_BCELoss
         self.g_running_loss += g_loss.item()*sample_batched['input'].size(0)
         return g_loss
 
-    def discrimintor_step(self, sample_batched, fake_images):
+    def discriminator_step(self, sample_batched, fake_images):
         print("Discriminator")
         input_predicted = torch.cat((sample_batched['input'], fake_images), 1)
         input_target = torch.cat((sample_batched['input'], sample_batched['target']), 1)
@@ -107,7 +108,7 @@ class MapGen(pl.LightningModule):
 
     def validation_step(self, sample_batched, batch_idx):
         predicted_image = self(sample_batched)
-        pixelwise_loss = torch.nn.L1Loss(sample_batched['input'], predicted_image)
+        pixelwise_loss = self.L1(sample_batched['input'], predicted_image)
         self.log("val_loss", pixelwise_loss)
 
     def test_step(self, sample_batched, batch_idx):
@@ -211,7 +212,7 @@ class Generator(nn.Module):
         d7 = torch.cat([d7, e1], 1)
         # outermost
         d8 = self.d_deconv8(F.relu(d7))
-        return F.tanh(d8)
+        return torch.tanh(d8)
 
 
 # Discriminator
@@ -232,6 +233,6 @@ class Discriminator(nn.Module):
         d2 = F.leaky_relu(self.conv2_bn(self.conv2(d1)))
         d3 = F.leaky_relu(self.conv3_bn(self.conv3(d2)))
         d4 = F.leaky_relu(self.conv4_bn(self.conv4(d3)))
-        d5 = F.sigmoid(self.conv5(d4))
+        d5 = torch.sigmoid(self.conv5(d4))
         return d5
 
