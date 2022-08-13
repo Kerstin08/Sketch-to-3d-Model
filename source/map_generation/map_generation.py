@@ -20,7 +20,8 @@ class Type(Enum):
 
 
 class MapGen(pl.LightningModule):
-    def __init__(self, type, n_critic, weight_L1, weight_BCELoss, generate_comparison, output_dir):
+    def __init__(self, type, n_critic, weight_L1, weight_BCELoss, generate_comparison, output_dir, lr):
+        super(MapGen, self).__init__()
         self.G = Generator()
         self.D = Discriminator()
         self.n_critic = n_critic
@@ -31,6 +32,7 @@ class MapGen(pl.LightningModule):
         self.output_dir = output_dir
         self.d_running_loss = 0
         self.g_running_loss = 0
+        self.lr = lr
 
     def gen_filenames(self, epoch=-1):
         if epoch>0:
@@ -50,18 +52,21 @@ class MapGen(pl.LightningModule):
         return filename_G, filename_D
 
     def configure_optimizers(self):
-        opt_g = torch.optim.RMSprop(self.generator.parameters(), lr=(self.lr or self.learning_rate))
-        opt_d = torch.optim.RMSprop(self.discriminator.parameters(), lr=(self.lr or self.learning_rate))
+        opt_g = torch.optim.RMSprop(self.G.parameters(), lr=(self.lr or self.learning_rate))
+        opt_d = torch.optim.RMSprop(self.D.parameters(), lr=(self.lr or self.learning_rate))
         return (
             {'optimizer': opt_g, 'frequency': 1},
             {'optimizer': opt_d, 'frequency': self.n_critic}
         )
 
     def forward(self, sample_batched):
-        return self.G(sample_batched['input'])
+        x = sample_batched['input']
+        return self.G(x)
 
     def generator_step(self, sample_batched, fake_images):
-        pred_false = self.D(fake_images.detach())
+        print("Generator")
+        input_predicted = torch.cat((sample_batched['input'], fake_images), 1)
+        pred_false = self.D(input_predicted.detach())
         d_loss_fake = torch.mean(pred_false)
         pixelwise_loss = torch.nn.L1Loss(sample_batched['input'], fake_images)
         g_loss = d_loss_fake + pixelwise_loss * self.weight_L1 + torch.nn.BCEWithLogitsLoss(
@@ -70,11 +75,13 @@ class MapGen(pl.LightningModule):
         return g_loss
 
     def discrimintor_step(self, sample_batched, fake_images):
-        # train discriminator on fake images
-        pred_false = self.D(fake_images.detach())
+        print("Discriminator")
+        input_predicted = torch.cat((sample_batched['input'], fake_images), 1)
+        input_target = torch.cat((sample_batched['input'], sample_batched['target']), 1)
+        pred_false = self.D(input_predicted.detach())
         d_loss_fake = torch.mean(pred_false)
         # train discriminator on real images
-        pred_true = self.D(sample_batched['target'])
+        pred_true = self.D(input_target)
         d_loss_real = torch.mean(pred_true)
 
         # loss as defined by Wasserstein paper
@@ -84,7 +91,7 @@ class MapGen(pl.LightningModule):
         return d_loss
 
     def training_step(self, sample_batched, batch_idx, optimizer_idx):
-        fake_images = self(sample_batched['input'])
+        fake_images = self(sample_batched)
         if optimizer_idx == 0:
             loss = self.generator_step(sample_batched, fake_images)
 
@@ -99,7 +106,7 @@ class MapGen(pl.LightningModule):
         self.g_running_loss = 0
 
     def validation_step(self, sample_batched, batch_idx):
-        predicted_image = self(sample_batched['input'])
+        predicted_image = self(sample_batched)
         pixelwise_loss = torch.nn.L1Loss(sample_batched['input'], predicted_image)
         self.log("val_loss", pixelwise_loss)
 
@@ -149,26 +156,22 @@ class Generator(nn.Module):
         #Decoder
         self.d_deconv1 = nn.ConvTranspose2d(512, 512, 4)
         self.d_deconv1_bn = nn.BatchNorm2d(512)
-        self.d_deconv1_drop = nn.Dropout()
-        self.d_deconv2 = nn.ConvTranspose2d(512, 512, 4)
+        self.d_deconv1_drop = nn.Dropout(0.5)
+        self.d_deconv2 = nn.ConvTranspose2d(1024, 512, 4)
         self.d_deconv2_bn = nn.BatchNorm2d(512)
-        self.d_deconv2_drop = nn.Dropout()
-        self.d_deconv3 = nn.ConvTranspose2d(512, 512, 4)
+        self.d_deconv2_drop = nn.Dropout(0.5)
+        self.d_deconv3 = nn.ConvTranspose2d(1024, 512, 4)
         self.d_deconv3_bn = nn.BatchNorm2d(512)
-        self.d_deconv3_drop = nn.Dropout()
-        self.d_deconv4 = nn.ConvTranspose2d(512, 512, 4)
+        self.d_deconv3_drop = nn.Dropout(0.5)
+        self.d_deconv4 = nn.ConvTranspose2d(1024, 512, 4)
         self.d_deconv4_bn = nn.BatchNorm2d(512)
-        self.d_deconv4_drop = nn.Dropout()
-        self.d_deconv5 = nn.ConvTranspose2d(512, 256, 4)
+        self.d_deconv5 = nn.ConvTranspose2d(1024, 256, 4)
         self.d_deconv5_bn = nn.BatchNorm2d(256)
-        self.d_deconv5_drop = nn.Dropout()
-        self.d_deconv6 = nn.ConvTranspose2d(256, 128, 4)
+        self.d_deconv6 = nn.ConvTranspose2d(512, 128, 4)
         self.d_deconv6_bn = nn.BatchNorm2d(128)
-        self.d_deconv6_drop = nn.Dropout()
-        self.d_deconv7 = nn.ConvTranspose2d(128, 64, 4)
+        self.d_deconv7 = nn.ConvTranspose2d(256, 64, 4)
         self.d_deconv7_bn = nn.BatchNorm2d(64)
-        self.d_deconv7_drop = nn.Dropout()
-        self.d_deconv8 = nn.ConvTranspose2d(64, 3, 4)
+        self.d_deconv8 = nn.ConvTranspose2d(128, 3, 4)
 
 
     def forward(self, x):
@@ -193,22 +196,21 @@ class Generator(nn.Module):
         # Decoder
         # innermost
         d1 = self.d_deconv1_drop(self.d_deconv1_bn(self.d_deconv1(F.relu(e8))))
-        d1 = torch.cat([d1, e7], 3)
+        d1 = torch.cat([d1, e7], 1)
         d2 = self.d_deconv2_drop(self.d_deconv2_bn(self.d_deconv2(F.relu(d1))))
-        d2 = torch.cat([d2, e6], 3)
+        d2 = torch.cat([d2, e6], 1)
         d3 = self.d_deconv3_drop(self.d_deconv3_bn(self.d_deconv3(F.relu(d2))))
-        d3 = torch.cat([d3, e5], 3)
-        d4 = self.d_deconv4_drop(self.d_deconv4_bn(self.d_deconv4(F.relu(d3))))
-        d4 = torch.cat([d4, e5], 3)
-        d5 = self.d_deconv5_drop(self.d_deconv5_bn(self.d_deconv5(F.relu(d4))))
-        d5 = torch.cat([d5, e4], 3)
-        d6 = self.d_deconv6_drop(self.d_deconv6_bn(self.d_deconv6(F.relu(d5))))
-        d6 = torch.cat([d6, e3], 3)
-        d7 = self.d_deconv7_drop(self.d_deconv7_bn(self.d_deconv7(F.relu(d6))))
-        d7 = torch.cat([d7, e2], 3)
+        d3 = torch.cat([d3, e5], 1)
+        d4 = self.d_deconv4_bn(self.d_deconv4(F.relu(d3)))
+        d4 = torch.cat([d4, e4], 1)
+        d5 = self.d_deconv5_bn(self.d_deconv5(F.relu(d4)))
+        d5 = torch.cat([d5, e3], 1)
+        d6 = self.d_deconv6_bn(self.d_deconv6(F.relu(d5)))
+        d6 = torch.cat([d6, e2], 1)
+        d7 = self.d_deconv7_bn(self.d_deconv7(F.relu(d6)))
+        d7 = torch.cat([d7, e1], 1)
         # outermost
         d8 = self.d_deconv8(F.relu(d7))
-        d8 = torch.cat([d8, e1], 3)
         return F.tanh(d8)
 
 
@@ -223,13 +225,13 @@ class Discriminator(nn.Module):
         self.conv3_bn = nn.BatchNorm2d(256)
         self.conv4 = nn.Conv2d(256, 512, 4)
         self.conv4_bn = nn.BatchNorm2d(512)
+        self.conv5 = nn.Conv2d(512, 1, 4)
 
     def forward(self, x):
         d1 = F.leaky_relu(self.conv1(x))
         d2 = F.leaky_relu(self.conv2_bn(self.conv2(d1)))
         d3 = F.leaky_relu(self.conv3_bn(self.conv3(d2)))
         d4 = F.leaky_relu(self.conv4_bn(self.conv4(d3)))
-        # Todo: is this needed?
-        d5 = nn.Linear(torch.reshape(d4, [1, -1]))
+        d5 = F.sigmoid(self.conv5(d4))
         return d5
 

@@ -4,3 +4,4 @@ mitsuba2_scripts
 output
 resources
 source/code_phillip
+source/map_generation/runs
