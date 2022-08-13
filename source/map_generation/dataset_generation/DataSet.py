@@ -5,7 +5,7 @@ from torch.utils.data import Dataset
 from PIL import Image
 
 class DS(Dataset):
-    def __init__(self, dir_target, dir_input):
+    def __init__(self, dir_input, dir_target):
         self.dir_target = dir_target
         self.dir_input = dir_input
         self.image_paths_target = sorted(self.create_dataSet(dir_target))
@@ -26,12 +26,12 @@ class DS(Dataset):
 
     def __getitem__(self, index):
         target_path = self.image_paths_target[index]
-        target_image = Image.open(target_path)
+        target_image = Image.open(target_path).convert("RGB")
         transform = transforms.PILToTensor()
-        target_image_tensor = transform(target_image)
+        target_image_tensor = transform(target_image).float()
         input_path = self.image_paths_input[index]
-        input_image = Image.open(input_path)
-        imput_image_tensor = transform(input_image)
+        input_image = Image.open(input_path).convert("RGB")
+        imput_image_tensor = transform(input_image).float()
         return {'input': imput_image_tensor,
                 'target': target_image_tensor,
                 'input_path': input_path,

@@ -12,7 +12,7 @@ import dataset_generation.DataSet as DataSet
 from pytorch_lightning.callbacks import ModelCheckpoint
 
 def run(train, input_dir, target_dir, output_path,
-        type, epoch, batch_size, n_critic, weight_L1, weight_BCELoss,
+        type, epochs, lr, batch_size, n_critic, weight_L1, weight_BCELoss,
         use_generated_model=False, generated_model_path="", use_comparison=True):
 
 
@@ -31,7 +31,7 @@ def run(train, input_dir, target_dir, output_path,
     if not os.path.exists(output_path):
         os.mkdir(output_path)
 
-    model = map_generation.MapGen(given_type, n_critic, weight_L1, weight_BCELoss, use_comparison, output_path)
+    model = map_generation.MapGen(given_type, n_critic, weight_L1, weight_BCELoss, use_comparison, output_path, lr)
     if use_generated_model:
         if not os.path.exists(generated_model_path):
             raise RuntimeError("Generated model paths are not given!")
@@ -48,22 +48,20 @@ def run(train, input_dir, target_dir, output_path,
     )
     logger = TensorBoardLogger("tb_logs", name="trainModel")
     dataSet = DataSet.DS(input_dir, target_dir)
-    trainer = Trainer(gpus=1 if torch.cuda.is_available() else 0,
-                      max_epochs=epoch,
-                      auto_lr_find=True,
+    trainer = Trainer(gpus=0 if torch.cuda.is_available() else 0,
+                      max_epochs=epochs,
                       callbacks=[checkpoint_callback],
                       logger=logger)
-    trainer.tuner(model)
     if train:
         train_set_size = int(len(dataSet) * 0.8)
         valid_set_size = len(dataSet) - train_set_size
         seed = torch.Generator().manual_seed(42)
-        train_set, valid_set = data.random_split(dataSet, [train_set_size, valid_set_size], generator=seed)
+        train_set, valid_set = data.random_split(dataSet, [train_set_size, valid_set_size], seed)
         dataloader_train = DataLoader(train_set, batch_size=batch_size,
-                                shuffle=True, num_workers=0)
+                                shuffle=True, num_workers=4)
         dataloader_vaild = DataLoader(valid_set, batch_size=batch_size,
-                                shuffle=False, num_workers=0)
-        trainer.fit(model, dataloader_train, dataloader_vaild)
+                                shuffle=False, num_workers=4)
+        trainer.fit(model, dataloader_train)
 
     else:
         if not use_generated_model:
@@ -79,7 +77,8 @@ def diff_args(args):
         args.target_dir,
         args.output_dir,
         args.type,
-        args.epoch,
+        args.epochs,
+        args.lr,
         args.batch_size,
         args.n_critic,
         args.weight_L1,
@@ -90,18 +89,18 @@ def diff_args(args):
 
 def main(args):
     parser = argparse.ArgumentParser(prog="dataset_generation")
-    parser.add_argument("--train", type=bool, default=True, help="If models are trained")
-    parser.add_argument("--use_generated_model", type=bool, default=False, help="If models are trained from scratch or already trained models are used")
-    parser.add_argument("--input_dir", type=bool, default="..\\..\\resources\\sketch_meshes", help="Directory where the input sketches for training are stored")
-    parser.add_argument("--target_dir", type=bool, default="..\\..\\resources\\n_meshes", help="Directory where the normal or depth maps for training are stored")
+    parser.add_argument("--train", type=bool, default=True, help="Train or test")
+    parser.add_argument("--input_dir", type=str, default="..\\..\\resources\\sketch_meshes", help="Directory where the input sketches for training are stored")
+    parser.add_argument("--target_dir", type=str, default="..\\..\\resources\\n_meshes", help="Directory where the normal or depth maps for training are stored")
     parser.add_argument("--output_dir", type=str, default="..\\..\\output", help="Directory where the checkpoints or the test output is stored")
     parser.add_argument("--type", type=str, default="normal", help="use \"normal\" or \"depth\" in order to train\\generate depth or normal images")
-    parser.add_argument("--epoch", type=int, default=100, help="# of epoch")
+    parser.add_argument("--epochs", type=int, default=100, help="# of epoch")
+    parser.add_argument("--lr", type=float, default=100, help="initial learning rate")
     parser.add_argument("--batch_size", type=int, default=1, help="# of epoch")
     parser.add_argument("--n_critic", type=int, default=5, help="# of n_critic")
     parser.add_argument("--weight_L1", type=int, default=500, help="L1 weight")
     parser.add_argument("--weight_BCELoss", type=int, default=100, help="L1 weight")
-    parser.add_argument("--use_generated_model", type=bool, default=False, help="If test is used determine if comparison images should be generated")
+    parser.add_argument("--use_generated_model", type=bool, default=False, help="If models are trained from scratch or already trained models are used")
     parser.add_argument("--generated_model_path", type=str, default="..\\..\\output\\test.ckpt", help="If test is used determine if comparison images should be generated")
     parser.add_argument("--use_comparison", type=bool, default=True, help="If test is used determine if comparison images should be generated")
     args = parser.parse_args(args)
@@ -109,13 +108,11 @@ def main(args):
 
 if __name__ == '__main__':
     params = [
-        '--train', True,
-        '--use_generated_model', False,
-        '--input_dir', "..\\..\\resources\\sketch_meshes",
-        '--target_dir', "..\\..\\resources\\n_meshes"
-        '--output_dir', "..\\..\\checkpoints",
-        '--type', "normal",
-        '--epochs', 100
-
+        '--input_dir', '..\\..\\output\\sketch_mapgen',
+        '--target_dir', '..\\..\\output\\n_mapgen',
+        '--output_dir', '..\\..\\checkpoints',
+        '--type', 'normal',
+        '--epochs', '100',
+        '--lr', '0.2'
     ]
     main(params)
