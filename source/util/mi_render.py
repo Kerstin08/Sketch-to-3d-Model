@@ -19,6 +19,8 @@ def rendering(scene, output_name, output_dirs):
 
 def avo(scene, aovs, output_name, output_dirs):
     img = mi.render(scene, seed=0, spp=1024)
+    output_dir = output_dirs['nn']
+
     bitmap = mi.Bitmap(img, channel_names=['R', 'G', 'B'] + scene.integrator().aov_names())
     channels = dict(bitmap.split())
     if "depth" in aovs.values():
@@ -33,7 +35,24 @@ def avo(scene, aovs, output_name, output_dirs):
         filename = output_name + "_normal.png"
         output_dir = output_dirs['nn']
         path = os.path.join(output_dir, filename)
-        mi.util.write_bitmap(path, normal)
+        normalized = normalize(normal)
+        mi.util.write_bitmap(path, normalized)
+
+def normalize(bitmap):
+    # map image range between 0 and 1
+    temp = np.array(bitmap)
+    new_range = (0, 1)
+    max_range = max(new_range)
+    min_range = min(new_range)
+    scaled_unit = max_range / (np.max(temp) - np.min(temp))
+    normalized = temp * scaled_unit - np.min(temp) * scaled_unit + min_range
+    # normalize normals
+    for i in range(len(normalized)):
+        for j in range(len(normalized[i])):
+            y = normalized[i][j]
+            normalized_x = y / np.linalg.norm(y)
+            normalized[i][j] = normalized_x
+    return normalized
 
 def create_aov(aovs, shape, camera, output_name, output_dirs):
     integrator_aov = create_scenedesc.create_intergrator_aov(aovs)
@@ -100,7 +119,7 @@ def main(args):
     parser.add_argument("--input_mesh", type=str)
     parser.add_argument("--output_dirs", type=dict, default={'nn': '..\\..\\output', 'dd.y': '..\\..\\output', 'rendering': '..\\..\\output'})
     parser.add_argument("--fov", type=int, default=50)
-    parser.add_argument("--aovs", type=dir, default={"nn": "sh_normal", "dd.y": "depth"})
+    parser.add_argument("--aovs", type=dir, default={"nn": "sh_normal"})
     parser.add_argument("--emitter_samples", type=int, default=4)
     args = parser.parse_args(args)
     diff_ars(args)
@@ -108,7 +127,7 @@ def main(args):
 if __name__ == '__main__':
     output_dirs = {'nn': '..\\..\\output', 'dd.y': '..\\..\\output', 'rendering': '..\\..\\output'}
     params = [
-        '--type', 'combined',
+        '--type', 'aov',
         '--input_mesh', '..\\..\\resources\\\ShapeNetCore.v2\\03636649\\1a3127ade9d7eca4fde8830b9596d8b9\\models\\model_normalized.obj',
         ]
     main(params)
