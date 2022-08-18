@@ -51,6 +51,6 @@ def main(args):
 if __name__ == '__main__':
     params = [
         '--type', 'rendering',
-        '--input_mesh', '..\\..\\resources\\meshes\\teapot.ply',
+        '--input_mesh', '..\\..\\resources\\\ShapeNetCore.v2\\04554684\\60f7d79d10e19134a3e7878f2bb5f0ca\\models\\model_normalized.obj',
     ]
     main(params)

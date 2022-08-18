@@ -5,12 +5,14 @@ import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader
 from torchvision import transforms
 
+from source.map_generation import map_generation
+
 epochs = 10
-input_dir = "..\\..\\resources\\n_meshes"
-target_dir = "..\\..\\resources\\sketch_meshes"
+target_dir = "..\\..\\resources\\d_meshes"
+input_dir = "..\\..\\resources\\sketch_meshes"
 figure = plt.figure(figsize=(8, 8))
 cols, rows = 1, 2
-dataSet = DataSet.DS(target_dir, input_dir)
+dataSet = DataSet.DS(input_dir, target_dir, map_generation.Type.depth)
 dataloader = DataLoader(dataSet, batch_size=1,
                         shuffle=True, num_workers=0)
 for i_batch, sample_batched in enumerate(dataloader):
@@ -20,9 +22,10 @@ for i_batch, sample_batched in enumerate(dataloader):
         transform = transforms.ToPILImage()
         figure.add_subplot(rows, cols, (1))
         plt.axis("off")
-        img1 = transform(torch.squeeze(sample_batched['input']))
-        plt.imshow(img1, interpolation='nearest')
+        img1 = transform(torch.squeeze(sample_batched['input'])).convert("L")
+        plt.imshow(img1, cmap="gray")
         figure.add_subplot(rows, cols, (2))
         plt.axis("off")
-        plt.imshow(torch.squeeze(sample_batched['target']), cmap="gray", interpolation='nearest')
+        target = transform(torch.squeeze(sample_batched['target']))
+        plt.imshow(target, interpolation='nearest')
 plt.show()

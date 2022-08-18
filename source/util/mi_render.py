@@ -10,7 +10,7 @@ mi.set_variant('cuda_ad_rgb')
 
 
 def rendering(scene, output_name, output_dirs):
-    img = mi.render(scene, seed=0, spp=1024)
+    img = mi.render(scene, seed=0, spp=256)
     bitmap = mi.util.convert_to_bitmap(img)
     filename = output_name + "_rendering.png"
     output_dir = output_dirs["rendering"]
@@ -18,41 +18,21 @@ def rendering(scene, output_name, output_dirs):
     mi.util.write_bitmap(path, bitmap)
 
 def avo(scene, aovs, output_name, output_dirs):
-    img = mi.render(scene, seed=0, spp=1024)
-    output_dir = output_dirs['nn']
-
+    img = mi.render(scene, seed=0, spp=256)
     bitmap = mi.Bitmap(img, channel_names=['R', 'G', 'B'] + scene.integrator().aov_names())
     channels = dict(bitmap.split())
     if "depth" in aovs.values():
         depth = channels['dd.y']
-        bitmap = mi.Bitmap(depth, channel_names=['R', 'G', 'B'])
-        filename = output_name + "_depth.png"
+        filename = output_name + "_depth.exr"
         output_dir = output_dirs['dd.y']
         path = os.path.join(output_dir, filename)
-        mi.util.write_bitmap(path, bitmap)
+        mi.util.write_bitmap(path, depth)
     if "sh_normal" in aovs.values():
         normal = channels['nn']
         filename = output_name + "_normal.png"
         output_dir = output_dirs['nn']
         path = os.path.join(output_dir, filename)
-        normalized = normalize(normal)
-        mi.util.write_bitmap(path, normalized)
-
-def normalize(bitmap):
-    # map image range between 0 and 1
-    temp = np.array(bitmap)
-    new_range = (0, 1)
-    max_range = max(new_range)
-    min_range = min(new_range)
-    scaled_unit = max_range / (np.max(temp) - np.min(temp))
-    normalized = temp * scaled_unit - np.min(temp) * scaled_unit + min_range
-    # normalize normals
-    for i in range(len(normalized)):
-        for j in range(len(normalized[i])):
-            y = normalized[i][j]
-            normalized_x = y / np.linalg.norm(y)
-            normalized[i][j] = normalized_x
-    return normalized
+        mi.util.write_bitmap(path, normal)
 
 def create_aov(aovs, shape, camera, output_name, output_dirs):
     integrator_aov = create_scenedesc.create_intergrator_aov(aovs)
@@ -119,7 +99,7 @@ def main(args):
     parser.add_argument("--input_mesh", type=str)
     parser.add_argument("--output_dirs", type=dict, default={'nn': '..\\..\\output', 'dd.y': '..\\..\\output', 'rendering': '..\\..\\output'})
     parser.add_argument("--fov", type=int, default=50)
-    parser.add_argument("--aovs", type=dir, default={"nn": "sh_normal"})
+    parser.add_argument("--aovs", type=dir, default={"dd.y": "depth", "nn": "sh_normal"})
     parser.add_argument("--emitter_samples", type=int, default=4)
     args = parser.parse_args(args)
     diff_ars(args)
@@ -128,6 +108,6 @@ if __name__ == '__main__':
     output_dirs = {'nn': '..\\..\\output', 'dd.y': '..\\..\\output', 'rendering': '..\\..\\output'}
     params = [
         '--type', 'aov',
-        '--input_mesh', '..\\..\\resources\\\ShapeNetCore.v2\\03636649\\1a3127ade9d7eca4fde8830b9596d8b9\\models\\model_normalized.obj',
+        '--input_mesh', '..\\..\\resources\\\ShapeNetCore.v2\\04554684\\60f7d79d10e19134a3e7878f2bb5f0ca\\models\\model_normalized.obj',
         ]
     main(params)
