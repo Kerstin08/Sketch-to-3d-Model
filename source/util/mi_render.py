@@ -63,17 +63,23 @@ def run(type, input_mesh, output_dirs, fov, aovs=[], emitter_samples=0, output_n
     # Use 1 as size, since the diagonal of the bounding box of the normalized mesh should be 1
     # Do not use bounding box values from meta data, since not fullfill the cirteria of having a distance of 1,
     # leading to huge distances and therefore tiny renderings
-    distance = math.tan(math.radians(fov))
-    far_distance = math.tan(math.radians(fov))*2
-    near_distance = far_distance-(1.35)
-    centroid = np.array([0, distance, -distance])
+    shape = create_scenedesc.create_shape(input_mesh, T.scale(0.01))
+    shape_lodaded = mi.load_dict(shape)
+    bounding_box = shape_lodaded.bbox()
+    bounding_box_dim = bounding_box.max - bounding_box.min
+    center = bounding_box_dim/2
+
+    distance = center + math.tan(math.radians(fov)) * max(bounding_box_dim)/4
+    far_distance = math.tan(math.radians(fov)) * max(bounding_box_dim)/2
+    near_distance = math.tan(math.radians(fov)) * max(bounding_box_dim)
+    centroid = np.array([distance.x, distance.y, -distance.z])
     if len(output_name) <= 0:
         output_name = (input_mesh.rsplit("\\", 1)[-1]).rsplit(".", 1)[0]
-    shape = create_scenedesc.create_shape(input_mesh, T.rotate([0, 1, 0], 45))
-    camera = create_scenedesc.create_camera(T.look_at(target=-centroid,
-                                                                   origin=tuple(centroid),
-                                                                   up=(0, 1, 0),
-                                                                   ),
+
+    camera = create_scenedesc.create_camera(T.look_at(target=tuple(center/2),
+                                                      origin=tuple(centroid),
+                                                      up=(0, 1, 0),
+                                                      ),
                                             fov, near_distance, far_distance
                                             )
     for key, value in output_dirs.items():
@@ -107,7 +113,7 @@ def main(args):
 if __name__ == '__main__':
     output_dirs = {'nn': '..\\..\\output', 'dd.y': '..\\..\\output', 'rendering': '..\\..\\output'}
     params = [
-        '--type', 'aov',
-        '--input_mesh', '..\\..\\resources\\\ShapeNetCore.v2\\04554684\\60f7d79d10e19134a3e7878f2bb5f0ca\\models\\model_normalized.obj',
+        '--type', 'rendering',
+        '--input_mesh', '..\\..\\resources\\ABC\\abc_0028_obj_v00\\00280001\\00280001_57fbd625027b01109e830e03_trimesh_000.obj',
         ]
     main(params)
