@@ -68,9 +68,9 @@ def main(args):
 
 if __name__ == '__main__':
     params = [
-        '--input_dir', '..\\..\\..\\resources\\ShapeNetCore.v2\\02773838',
+        '--input_dir', '..\\..\\..\\resources\\ABC',
         '--output_dir', '..\\..\\..\\output\\mapgen',
-        '--modelname_split_indicator_before', 'ShapeNetCore.v2\\',
-        '--modelname_split_indicator_after', '\\models',
+        #'--modelname_split_indicator_before', 'ShapeNetCore.v2\\',
+        #'--modelname_split_indicator_after', '\\models',
     ]
     main(params)

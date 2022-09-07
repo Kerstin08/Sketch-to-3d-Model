@@ -10,7 +10,7 @@ mi.set_variant('cuda_ad_rgb')
 
 
 def rendering(scene, output_name, output_dirs):
-    img = mi.render(scene, seed=0, spp=1024)
+    img = mi.render(scene, seed=0, spp=256)
     bitmap = mi.util.convert_to_bitmap(img)
     filename = output_name + "_rendering.png"
     output_dir = output_dirs["rendering"]
@@ -18,16 +18,15 @@ def rendering(scene, output_name, output_dirs):
     mi.util.write_bitmap(path, bitmap)
 
 def avo(scene, aovs, output_name, output_dirs):
-    img = mi.render(scene, seed=0, spp=1024)
+    img = mi.render(scene, seed=0, spp=256)
     bitmap = mi.Bitmap(img, channel_names=['R', 'G', 'B'] + scene.integrator().aov_names())
     channels = dict(bitmap.split())
     if "depth" in aovs.values():
         depth = channels['dd.y']
-        bitmap = mi.Bitmap(depth, channel_names=['R', 'G', 'B'])
-        filename = output_name + "_depth.png"
+        filename = output_name + "_depth.exr"
         output_dir = output_dirs['dd.y']
         path = os.path.join(output_dir, filename)
-        mi.util.write_bitmap(path, bitmap)
+        mi.util.write_bitmap(path, depth)
     if "sh_normal" in aovs.values():
         normal = channels['nn']
         filename = output_name + "_normal.png"
@@ -64,17 +63,24 @@ def run(type, input_mesh, output_dirs, fov, aovs=[], emitter_samples=0, output_n
     # Use 1 as size, since the diagonal of the bounding box of the normalized mesh should be 1
     # Do not use bounding box values from meta data, since not fullfill the cirteria of having a distance of 1,
     # leading to huge distances and therefore tiny renderings
-    distance = math.tan(math.radians(fov))
-    far_distance = math.tan(math.radians(fov))*2
-    near_distance = far_distance-(1.35)
-    centroid = np.array([0, distance, -distance])
+    shape = create_scenedesc.create_shape(input_mesh, T.scale(0.01))
+    shape_lodaded = mi.load_dict(shape)
+    bounding_box = shape_lodaded.bbox()
+    bounding_box_dim = bounding_box.max - bounding_box.min
+    center = bounding_box_dim/2
+    shape_lodaded.merge()
+
+    distance = center + math.tan(math.radians(fov)) * max(bounding_box_dim)/4
+    far_distance = math.tan(math.radians(fov)) * max(bounding_box_dim)/2
+    near_distance = math.tan(math.radians(fov)) * max(bounding_box_dim)
+    centroid = np.array([distance.x, distance.y, -distance.z])
     if len(output_name) <= 0:
         output_name = (input_mesh.rsplit("\\", 1)[-1]).rsplit(".", 1)[0]
-    shape = create_scenedesc.create_shape(input_mesh, T.rotate([0, 1, 0], 45))
-    camera = create_scenedesc.create_camera(T.look_at(target=-centroid,
-                                                                   origin=tuple(centroid),
-                                                                   up=(0, 1, 0),
-                                                                   ),
+
+    camera = create_scenedesc.create_camera(T.look_at(target=tuple(center/2),
+                                                      origin=tuple(centroid),
+                                                      up=(0, 1, 0),
+                                                      ),
                                             fov, near_distance, far_distance
                                             )
     for key, value in output_dirs.items():
@@ -100,7 +106,7 @@ def main(args):
     parser.add_argument("--input_mesh", type=str)
     parser.add_argument("--output_dirs", type=dict, default={'nn': '..\\..\\output', 'dd.y': '..\\..\\output', 'rendering': '..\\..\\output'})
     parser.add_argument("--fov", type=int, default=50)
-    parser.add_argument("--aovs", type=dir, default={"nn": "sh_normal", "dd.y": "depth"})
+    parser.add_argument("--aovs", type=dir, default={"dd.y": "depth", "nn": "sh_normal"})
     parser.add_argument("--emitter_samples", type=int, default=4)
     args = parser.parse_args(args)
     diff_ars(args)
@@ -108,7 +114,7 @@ def main(args):
 if __name__ == '__main__':
     output_dirs = {'nn': '..\\..\\output', 'dd.y': '..\\..\\output', 'rendering': '..\\..\\output'}
     params = [
-        '--type', 'combined',
-        '--input_mesh', '..\\..\\resources\\\ShapeNetCore.v2\\03636649\\1a3127ade9d7eca4fde8830b9596d8b9\\models\\model_normalized.obj',
+        '--type', 'rendering',
+        '--input_mesh', '..\\..\\resources\\ABC\\abc_0028_obj_v00\\00280001\\00280001_57fbd625027b01109e830e03_trimesh_000.obj',
         ]
     main(params)

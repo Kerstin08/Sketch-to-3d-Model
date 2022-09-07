@@ -1,15 +1,19 @@
 import os
 import torch
+from source.util import OpenEXR_conversions
 from torchvision import transforms
 from torch.utils.data import Dataset
 from PIL import Image
+from source.map_generation import map_generation
+
 
 class DS(Dataset):
-    def __init__(self, dir_target, dir_input):
+    def __init__(self, dir_input, dir_target, type):
         self.dir_target = dir_target
         self.dir_input = dir_input
         self.image_paths_target = sorted(self.create_dataSet(dir_target))
         self.image_paths_input = sorted(self.create_dataSet(dir_input))
+        self.type = type
 
     def __len__(self):
         # return only length of one of the dirs since we want to iterate over both dirs at the same time and this function is only used for batch computations
@@ -25,13 +29,19 @@ class DS(Dataset):
         return images
 
     def __getitem__(self, index):
+        # target is either normal or depth file, therefore exr
         target_path = self.image_paths_target[index]
-        target_image = Image.open(target_path)
-        transform = transforms.PILToTensor()
-        target_image_tensor = transform(target_image)
+        if self.type==map_generation.Type.normal:
+            target_image = OpenEXR_conversions.getRGBimageEXR(target_path)
+        else:
+            target_image = OpenEXR_conversions.getDepthimageEXR(target_path)
+
+        target_image_tensor = torch.from_numpy(target_image)
+        # input is sketch, therefore png file
         input_path = self.image_paths_input[index]
-        input_image = Image.open(input_path)
-        imput_image_tensor = transform(input_image)
+        input_image = Image.open(input_path).convert("RGB")
+        transform = transforms.PILToTensor()
+        imput_image_tensor = transform(input_image).float()
         return {'input': imput_image_tensor,
                 'target': target_image_tensor,
                 'input_path': input_path,
