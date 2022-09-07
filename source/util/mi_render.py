@@ -29,7 +29,7 @@ def avo(scene, aovs, output_name, output_dirs):
         mi.util.write_bitmap(path, depth)
     if "sh_normal" in aovs.values():
         normal = channels['nn']
-        filename = output_name + "_normal.png"
+        filename = output_name + "_normal.exr"
         output_dir = output_dirs['nn']
         path = os.path.join(output_dir, filename)
         mi.util.write_bitmap(path, normal)
@@ -64,20 +64,24 @@ def run(type, input_mesh, output_dirs, fov, aovs=[], emitter_samples=0, output_n
     # Do not use bounding box values from meta data, since not fullfill the cirteria of having a distance of 1,
     # leading to huge distances and therefore tiny renderings
     shape = create_scenedesc.create_shape(input_mesh, T.scale(0.01))
-    shape_lodaded = mi.load_dict(shape)
+    try:
+        shape_lodaded = mi.load_dict(shape)
+    except Exception as e:
+        print("Exception occured in " + shape["filename"])
+        print(e)
+        return
     bounding_box = shape_lodaded.bbox()
-    bounding_box_dim = bounding_box.max - bounding_box.min
-    center = bounding_box_dim/2
-    shape_lodaded.merge()
+    bounding_box_dim = abs(bounding_box.max - bounding_box.min)
+    center = bounding_box_dim/4
 
-    distance = center + math.tan(math.radians(fov)) * max(bounding_box_dim)/4
-    far_distance = math.tan(math.radians(fov)) * max(bounding_box_dim)/2
-    near_distance = math.tan(math.radians(fov)) * max(bounding_box_dim)
+    distance = center + math.tan(math.radians(fov)) * max(bounding_box_dim)
+    far_distance = math.tan(math.radians(fov)) * max(bounding_box_dim) * 4
+    near_distance = math.tan(math.radians(fov)) * max(bounding_box_dim)/4
     centroid = np.array([distance.x, distance.y, -distance.z])
     if len(output_name) <= 0:
         output_name = (input_mesh.rsplit("\\", 1)[-1]).rsplit(".", 1)[0]
 
-    camera = create_scenedesc.create_camera(T.look_at(target=tuple(center/2),
+    camera = create_scenedesc.create_camera(T.look_at(target=tuple(center),
                                                       origin=tuple(centroid),
                                                       up=(0, 1, 0),
                                                       ),
