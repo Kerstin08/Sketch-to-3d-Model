@@ -68,6 +68,7 @@ def run(type, input_mesh, output_dirs, fov, aovs=[], emitter_samples=0, output_n
     bounding_box = shape_lodaded.bbox()
     bounding_box_dim = bounding_box.max - bounding_box.min
     center = bounding_box_dim/2
+    shape_lodaded.merge()
 
     distance = center + math.tan(math.radians(fov)) * max(bounding_box_dim)/4
     far_distance = math.tan(math.radians(fov)) * max(bounding_box_dim)/2
