@@ -1,6 +1,6 @@
-def create_shape(input_mesh, transform):
+def create_shape(input_mesh, datatype, transform):
     shape = {
-        "type": "obj",
+        "type": datatype,
         "filename": input_mesh,
         "to_world": transform,
         "bsdf": {

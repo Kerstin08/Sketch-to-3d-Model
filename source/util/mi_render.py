@@ -63,7 +63,11 @@ def run(type, input_mesh, output_dirs, fov, aovs=[], emitter_samples=0, output_n
     # Use 1 as size, since the diagonal of the bounding box of the normalized mesh should be 1
     # Do not use bounding box values from meta data, since not fullfill the cirteria of having a distance of 1,
     # leading to huge distances and therefore tiny renderings
-    shape = create_scenedesc.create_shape(input_mesh, T.scale(0.01))
+    datatype = input_mesh.rsplit(".", 1)[1]
+    if datatype != "obj" and datatype != "ply":
+        print("Given datatype cannot be processed, must be either obj or ply type.")
+        return
+    shape = create_scenedesc.create_shape(input_mesh, datatype, T.scale(0.01))
     try:
         shape_lodaded = mi.load_dict(shape)
     except Exception as e:
@@ -72,7 +76,7 @@ def run(type, input_mesh, output_dirs, fov, aovs=[], emitter_samples=0, output_n
         return
     bounding_box = shape_lodaded.bbox()
     bounding_box_dim = abs(bounding_box.max - bounding_box.min)
-    center = bounding_box_dim/4
+    center = bounding_box.min + bounding_box_dim/2
 
     distance = center + math.tan(math.radians(fov)) * max(bounding_box_dim)
     far_distance = math.tan(math.radians(fov)) * max(bounding_box_dim) * 4
@@ -118,7 +122,7 @@ def main(args):
 if __name__ == '__main__':
     output_dirs = {'nn': '..\\..\\output', 'dd.y': '..\\..\\output', 'rendering': '..\\..\\output'}
     params = [
-        '--type', 'rendering',
-        '--input_mesh', '..\\..\\resources\\ABC\\abc_0028_obj_v00\\00280001\\00280001_57fbd625027b01109e830e03_trimesh_000.obj',
+        '--type', 'aov',
+        '--input_mesh', '..\\..\\resources\\meshes\\sphere.obj',
         ]
     main(params)
