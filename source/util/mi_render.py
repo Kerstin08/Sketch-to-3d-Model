@@ -23,16 +23,10 @@ def avo(scene, aovs, output_name, output_dirs):
     channels = dict(bitmap.split())
     if "depth" in aovs.values():
         depth = channels['dd.y']
-        #temp = np.array(depth)
-        #with open("..\\..\\output\\depth_noSize_4_4.txt", "w") as file:
-        #    file.write("*8 for far, /4 for near \n")
-        #    for t in temp:
-        #        file.write(str(t) + "\n")
-        filename = output_name + "_depth.png"
+        filename = output_name + "_depth.exr"
         output_dir = output_dirs['dd.y']
         path = os.path.join(output_dir, filename)
-        bitmap = mi.Bitmap(depth, channel_names=['R', 'G', 'B'])
-        mi.util.write_bitmap(path, bitmap)
+        mi.util.write_bitmap(path, depth)
     if "sh_normal" in aovs.values():
         normal = channels['nn']
         filename = output_name + "_normal.exr"
