@@ -1,8 +1,7 @@
-def create_shape(input_mesh, datatype, transform):
+def create_shape(input_mesh, datatype):
     shape = {
         "type": datatype,
         "filename": input_mesh,
-        "to_world": transform,
         "bsdf": {
             "type": "diffuse",
             "reflectance" : {

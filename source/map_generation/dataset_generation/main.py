@@ -1,6 +1,6 @@
 import source.util.mi_render as render
 import source.util.line_gen as lineGen
-import source.util.stl_conversions as stl_conversions
+import source.util.mesh_preprocess_operations as mesh_preprocess
 import argparse
 import os
 
@@ -17,7 +17,7 @@ def gen_images(path, datatype, sketch_output_dirs, aov_output_dirs,
     if os.path.isfile(path) and path.rsplit(".", 1)[1] == datatype:
         # stl files cannot be processed by mitsuba
         if datatype == "stl":
-            path = stl_conversions.convert_stl_to_ply(path)
+            path = mesh_preprocess.preprocess_stl_mesh(path)
         print(f'Processing ' + path, end='\r')
         if len(modelname_split_indicator_before) > 0 or len(modelname_split_indicator_after) > 0:
             ouput_name = path

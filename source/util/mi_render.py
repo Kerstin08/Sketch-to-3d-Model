@@ -23,10 +23,16 @@ def avo(scene, aovs, output_name, output_dirs):
     channels = dict(bitmap.split())
     if "depth" in aovs.values():
         depth = channels['dd.y']
-        filename = output_name + "_depth.exr"
+        #temp = np.array(depth)
+        #with open("..\\..\\output\\depth_noSize_4_4.txt", "w") as file:
+        #    file.write("*8 for far, /4 for near \n")
+        #    for t in temp:
+        #        file.write(str(t) + "\n")
+        filename = output_name + "_depth.png"
         output_dir = output_dirs['dd.y']
         path = os.path.join(output_dir, filename)
-        mi.util.write_bitmap(path, depth)
+        bitmap = mi.Bitmap(depth, channel_names=['R', 'G', 'B'])
+        mi.util.write_bitmap(path, bitmap)
     if "sh_normal" in aovs.values():
         normal = channels['nn']
         filename = output_name + "_normal.exr"
@@ -60,37 +66,28 @@ def create_rendering(emitter_samples, shape, camera, output_name, output_dir):
     rendering(scene, output_name, output_dir)
 
 def run(type, input_mesh, output_dirs, fov, aovs=[], emitter_samples=0, output_name=""):
-    # Use 1 as size, since the diagonal of the bounding box of the normalized mesh should be 1
-    # Do not use bounding box values from meta data, since not fullfill the cirteria of having a distance of 1,
-    # leading to huge distances and therefore tiny renderings
     datatype = input_mesh.rsplit(".", 1)[1]
     if datatype != "obj" and datatype != "ply":
         print("Given datatype cannot be processed, must be either obj or ply type.")
         return
-    shape = create_scenedesc.create_shape(input_mesh, datatype, T.scale(0.01))
-    try:
-        shape_lodaded = mi.load_dict(shape)
-    except Exception as e:
-        print("Exception occured in " + shape["filename"])
-        print(e)
-        return
-    bounding_box = shape_lodaded.bbox()
-    bounding_box_dim = abs(bounding_box.max - bounding_box.min)
-    center = bounding_box.min + bounding_box_dim/2
+    shape = create_scenedesc.create_shape(input_mesh, datatype)
 
-    distance = center + math.tan(math.radians(fov)) * max(bounding_box_dim)
-    far_distance = math.tan(math.radians(fov)) * max(bounding_box_dim) * 4
-    near_distance = math.tan(math.radians(fov)) * max(bounding_box_dim)/4
-    centroid = np.array([distance.x, distance.y, -distance.z])
+    # bounding box length is assumed to be 1, see mesh_preprocess_operations.py normalize_mesh
+    distance = math.tan(math.radians(fov))
+    far_distance = distance * 2
+    near_distance = distance / 2
+    centroid = np.array([distance, distance, -distance])
     if len(output_name) <= 0:
         output_name = (input_mesh.rsplit("\\", 1)[-1]).rsplit(".", 1)[0]
 
-    camera = create_scenedesc.create_camera(T.look_at(target=tuple(center),
+    # center is assumed to be at 0,0,0, see mesh_preprocess_operations.py translate_to_origin
+    camera = create_scenedesc.create_camera(T.look_at(target=(0.0, 0.0, 0.0),
                                                       origin=tuple(centroid),
                                                       up=(0, 1, 0),
                                                       ),
                                             fov, near_distance, far_distance
                                             )
+
     for key, value in output_dirs.items():
         if not os.path.exists(value):
             os.mkdir(value)
@@ -123,6 +120,6 @@ if __name__ == '__main__':
     output_dirs = {'nn': '..\\..\\output', 'dd.y': '..\\..\\output', 'rendering': '..\\..\\output'}
     params = [
         '--type', 'aov',
-        '--input_mesh', '..\\..\\resources\\meshes\\sphere.obj',
+        '--input_mesh', '..\\..\\resources\\meshes\\bunny.ply',
         ]
     main(params)
