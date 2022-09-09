@@ -21,6 +21,6 @@ def main(args):
 
 if __name__ == '__main__':
     params = [
-        '--imagePath', '..\\..\\resources\\topology_tests_images\\small_segments.png',
+        '--imagePath', '..\\..\\resources\\topology_tests_images\\test.png',
         ]
     main(params)
