@@ -29,7 +29,6 @@ def create_emitter():
     }
     return emitter
 
-# Todo: define near and far clip in order to compute depth correctly
 def create_camera(transform, fov, near, far):
     camera = {"type": "perspective",
               "to_world": transform,
