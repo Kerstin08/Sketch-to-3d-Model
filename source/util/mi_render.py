@@ -59,7 +59,7 @@ def create_rendering(emitter_samples, shape, camera, output_name, output_dir):
         return
     rendering(scene, output_name, output_dir)
 
-def run(type, input_mesh, output_dirs, fov, aovs=[], emitter_samples=0, output_name=""):
+def run(type, input_mesh, output_dirs, fov, aovs=[], emitter_samples=0, output_name="", width=256, height=256):
     datatype = input_mesh.rsplit(".", 1)[1]
     if datatype != "obj" and datatype != "ply":
         print("Given datatype cannot be processed, must be either obj or ply type.")
@@ -79,8 +79,8 @@ def run(type, input_mesh, output_dirs, fov, aovs=[], emitter_samples=0, output_n
                                                       origin=tuple(centroid),
                                                       up=(0, 1, 0),
                                                       ),
-                                            fov, near_distance, far_distance
-                                            )
+                                            fov, near_distance, far_distance,
+                                            width, height)
 
     for key, value in output_dirs.items():
         if not os.path.exists(value):

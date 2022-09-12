@@ -6,7 +6,7 @@ def create_shape(input_mesh, datatype):
             "type": "diffuse",
             "reflectance" : {
                 "type" : "rgb",
-                "value" : [0.8, 0.8, 0.8],
+                "value" : [0.5, 0.5, 0.5],
             }
         }
     }
@@ -29,7 +29,7 @@ def create_emitter():
     }
     return emitter
 
-def create_camera(transform, fov, near, far):
+def create_camera(transform, fov, near, far, width, height):
     camera = {"type": "perspective",
               "to_world": transform,
               "fov": fov,
@@ -37,8 +37,8 @@ def create_camera(transform, fov, near, far):
               "far_clip": far,
               "film": {
                   "type": "hdrfilm",
-                  "width": 256,
-                  "height": 256,
+                  "width": width,
+                  "height": height,
                   'rfilter': {'type': 'gaussian'},
                   "pixel_format": "rgb",
               },
