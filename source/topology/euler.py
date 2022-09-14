@@ -1,6 +1,3 @@
-import cv2 as cv
-import numpy as np
-
 def get_number_holes(image):
     matches_Q1, matches_Q3, matches_QD = comupute_matches_Q(image)
     # invert Q3 and Q1 since in this case black is object instead of white

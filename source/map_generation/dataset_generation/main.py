@@ -17,7 +17,7 @@ def gen_images(path, datatype, sketch_output_dirs, aov_output_dirs,
     if os.path.isfile(path) and path.rsplit(".", 1)[1] == datatype:
         # stl files cannot be processed by mitsuba
         if datatype == "stl":
-            path = mesh_preprocess.preprocess_stl_mesh(path)
+            path = mesh_preprocess.preprocess(path)
         print(f'Processing ' + path, end='\r')
         if len(modelname_split_indicator_before) > 0 or len(modelname_split_indicator_after) > 0:
             ouput_name = path

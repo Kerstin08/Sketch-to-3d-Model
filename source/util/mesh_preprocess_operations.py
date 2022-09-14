@@ -1,19 +1,17 @@
 import trimesh
 import math
 import numpy as np
+import argparse
 
-def preprocess_stl_mesh(path):
+def preprocess(path):
     mesh = trimesh.load(path)
     norm_mesh = normalize_mesh(mesh)
     trans_norm_mesh = translate_to_origin(norm_mesh)
-    return convert_stl_to_norm_ply(path, trans_norm_mesh)
-
-def convert_stl_to_norm_ply(path, mesh):
-    outputpath = path.rsplit(".", 1)[0] + ".ply"
-    ply = trimesh.exchange.ply.export_ply(mesh, encoding='binary', include_attributes=False)
-    with open (outputpath, "wb+") as output:
+    if path.rsplit(".", 1)[1] != "ply":
+        path = path.rsplit(".", 1)[0] + ".ply"
+    ply = trimesh.exchange.ply.export_ply(trans_norm_mesh, encoding='binary', include_attributes=False)
+    with open (path, "wb+") as output:
         output.write(ply)
-    return outputpath
 
 def normalize_mesh(mesh):
     bounds = mesh.bounds
@@ -38,3 +36,18 @@ def translate_to_origin(mesh):
     dim = abs(bounds[1] - bounds[0])
     center = bounds[0] + dim / 2
     return mesh
+
+def diff_ars(args):
+    preprocess(args.input_mesh)
+
+def main(args):
+    parser = argparse.ArgumentParser(prog="scene_rendering")
+    parser.add_argument("--input_mesh", type=str)
+    args = parser.parse_args(args)
+    diff_ars(args)
+
+if __name__ == '__main__':
+    params = [
+        '--input_mesh', '..\\..\\resources\\topology_meshes\\genus4.ply',
+        ]
+    main(params)
