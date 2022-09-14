@@ -47,7 +47,7 @@ def run(train, input_dir, target_dir, output_path,
         filename="MapGen-{epoch:02d}-{val_loss:.2f}",
     )
     logger = TensorBoardLogger("tb_logs", name="trainModel")
-    dataSet = DataSet.DS(input_dir, target_dir)
+    dataSet = DataSet.DS(input_dir, target_dir, given_type)
     trainer = Trainer(gpus=0 if torch.cuda.is_available() else 0,
                       max_epochs=epochs,
                       callbacks=[checkpoint_callback],

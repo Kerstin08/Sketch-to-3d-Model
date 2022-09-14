@@ -1,6 +1,7 @@
 import argparse
 import os
 from floodfill import FloodFill
+import determine_number_holes
 
 def run(imagePath):
     if not os.path.exists(imagePath):
@@ -8,7 +9,9 @@ def run(imagePath):
         return
 
     floodFill = FloodFill(imagePath)
-    floodFill.startFill()
+    filled_image = floodFill.startFill()
+    holes = determine_number_holes.get_number_holes(filled_image)
+    print(holes)
 
 def diff_ars(args):
     run(args.imagePath)
@@ -21,6 +24,6 @@ def main(args):
 
 if __name__ == '__main__':
     params = [
-        '--imagePath', '..\\..\\resources\\topology_tests_images\\test.png',
+        '--imagePath', '..\\..\\resources\\topology_tests_images\\genus_03.png',
         ]
     main(params)

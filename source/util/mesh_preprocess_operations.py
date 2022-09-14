@@ -29,7 +29,6 @@ def translate_to_origin(mesh):
     bounds = mesh.bounds
     dim = abs(bounds[1] - bounds[0])
     center = bounds[0] + dim/2
-    print(center)
     origin = np.zeros(3)
     dist = origin-center
     matrix = np.eye(4)
@@ -38,5 +37,4 @@ def translate_to_origin(mesh):
     bounds = mesh.bounds
     dim = abs(bounds[1] - bounds[0])
     center = bounds[0] + dim / 2
-    print(center)
     return mesh

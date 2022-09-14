@@ -113,7 +113,7 @@ def main(args):
 if __name__ == '__main__':
     output_dirs = {'nn': '..\\..\\output', 'dd.y': '..\\..\\output', 'rendering': '..\\..\\output'}
     params = [
-        '--type', 'aov',
+        '--type', 'rendering',
         '--input_mesh', '..\\..\\resources\\meshes\\bunny.ply',
         ]
     main(params)
