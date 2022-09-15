@@ -1,15 +1,17 @@
 import drjit as dr
 import mitsuba as mi
-import normal_reparam_integrator
+import math
+import numpy as np
 from mitsuba.scalar_rgb import Transform4f as T
 from matplotlib import pyplot as plt
 
 mi.set_variant('cuda_ad_rgb')
 
 def offsetVerts(params, opt):
-    trafo = mi.Transform4f.translate(opt['deform_verts'])
+    opt['deform_verts'] = dr.clamp(opt['deform_verts'], -0.1, 0.1)
+    trafo = mi.Transform4f.translate([opt['deform_verts'].x, 0.0, 0.0])
 
-    params['sphere.vertex_positions'] = dr.ravel(trafo @ initial_vertex_positions)
+    params['test.vertex_positions'] = dr.ravel(trafo @ initial_vertex_positions)
     params.update()
 
 aov_integrator = {
@@ -18,16 +20,19 @@ aov_integrator = {
 }
 
 integrator = {
-        'type': 'normal_reparam'
+        'type': 'direct'
 }
 
+
+distance = math.tan(math.radians(60))
+centroid = np.array([distance, distance, -distance])
 # refscene
 ref_scene = mi.load_dict({
     'type': 'scene',
     'sensor':  {
         'type': 'perspective',
         'to_world': T.look_at(
-                        origin=(0, 0, 2),
+                        origin=tuple(centroid),
                         target=(0, 0, 0),
                         up=(0, 1, 0)
                     ),
@@ -42,8 +47,7 @@ ref_scene = mi.load_dict({
     },
     'bunny': {
         'type': 'ply',
-        'filename': '../../resources/meshes/bunny.ply',
-        'to_world': T.scale(6.5),
+        'filename': '..\\..\\resources\\topology_meshes\\ref.ply',
         'bsdf': {
             'type': 'diffuse',
             'reflectance': { 'type': 'rgb', 'value': (0.3, 0.3, 0.75) },
@@ -51,7 +55,7 @@ ref_scene = mi.load_dict({
     },
     'light': {
         'type': 'obj',
-        'filename': '../../resources/meshes/sphere.obj',
+        'filename': '..\\..\\resources\\meshes\\sphere.obj',
         'emitter': {
             'type': 'area',
             'radiance': {'type': 'rgb', 'value': [1e3, 1e3, 1e3]}
@@ -66,7 +70,7 @@ scene = mi.load_dict({
     'sensor':  {
         'type': 'perspective',
         'to_world': T.look_at(
-                        origin=(0, 0, 2),
+                        origin=tuple(centroid),
                         target=(0, 0, 0),
                         up=(0, 1, 0)
                     ),
@@ -79,10 +83,9 @@ scene = mi.load_dict({
             'sample_border': True
         },
     },
-    'sphere': {
-        'type': 'obj',
-        'filename': '../../resources/meshes/sphere.obj',
-        'to_world': T.scale(0.5),
+    'test': {
+        'type': 'ply',
+        'filename': '..\\..\\resources\\topology_meshes\\test.ply',
         'bsdf': {
             'type': 'diffuse',
             'reflectance': { 'type': 'rgb', 'value': (0.3, 0.3, 0.75) },
@@ -108,11 +111,11 @@ mi.util.convert_to_bitmap(img_ref)
 
 params = mi.traverse(scene)
 print(params)
-initial_vertex_positions = dr.unravel(mi.Point3f, params['sphere.vertex_positions'])
-initial_vertex_normals = dr.unravel(mi.Point3f, params['sphere.vertex_normals'])
+initial_vertex_positions = dr.unravel(mi.Point3f, params['test.vertex_positions'])
+initial_vertex_normals = dr.unravel(mi.Point3f, params['test.vertex_normals'])
 
 opt = mi.ad.Adam(lr=0.025)
-vertex_count = params['sphere.vertex_count']
+vertex_count = params['test.vertex_count']
 opt['deform_verts'] = dr.full(mi.Point3f, 0, vertex_count)
 
 img_init = mi.render(scene, seed=0, spp=1024, integrator=mi.load_dict(integrator))
@@ -137,19 +140,19 @@ for it in range(20):
     opt.step()
     fig, axs = plt.subplots(2, 2, figsize=(10, 10))
     axs[0][0].plot(loss_hist)
-    axs[0][0].set_xlabel('iteration');
-    axs[0][0].set_ylabel('Loss');
-    axs[0][0].set_title('Parameter error plot');
+    axs[0][0].set_xlabel('iteration')
+    axs[0][0].set_ylabel('Loss')
+    axs[0][0].set_title('Parameter error plot')
     axs[1][1].imshow(mi.util.convert_to_bitmap(img_ref))
     axs[1][1].axis('off')
-    axs[1][1].set_title('Reference Image');
+    axs[1][1].set_title('Reference Image')
     axs[1][0].imshow(mi.util.convert_to_bitmap(img))
     axs[1][0].axis('off')
     axs[1][0].set_title('Optimized image')
     axs[0][1].imshow(mi.util.convert_to_bitmap(img_init))
     axs[0][1].axis('off')
     axs[0][1].set_title('Initial Image')
-    plt.savefig('../../output/test'+str(it)+".png")
+    fig.savefig('../../output/test'+str(it)+".png")
 
     loss_hist.append(loss)
     #with open('../../output/deformverts_opt'+str(it)+'.txt', 'w') as f:
@@ -165,16 +168,17 @@ for it in range(20):
     #    f.writelines(' '.join(str(e) for e in params['sphere.vertex_normals']))
     print(f"Iteration {it:02d}: error={loss[0]:6f}", end='\r')
 
+
 mesh = mi.Mesh(
     "deformed_sphere",
     vertex_count=vertex_count,
-    face_count=params['sphere.face_count'],
+    face_count=params['test.face_count'],
     has_vertex_normals=True,
     has_vertex_texcoords=False,
 )
 
 mesh_params = mi.traverse(mesh)
-mesh_params["vertex_positions"] = dr.ravel(params['sphere.vertex_positions'])
-mesh_params["faces"] = dr.ravel(params['sphere.faces'])
+mesh_params["vertex_positions"] = dr.ravel(params['test.vertex_positions'])
+mesh_params["faces"] = dr.ravel(params['test.faces'])
 mesh_params.update()
 mesh.write_ply("../../output/deformed_sphere.ply")
