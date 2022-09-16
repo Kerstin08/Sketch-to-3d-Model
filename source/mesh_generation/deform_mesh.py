@@ -3,17 +3,18 @@ import mitsuba as mi
 import math
 import numpy as np
 from mitsuba.scalar_rgb import Transform4f as T
-from matplotlib import pyplot as plt
+
+from torch.utils.tensorboard import SummaryWriter
 
 mi.set_variant('cuda_ad_rgb')
 
 def offsetVerts(params, opt):
-    opt['deform_verts'] = dr.clamp(opt['deform_verts'], -0.1, 0.1)
-    trafo = mi.Transform4f.translate([opt['deform_verts'].x, 0.0, 0.0])
-
+    opt['deform_verts'] = dr.clamp(opt['deform_verts'], -0.5, 0.5)
+    trafo = mi.Transform4f.translate(opt['deform_verts'].x)
     params['test.vertex_positions'] = dr.ravel(trafo @ initial_vertex_positions)
     params.update()
 
+writer = SummaryWriter("..\\..\\logs")
 aov_integrator = {
     'type': 'normal_depth',
     'aovs': "nn:sh_normal,dd.y:depth"
@@ -24,7 +25,7 @@ integrator = {
 }
 
 
-distance = math.tan(math.radians(60))
+distance = math.tan(math.radians(60))/2
 centroid = np.array([distance, distance, -distance])
 # refscene
 ref_scene = mi.load_dict({
@@ -120,55 +121,30 @@ opt['deform_verts'] = dr.full(mi.Point3f, 0, vertex_count)
 
 img_init = mi.render(scene, seed=0, spp=1024, integrator=mi.load_dict(integrator))
 
-loss_hist = []
-for it in range(20):
+ref_bpm = mi.util.convert_to_bitmap(img_ref)
+ref_np = np.transpose(np.array(ref_bpm), (2, 0, 1))
+writer.add_image('ref_images', ref_np)
+
+for it in range(1000):
     offsetVerts(params, opt)
 
     img = mi.render(scene, params, integrator=mi.load_dict(integrator), seed=it, spp=16)
 
     loss = dr.sum(dr.sqr(img - img_ref)) / len(img)
 
-    # use differentiated normals for that later on
-    # maybe don't use this loss, it is also based on the alpha channel of the normal values
-    ## predicted_vertex_normals = dr.unravel(mi.Point3f, params['sphere.vertex_normals'])
-    ## d_initial = 2*initial_vertex_normals - 1
-    ## d_predicted = 2*predicted_vertex_normals - 1
-    ## angular_loss = dr.sum(dr.sqrt(1 - d_predicted * d_initial * (d_predicted * d_initial).A)) / len(img)
-
     dr.backward(loss)
 
     opt.step()
-    fig, axs = plt.subplots(2, 2, figsize=(10, 10))
-    axs[0][0].plot(loss_hist)
-    axs[0][0].set_xlabel('iteration')
-    axs[0][0].set_ylabel('Loss')
-    axs[0][0].set_title('Parameter error plot')
-    axs[1][1].imshow(mi.util.convert_to_bitmap(img_ref))
-    axs[1][1].axis('off')
-    axs[1][1].set_title('Reference Image')
-    axs[1][0].imshow(mi.util.convert_to_bitmap(img))
-    axs[1][0].axis('off')
-    axs[1][0].set_title('Optimized image')
-    axs[0][1].imshow(mi.util.convert_to_bitmap(img_init))
-    axs[0][1].axis('off')
-    axs[0][1].set_title('Initial Image')
-    fig.savefig('../../output/test'+str(it)+".png")
 
-    loss_hist.append(loss)
-    #with open('../../output/deformverts_opt'+str(it)+'.txt', 'w') as f:
-    #    x = opt['deform_verts'].x
-    #    y = opt['deform_verts'].y
-    #    z = opt['deform_verts'].z
-    #    f.writelines(' '.join(str(e) for e in x))
-    #    f.writelines('\n\n')
-    #    f.writelines(' '.join(str(e) for e in y))
-    #    f.writelines('\n\n')
-    #    f.writelines(' '.join(str(e) for e in z))
-    #with open('../../output/normals'+str(it)+'.txt', 'w') as f:
-    #    f.writelines(' '.join(str(e) for e in params['sphere.vertex_normals']))
+    if it%100 == 0:
+        current_bpm = mi.util.convert_to_bitmap(img)
+        current_np = np.transpose(np.array(current_bpm), (2, 0, 1))
+        writer.add_image('current_np' + str(it), current_np)
+
+    writer.add_scalar("loss", loss[0], it)
     print(f"Iteration {it:02d}: error={loss[0]:6f}", end='\r')
 
-
+writer.close()
 mesh = mi.Mesh(
     "deformed_sphere",
     vertex_count=vertex_count,
