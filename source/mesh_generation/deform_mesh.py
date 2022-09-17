@@ -20,6 +20,15 @@ def write_output_renders(render_depth, render_normal, image_name):
     ref_images = np.stack([ref_np_normal, ref_np_depth])
     writer.add_images(image_name, ref_images)
 
+def get_edge_dist(vertice_positions, edge_vert_indices):
+    edge_lengths = np.empty(0)
+    for pt1_index, pt2_index in edge_vert_indices:
+        x = vertice_positions[0][pt1_index] - vertice_positions[0][pt2_index]
+        y = vertice_positions[1][pt1_index] - vertice_positions[1][pt2_index]
+        z = vertice_positions[2][pt1_index] - vertice_positions[2][pt2_index]
+        edge_lengths.append(dr.sqrt(dr.sqr(x) + dr.sqr(y) + dr.sqr(z)))
+    return edge_lengths
+
 def offset_verts(params, opt):
     opt['deform_verts'] = dr.clamp(opt['deform_verts'], -0.5, 0.5)
     trafo = mi.Transform4f.translate(opt['deform_verts'].x)
@@ -43,7 +52,10 @@ normal_integrator = {
         'type': 'normal_reparam'
 }
 
-distance = math.tan(math.radians(60))/2
+fov = 60
+distance = math.tan(math.radians(fov))
+far_distance = distance * 2
+near_distance = distance / 2
 centroid = np.array([distance, distance, -distance])
 # refscene
 ref_scene = mi.load_dict({
@@ -55,7 +67,9 @@ ref_scene = mi.load_dict({
                         target=(0, 0, 0),
                         up=(0, 1, 0)
                     ),
-        'fov': 60,
+        'fov': fov,
+        "near_clip": near_distance,
+        "far_clip": far_distance,
         'film': {
             'type': 'hdrfilm',
             'width': 64,
@@ -93,7 +107,9 @@ scene = mi.load_dict({
                         target=(0, 0, 0),
                         up=(0, 1, 0)
                     ),
-        'fov': 60,
+        'fov': fov,
+        "near_clip": near_distance,
+        "far_clip": far_distance,
         'film': {
             'type': 'hdrfilm',
             'width': 64,
@@ -134,7 +150,23 @@ write_output_renders(depth_img_init, normal_img_init, "init_images")
 params = mi.traverse(scene)
 print(params)
 initial_vertex_positions = dr.unravel(mi.Point3f, params['test.vertex_positions'])
-#initial_faces = dr.unravel(mi.Point3f, params['test.faces'])
+initial_faces = dr.unravel(mi.Point3i, params['test.faces'])
+
+edge_vert_indices=[]
+for i in range(len(initial_faces[0])):
+    x = initial_faces[0][i]
+    y = initial_faces[1][i]
+    z = initial_faces[2][i]
+    xy = (x, y) if x < y else (y, x)
+    if xy not in edge_vert_indices:
+        edge_vert_indices.append(xy)
+    yz = (y, z) if y < z else (z, y)
+    if yz not in edge_vert_indices:
+        edge_vert_indices.append(yz)
+    zx = (z, x) if z < x else (x, z)
+    if zx not in edge_vert_indices:
+        edge_vert_indices.append(zx)
+initial_edge_lengths = get_edge_dist(initial_vertex_positions, edge_vert_indices)
 
 opt = mi.ad.Adam(lr=learning_rate)
 vertex_count = params['test.vertex_count']
@@ -151,7 +183,12 @@ for epoch in range(num_epochs):
 
     depth_loss = dr.sum(dr.sqr(depth_img - depth_img_ref)) / len(depth_img)
     normal_loss = dr.sum(dr.sqr(normal_img - normal_img_ref)) / len(normal_img)
-    loss = depth_loss * weight_depth + normal_loss * weight_normal
+
+    current_vertex_positions = dr.unravel(mi.Point3f, params['test.vertex_positions'])
+    current_edge_lengths = get_edge_dist(current_vertex_positions, edge_vert_indices)
+    edge_loss = 1/len(initial_edge_lengths) * dr.sum(dr.sqr(np.subtract(initial_edge_lengths, current_edge_lengths)))
+
+    loss = depth_loss * weight_depth + normal_loss * weight_normal + edge_loss * weight_edge
     dr.backward(loss)
 
     opt.step()
