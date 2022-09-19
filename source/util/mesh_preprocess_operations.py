@@ -5,6 +5,9 @@ import argparse
 
 def preprocess(path):
     mesh = trimesh.load(path)
+    if not mesh.area > 0:
+        print(str(path) + " contains no usable model!")
+        return None
     norm_mesh = normalize_mesh(mesh)
     trans_norm_mesh = translate_to_origin(norm_mesh)
     if path.rsplit(".", 1)[1] != "ply":
@@ -12,6 +15,7 @@ def preprocess(path):
     ply = trimesh.exchange.ply.export_ply(trans_norm_mesh, encoding='binary', include_attributes=False)
     with open (path, "wb+") as output:
         output.write(ply)
+    return path
 
 def normalize_mesh(mesh):
     bounds = mesh.bounds
@@ -48,6 +52,6 @@ def main(args):
 
 if __name__ == '__main__':
     params = [
-        '--input_mesh', '..\\..\\resources\\topology_meshes\\genus4.ply',
+        '--input_mesh', '..\\..\\resources\\topology_meshes\\Octocat-v1.stl',
         ]
     main(params)
