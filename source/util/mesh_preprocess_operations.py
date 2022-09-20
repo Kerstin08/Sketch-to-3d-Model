@@ -4,7 +4,12 @@ import numpy as np
 import argparse
 
 def preprocess(path):
-    mesh = trimesh.load(path)
+    try:
+        mesh = trimesh.load(path)
+    except Exception as e:
+        print("Exception occured in loading " + str(path))
+        print(e)
+        return None
     if not mesh.area > 0:
         print(str(path) + " contains no usable model!")
         return None
@@ -52,6 +57,6 @@ def main(args):
 
 if __name__ == '__main__':
     params = [
-        '--input_mesh', '..\\..\\resources\\topology_meshes\\Octocat-v1.stl',
+        '--input_mesh', '..\\..\\resources\\thinig10k\\2000_2499\\121396.stl',
         ]
     main(params)
