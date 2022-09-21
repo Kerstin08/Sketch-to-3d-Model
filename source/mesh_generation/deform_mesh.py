@@ -82,7 +82,7 @@ weight_depth = 0.5
 weight_edge = 0.9
 weight_smooth = 0.01
 
-writer = SummaryWriter("..\\..\\logs")
+writer = SummaryWriter("..\\..\\logs\\deform_mesh")
 
 depth_integrator = {
         'type': 'depth_reparam'

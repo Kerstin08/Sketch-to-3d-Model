@@ -8,12 +8,12 @@ from source.map_generation import map_generation
 
 
 class DS(Dataset):
-    def __init__(self, dir_input, dir_target, type):
+    def __init__(self, dir_input, dir_target, data_type):
         self.dir_target = dir_target
         self.dir_input = dir_input
         self.image_paths_target = sorted(self.create_dataSet(dir_target))
         self.image_paths_input = sorted(self.create_dataSet(dir_input))
-        self.type = type
+        self.data_type = data_type
 
     def __len__(self):
         # return only length of one of the dirs since we want to iterate over both dirs at the same time and this function is only used for batch computations
@@ -31,7 +31,7 @@ class DS(Dataset):
     def __getitem__(self, index):
         # target is either normal or depth file, therefore exr
         target_path = self.image_paths_target[index]
-        if self.type==map_generation.Type.normal:
+        if self.data_type.value == map_generation.Type.normal.value:
             target_image = OpenEXR_conversions.getRGBimageEXR(target_path)
         else:
             target_image = OpenEXR_conversions.getDepthimageEXR(target_path)

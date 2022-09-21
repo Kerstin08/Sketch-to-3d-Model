@@ -10,8 +10,8 @@ from enum import Enum
 import shutil
 import pytorch_lightning as pl
 
-from torch.utils.tensorboard import SummaryWriter
-writer = SummaryWriter("runs/mnist")
+#from torch.utils.tensorboard import SummaryWriter
+#writer = SummaryWriter("..\\..\\logs\\map_gen")
 
 class Type(Enum):
     normal = 1,
@@ -19,16 +19,19 @@ class Type(Enum):
 
 
 class MapGen(pl.LightningModule):
-    def __init__(self, type, n_critic, weight_L1, weight_BCELoss, generate_comparison, output_dir, lr):
+    def __init__(self, type, n_critic, batch_size, weight_L1, weight_BCELoss, generate_comparison, output_dir, lr):
         super(MapGen, self).__init__()
         self.G = Generator()
         self.D = Discriminator()
         self.n_critic = n_critic
+        self.batch_size = batch_size
         self.type = type
         self.weight_L1 = weight_L1
         self.weight_BCELoss = weight_BCELoss
         self.generate_comparison = generate_comparison
         self.output_dir = output_dir
+        self.d_pred_running_loss = 0
+        self.d_real_running_loss = 0
         self.d_running_loss = 0
         self.g_running_loss = 0
         self.lr = lr
@@ -87,7 +90,9 @@ class MapGen(pl.LightningModule):
         # loss as defined by Wasserstein paper
         d_loss = -d_loss_fake + d_loss_real
 
-        self.d_running_loss += d_loss.item()*sample_batched['input'].size(0)
+        self.d_pred_running_loss += d_loss_fake.item() * sample_batched['input'].size(0)
+        self.d_real_running_loss += d_loss_real.item() * sample_batched['input'].size(0)
+        self.d_real_running_loss += d_loss.item() * sample_batched['input'].size(0)
         return d_loss
 
     def training_step(self, sample_batched, batch_idx, optimizer_idx):
@@ -100,17 +105,25 @@ class MapGen(pl.LightningModule):
         return loss
 
     def training_epoch_end(self, outputs):
-        self.log("generator_trainingLoss", self.g_running_loss, on_epoch=True, prog_bar=True, logger=True)
-        self.log("discriminator_trainingLoss", self.d_running_loss,  on_epoch=True, prog_bar=True, logger=True)
+        self.log("generator_trainingLoss", self.g_running_loss, on_epoch=True, prog_bar=True, logger=True, batch_size=self.batch_size)
+        self.log("discriminator_trainingLoss_realImages", self.d_real_running_loss, on_epoch=True, prog_bar=True, logger=True, batch_size=self.batch_size)
+        self.log("discriminator_trainingLoss_predictedImages", self.d_pred_running_loss, on_epoch=True, prog_bar=True, logger=True, batch_size=self.batch_size)
+        self.log("discriminator_trainingLoss", self.d_running_loss,  on_epoch=True, prog_bar=True, logger=True, batch_size=self.batch_size)
+        self.log("global_step", self.global_step, on_epoch=True, prog_bar=True, logger=True, batch_size=self.batch_size)
         self.d_running_loss = 0
+        self.d_pred_running_loss = 0
+        self.d_real_running_loss = 0
         self.g_running_loss = 0
 
     def validation_step(self, sample_batched, batch_idx):
         predicted_image = self(sample_batched)
         pixelwise_loss = self.L1(sample_batched['input'], predicted_image)
-        self.log("val_loss", pixelwise_loss)
+        self.log("val_loss", pixelwise_loss.item(), batch_size=self.batch_size)
+        grid = torchvision.utils.make_grid(predicted_image[:6])
+        logger = self.logger.experiment
+        logger.add_image("generated_images", grid, 0)
 
-    def test_step(self, sample_batched, batch_idx):
+def test_step(self, sample_batched, batch_idx):
         predicted_image = self(sample_batched['input'])
         imagename = sample_batched['input_path'].rsplit("\\", 1)[-1]
         if self.generate_comparison:
