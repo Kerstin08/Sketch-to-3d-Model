@@ -1,6 +1,6 @@
 import torch
 
-import source.map_generation.dataset_generation.DataSet as DataSet
+import source.mapgen_dataset.DataSet as DataSet
 import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader
 from torchvision import transforms

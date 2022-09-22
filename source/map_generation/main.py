@@ -8,7 +8,7 @@ from pytorch_lightning.loggers import TensorBoardLogger
 import torch
 from torch.utils.data import DataLoader
 import torch.utils.data as data
-import dataset_generation.DataSet as DataSet
+from source.mapgen_dataset import DataSet
 from pytorch_lightning.callbacks import ModelCheckpoint
 
 def run(train, input_dir, output_path,
@@ -57,7 +57,7 @@ def run(train, input_dir, output_path,
     )
     logger = TensorBoardLogger("..\\..\\logs\\map_gen", name="trainModel")
     dataSet = DataSet.DS(sketch_dir, target_dir, given_type)
-    trainer = Trainer(accelerator='cpu' if torch.cuda.is_available() else 'cpu',
+    trainer = Trainer(accelerator='gpu' if torch.cuda.is_available() else 'cpu',
                       devices=1,
                       max_epochs=epochs,
                       callbacks=[checkpoint_callback],
@@ -98,7 +98,7 @@ def diff_args(args):
         args.use_comparison)
 
 def main(args):
-    parser = argparse.ArgumentParser(prog="dataset_generation")
+    parser = argparse.ArgumentParser(prog="mapgen_dataset")
     parser.add_argument("--train", type=bool, default=True, help="Train or test")
     parser.add_argument("--input_dir", type=str, default="..\\..\\resources\\sketch_meshes", help="Directory where the input sketches for training are stored")
     parser.add_argument("--output_dir", type=str, default="..\\..\\output", help="Directory where the checkpoints or the test output is stored")
@@ -120,7 +120,7 @@ if __name__ == '__main__':
         '--input_dir', '..\\..\\resources\\mapgen_dataset\\ABC\\test',
         '--output_dir', '..\\..\\checkpoints_mapgen',
         '--type', 'normal',
-        '--epochs', '1',
-        '--lr', '0.2'
+        '--epochs', '100',
+        '--lr', '0.001'
     ]
     main(params)

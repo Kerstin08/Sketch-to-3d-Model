@@ -1,6 +1,6 @@
-import source.util.mi_render as render
-import source.util.line_gen as lineGen
-import source.util.mesh_preprocess_operations as mesh_preprocess
+from source.util import mi_render as render
+from source.util import line_gen as lineGen
+from source.util import mesh_preprocess_operations as mesh_preprocess
 import argparse
 import os
 
@@ -59,7 +59,7 @@ def diff_args(args):
     run(args.input_dir, args.output_dir, args.datatype, args.fov, args.create_debug_png, args.modelname_split_indicator_before, args.modelname_split_indicator_after)
 
 def main(args):
-    parser = argparse.ArgumentParser(prog="dataset_generation")
+    parser = argparse.ArgumentParser(prog="mapgen_dataset")
     parser.add_argument("--input_dir", type=str, help="path to reference objects")
     parser.add_argument("--output_dir", type=str, help="path to output objects")
     parser.add_argument("--datatype", type=str, default="stl", help="Object datatype")

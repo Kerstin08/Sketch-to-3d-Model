@@ -10,9 +10,6 @@ from enum import Enum
 import shutil
 import pytorch_lightning as pl
 
-#from torch.utils.tensorboard import SummaryWriter
-#writer = SummaryWriter("..\\..\\logs\\map_gen")
-
 class Type(Enum):
     normal = 1,
     depth = 2
@@ -73,7 +70,8 @@ class MapGen(pl.LightningModule):
         pred_false = self.D(input_predicted.detach())
         d_loss_fake = torch.mean(pred_false)
         pixelwise_loss = self.L1(sample_batched['input'], fake_images)
-        g_loss = d_loss_fake + pixelwise_loss * self.weight_L1 + self.BCE(pred_false, torch.ones(pred_false.size())) * self.weight_BCELoss
+        bce = self.BCE(pred_false, torch.ones(pred_false.size()).type_as(pred_false))
+        g_loss = d_loss_fake + pixelwise_loss * self.weight_L1 + bce * self.weight_BCELoss
         self.g_running_loss += g_loss.item()*sample_batched['input'].size(0)
         return g_loss
 
@@ -123,7 +121,7 @@ class MapGen(pl.LightningModule):
         logger = self.logger.experiment
         logger.add_image("generated_images", grid, 0)
 
-def test_step(self, sample_batched, batch_idx):
+    def test_step(self, sample_batched, batch_idx):
         predicted_image = self(sample_batched['input'])
         imagename = sample_batched['input_path'].rsplit("\\", 1)[-1]
         if self.generate_comparison:
