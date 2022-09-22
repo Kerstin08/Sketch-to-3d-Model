@@ -29,17 +29,19 @@ class DS(Dataset):
         return images
 
     def __getitem__(self, index):
+        # input is sketch, therefore png file
+        input_path = self.image_paths_input[index]
         # target is either normal or depth file, therefore exr
         target_path = self.image_paths_target[index]
         if self.data_type.value == map_generation.Type.normal.value:
             target_image = OpenEXR_conversions.getRGBimageEXR(target_path)
+            target_image_tensor = torch.from_numpy(target_image)
+            input_image = Image.open(input_path).convert("RGB")
         else:
             target_image = OpenEXR_conversions.getDepthimageEXR(target_path)
+            target_image_tensor = torch.unsqueeze(torch.from_numpy(target_image), dim=0)
+            input_image = Image.open(input_path).convert("L")
 
-        target_image_tensor = torch.from_numpy(target_image)
-        # input is sketch, therefore png file
-        input_path = self.image_paths_input[index]
-        input_image = Image.open(input_path).convert("RGB")
         transform = transforms.PILToTensor()
         imput_image_tensor = transform(input_image).float()
         return {'input': imput_image_tensor,

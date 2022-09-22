@@ -19,10 +19,10 @@ class Type(Enum):
 
 
 class MapGen(pl.LightningModule):
-    def __init__(self, type, n_critic, batch_size, weight_L1, weight_BCELoss, generate_comparison, output_dir, lr):
+    def __init__(self, type, n_critic, channels, batch_size, weight_L1, weight_BCELoss, generate_comparison, output_dir, lr):
         super(MapGen, self).__init__()
-        self.G = Generator()
-        self.D = Discriminator()
+        self.G = Generator(channels)
+        self.D = Discriminator(channels)
         self.n_critic = n_critic
         self.batch_size = batch_size
         self.type = type
@@ -147,10 +147,10 @@ def test_step(self, sample_batched, batch_idx):
 
 # Generator
 class Generator(nn.Module):
-    def __init__(self):
+    def __init__(self, channels):
         super(Generator, self).__init__()
         # Encoder
-        self.e_conv1 = nn.Conv2d(3, 64, 4)
+        self.e_conv1 = nn.Conv2d(channels, 64, 4)
         self.e_conv2 = nn.Conv2d(64, 128, 4)
         self.e_conv2_bn = nn.BatchNorm2d(128)
         self.e_conv3 = nn.Conv2d(128, 256, 4)
@@ -184,7 +184,7 @@ class Generator(nn.Module):
         self.d_deconv6_bn = nn.BatchNorm2d(128)
         self.d_deconv7 = nn.ConvTranspose2d(256, 64, 4)
         self.d_deconv7_bn = nn.BatchNorm2d(64)
-        self.d_deconv8 = nn.ConvTranspose2d(128, 3, 4)
+        self.d_deconv8 = nn.ConvTranspose2d(128, channels, 4)
 
 
     def forward(self, x):
@@ -229,9 +229,9 @@ class Generator(nn.Module):
 
 # Discriminator
 class Discriminator(nn.Module):
-    def __init__(self):
+    def __init__(self, channels):
         super(Discriminator, self).__init__()
-        self.conv1 = nn.Conv2d(6, 64, 4)
+        self.conv1 = nn.Conv2d(2*channels, 64, 4)
         self.conv2 = nn.Conv2d(64, 128, 4)
         self.conv2_bn = nn.BatchNorm2d(128)
         self.conv3 = nn.Conv2d(128, 256, 4)

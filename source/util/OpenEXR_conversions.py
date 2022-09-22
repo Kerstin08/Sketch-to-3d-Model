@@ -24,4 +24,4 @@ def getRGBimageEXR(path):
 def getDepthimageEXR(path):
     channel_names = 'T'
     channel = exr2numpy(path, channel_names)
-    return channel
+    return np.copy(channel)
