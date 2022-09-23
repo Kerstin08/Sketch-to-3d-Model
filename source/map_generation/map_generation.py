@@ -69,8 +69,10 @@ class MapGen(pl.LightningModule):
         input_predicted = torch.cat((sample_batched['input'], fake_images), 1)
         pred_false = self.D(input_predicted.detach())
         d_loss_fake = torch.mean(pred_false)
+        d_loss_fake.requires_grad=True
         pixelwise_loss = self.L1(sample_batched['input'], fake_images)
         bce = self.BCE(pred_false, torch.ones(pred_false.size()).type_as(pred_false))
+        bce.requires_grad=True
         g_loss = d_loss_fake + pixelwise_loss * self.weight_L1 + bce * self.weight_BCELoss
         self.g_running_loss += g_loss.item()*sample_batched['input'].size(0)
         return g_loss
