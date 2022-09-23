@@ -67,12 +67,14 @@ class MapGen(pl.LightningModule):
     def generator_step(self, sample_batched, fake_images):
         print("Generator")
         input_predicted = torch.cat((sample_batched['input'], fake_images), 1)
-        pred_false = self.D(input_predicted.detach())
+        pred_false = self.D(input_predicted)
         d_loss_fake = torch.mean(pred_false)
-        d_loss_fake.requires_grad=True
         pixelwise_loss = self.L1(sample_batched['input'], fake_images)
-        bce = self.BCE(pred_false, torch.ones(pred_false.size()).type_as(pred_false))
-        bce.requires_grad=True
+        bce = self.BCE(pred_false, torch.ones(pred_false.size(),).type_as(pred_false))
+        try:
+            print(self.D.requires_grad)
+        except:
+            pass
         g_loss = d_loss_fake + pixelwise_loss * self.weight_L1 + bce * self.weight_BCELoss
         self.g_running_loss += g_loss.item()*sample_batched['input'].size(0)
         return g_loss
@@ -80,10 +82,10 @@ class MapGen(pl.LightningModule):
     def discriminator_step(self, sample_batched, fake_images):
         print("Discriminator")
         input_predicted = torch.cat((sample_batched['input'], fake_images), 1)
-        input_target = torch.cat((sample_batched['input'], sample_batched['target']), 1)
         pred_false = self.D(input_predicted.detach())
         d_loss_fake = torch.mean(pred_false)
         # train discriminator on real images
+        input_target = torch.cat((sample_batched['input'], sample_batched['target']), 1)
         pred_true = self.D(input_target)
         d_loss_real = torch.mean(pred_true)
 
