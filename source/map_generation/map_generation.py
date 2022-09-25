@@ -10,19 +10,16 @@ from enum import Enum
 import shutil
 import pytorch_lightning as pl
 
-#from torch.utils.tensorboard import SummaryWriter
-#writer = SummaryWriter("..\\..\\logs\\map_gen")
-
 class Type(Enum):
     normal = 1,
     depth = 2
 
 
 class MapGen(pl.LightningModule):
-    def __init__(self, type, n_critic, batch_size, weight_L1, weight_BCELoss, generate_comparison, output_dir, lr):
+    def __init__(self, type, n_critic, channels, batch_size, weight_L1, weight_BCELoss, generate_comparison, output_dir, lr):
         super(MapGen, self).__init__()
-        self.G = Generator()
-        self.D = Discriminator()
+        self.G = Generator(channels)
+        self.D = Discriminator(channels)
         self.n_critic = n_critic
         self.batch_size = batch_size
         self.type = type
@@ -70,20 +67,25 @@ class MapGen(pl.LightningModule):
     def generator_step(self, sample_batched, fake_images):
         print("Generator")
         input_predicted = torch.cat((sample_batched['input'], fake_images), 1)
-        pred_false = self.D(input_predicted.detach())
+        pred_false = self.D(input_predicted)
         d_loss_fake = torch.mean(pred_false)
         pixelwise_loss = self.L1(sample_batched['input'], fake_images)
-        g_loss = d_loss_fake + pixelwise_loss * self.weight_L1 + self.BCE(pred_false, torch.ones(pred_false.size())) * self.weight_BCELoss
+        bce = self.BCE(pred_false, torch.ones(pred_false.size(),).type_as(pred_false))
+        try:
+            print(self.D.requires_grad)
+        except:
+            pass
+        g_loss = d_loss_fake + pixelwise_loss * self.weight_L1 + bce * self.weight_BCELoss
         self.g_running_loss += g_loss.item()*sample_batched['input'].size(0)
         return g_loss
 
     def discriminator_step(self, sample_batched, fake_images):
         print("Discriminator")
         input_predicted = torch.cat((sample_batched['input'], fake_images), 1)
-        input_target = torch.cat((sample_batched['input'], sample_batched['target']), 1)
         pred_false = self.D(input_predicted.detach())
         d_loss_fake = torch.mean(pred_false)
         # train discriminator on real images
+        input_target = torch.cat((sample_batched['input'], sample_batched['target']), 1)
         pred_true = self.D(input_target)
         d_loss_real = torch.mean(pred_true)
 
@@ -123,7 +125,7 @@ class MapGen(pl.LightningModule):
         logger = self.logger.experiment
         logger.add_image("generated_images", grid, 0)
 
-def test_step(self, sample_batched, batch_idx):
+    def test_step(self, sample_batched, batch_idx):
         predicted_image = self(sample_batched['input'])
         imagename = sample_batched['input_path'].rsplit("\\", 1)[-1]
         if self.generate_comparison:
@@ -147,10 +149,10 @@ def test_step(self, sample_batched, batch_idx):
 
 # Generator
 class Generator(nn.Module):
-    def __init__(self):
+    def __init__(self, channels):
         super(Generator, self).__init__()
         # Encoder
-        self.e_conv1 = nn.Conv2d(3, 64, 4)
+        self.e_conv1 = nn.Conv2d(channels, 64, 4)
         self.e_conv2 = nn.Conv2d(64, 128, 4)
         self.e_conv2_bn = nn.BatchNorm2d(128)
         self.e_conv3 = nn.Conv2d(128, 256, 4)
@@ -184,7 +186,7 @@ class Generator(nn.Module):
         self.d_deconv6_bn = nn.BatchNorm2d(128)
         self.d_deconv7 = nn.ConvTranspose2d(256, 64, 4)
         self.d_deconv7_bn = nn.BatchNorm2d(64)
-        self.d_deconv8 = nn.ConvTranspose2d(128, 3, 4)
+        self.d_deconv8 = nn.ConvTranspose2d(128, channels, 4)
 
 
     def forward(self, x):
@@ -229,9 +231,9 @@ class Generator(nn.Module):
 
 # Discriminator
 class Discriminator(nn.Module):
-    def __init__(self):
+    def __init__(self, channels):
         super(Discriminator, self).__init__()
-        self.conv1 = nn.Conv2d(6, 64, 4)
+        self.conv1 = nn.Conv2d(2*channels, 64, 4)
         self.conv2 = nn.Conv2d(64, 128, 4)
         self.conv2_bn = nn.BatchNorm2d(128)
         self.conv3 = nn.Conv2d(128, 256, 4)

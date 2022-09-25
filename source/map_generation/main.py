@@ -8,7 +8,7 @@ from pytorch_lightning.loggers import TensorBoardLogger
 import torch
 from torch.utils.data import DataLoader
 import torch.utils.data as data
-import dataset_generation.DataSet as DataSet
+from source.mapgen_dataset import DataSet
 from pytorch_lightning.callbacks import ModelCheckpoint
 
 def run(train, input_dir, output_path,
@@ -24,9 +24,11 @@ def run(train, input_dir, output_path,
     if type == "depth":
         given_type = map_generation.Type.depth
         target_dir = os.path.join(input_dir, "d_mapgen")
+        channels = 1
     elif type == "normal":
         given_type = map_generation.Type.normal
         target_dir = os.path.join(input_dir, "n_mapgen")
+        channels = 3
     else:
         raise RuntimeError("Given type should either be \"normal\" or \"depth\"!")
 
@@ -38,7 +40,7 @@ def run(train, input_dir, output_path,
     if not os.path.exists(output_path):
         os.mkdir(output_path)
 
-    model = map_generation.MapGen(given_type, n_critic, batch_size, weight_L1, weight_BCELoss, use_comparison, output_path, lr)
+    model = map_generation.MapGen(given_type, n_critic, channels, batch_size, weight_L1, weight_BCELoss, use_comparison, output_path, lr)
     if use_generated_model:
         if not os.path.exists(generated_model_path):
             raise RuntimeError("Generated model paths are not given!")
@@ -55,7 +57,8 @@ def run(train, input_dir, output_path,
     )
     logger = TensorBoardLogger("..\\..\\logs\\map_gen", name="trainModel")
     dataSet = DataSet.DS(sketch_dir, target_dir, given_type)
-    trainer = Trainer(gpus=0 if torch.cuda.is_available() else 0,
+    trainer = Trainer(accelerator='gpu' if torch.cuda.is_available() else 'cpu',
+                      devices=1,
                       max_epochs=epochs,
                       callbacks=[checkpoint_callback],
                       logger=logger,
@@ -95,14 +98,14 @@ def diff_args(args):
         args.use_comparison)
 
 def main(args):
-    parser = argparse.ArgumentParser(prog="dataset_generation")
+    parser = argparse.ArgumentParser(prog="mapgen_dataset")
     parser.add_argument("--train", type=bool, default=True, help="Train or test")
     parser.add_argument("--input_dir", type=str, default="..\\..\\resources\\sketch_meshes", help="Directory where the input sketches for training are stored")
     parser.add_argument("--output_dir", type=str, default="..\\..\\output", help="Directory where the checkpoints or the test output is stored")
     parser.add_argument("--type", type=str, default="normal", help="use \"normal\" or \"depth\" in order to train\\generate depth or normal images")
     parser.add_argument("--epochs", type=int, default=100, help="# of epoch")
     parser.add_argument("--lr", type=float, default=100, help="initial learning rate")
-    parser.add_argument("--batch_size", type=int, default=4, help="# of epoch")
+    parser.add_argument("--batch_size", type=int, default=1, help="# of epoch")
     parser.add_argument("--n_critic", type=int, default=5, help="# of n_critic")
     parser.add_argument("--weight_L1", type=int, default=500, help="L1 weight")
     parser.add_argument("--weight_BCELoss", type=int, default=100, help="L1 weight")
@@ -117,7 +120,7 @@ if __name__ == '__main__':
         '--input_dir', '..\\..\\resources\\mapgen_dataset\\ABC\\test',
         '--output_dir', '..\\..\\checkpoints_mapgen',
         '--type', 'normal',
-        '--epochs', '2',
-        '--lr', '0.2'
+        '--epochs', '100',
+        '--lr', '0.001'
     ]
     main(params)
