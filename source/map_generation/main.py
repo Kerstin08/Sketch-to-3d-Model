@@ -128,6 +128,6 @@ if __name__ == '__main__':
         '--input_dir', '..\\..\\resources\\mapgen_dataset\\ABC\\test',
         '--type', 'normal',
         '--epochs', '10',
-        '--lr', '0.001'
+        '--lr', '2e-4'
     ]
     main(params)
