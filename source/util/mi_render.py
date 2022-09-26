@@ -17,13 +17,13 @@ def rendering(scene, output_name, output_dirs):
     path = os.path.join(output_dir, filename)
     mi.util.write_bitmap(path, bitmap)
 
-def avo(scene, aovs, distance, output_name, output_dirs, create_debug_pngs=False):
+def avo(scene, aovs, output_name, output_dirs, create_debug_pngs=False):
     img = mi.render(scene, seed=0, spp=256)
     bitmap = mi.Bitmap(img, channel_names=['R', 'G', 'B'] + scene.integrator().aov_names())
     channels = dict(bitmap.split())
     if "depth" in aovs.values():
         depth = mi.TensorXf(channels['dd.y'])
-        filename = output_name + "_depth.exr"
+        filename = output_name + "_depth_x.exr"
         output_dir = output_dirs['dd.y']
         path = os.path.join(output_dir, filename)
         mi.util.write_bitmap(path, depth)
@@ -31,7 +31,7 @@ def avo(scene, aovs, distance, output_name, output_dirs, create_debug_pngs=False
         if create_debug_pngs:
             bitmap = mi.Bitmap(depth, channel_names=['R', 'G', 'B'] + scene.integrator().aov_names())
             output_dir_png = output_dirs['dd_png']
-            png_filename = output_name + "_depth.png"
+            png_filename = output_name + "_depth_x.png"
             path = os.path.join(output_dir_png, png_filename)
             mi.util.write_bitmap(path, bitmap)
 
@@ -48,7 +48,7 @@ def avo(scene, aovs, distance, output_name, output_dirs, create_debug_pngs=False
             path = os.path.join(output_dir_png, png_filename)
             mi.util.write_bitmap(path, normal)
 
-def create_aov(aovs, shape, distance, camera, output_name, output_dirs, create_debug_pngs):
+def create_aov(aovs, shape, camera, output_name, output_dirs, create_debug_pngs):
     integrator_aov = create_scenedesc.create_intergrator_aov(aovs)
     scene_desc = {"type": "scene", "shape": shape, "camera": camera, "integrator": integrator_aov}
     # Sometimes mesh data is not incorrect and could not be loaded
@@ -58,7 +58,7 @@ def create_aov(aovs, shape, distance, camera, output_name, output_dirs, create_d
         print("Exception occured in " + shape["filename"])
         print(e)
         return
-    return avo(scene, aovs, distance, output_name, output_dirs, create_debug_pngs)
+    return avo(scene, aovs, output_name, output_dirs, create_debug_pngs)
 
 def create_rendering(emitter_samples, shape, camera, output_name, output_dir):
     integrator_rendering = create_scenedesc.create_integrator_direct(emitter_samples)
@@ -81,12 +81,10 @@ def run(type, input_mesh, output_dirs, fov, aovs=[], emitter_samples=0, output_n
     shape = create_scenedesc.create_shape(input_mesh, datatype)
 
     # bounding box diagonal is assumed to be 1, see mesh_preprocess_operations.py normalize_mesh
-    # round to 2 decimals
     distance = math.tan(math.radians(fov))/1.75
-    near_distance = distance / 2
-    far_distance = 1.0 + near_distance
+    near_distance = distance
+    far_distance = distance * 4
 
-    near_far_distance = far_distance - near_distance
     centroid = np.array([distance, -distance, distance])
     if len(output_name) <= 0:
         output_name = (input_mesh.rsplit("\\", 1)[-1]).rsplit(".", 1)[0]
@@ -104,11 +102,11 @@ def run(type, input_mesh, output_dirs, fov, aovs=[], emitter_samples=0, output_n
             os.mkdir(value)
 
     if type == "aov":
-        create_aov(aovs, shape, near_far_distance, camera, output_name, output_dirs, create_debug_png)
+        create_aov(aovs, shape, camera, output_name, output_dirs, create_debug_png)
     elif type == "rendering":
         create_rendering(emitter_samples, shape, camera, output_name, output_dirs)
     elif type == "combined":
-        create_aov(aovs, shape, near_far_distance, camera, output_name, output_dirs, create_debug_png)
+        create_aov(aovs, shape, camera, output_name, output_dirs, create_debug_png)
         create_rendering(emitter_samples, shape, camera, output_name, output_dirs)
     else:
         raise Exception("Given type not known!")
@@ -131,6 +129,6 @@ if __name__ == '__main__':
     output_dirs = {'nn': '..\\..\\output', 'dd.y': '..\\..\\output', "dd_png": '..\\..\\output', "nn_png": '..\\..\\output', 'rendering': '..\\..\\output'}
     params = [
         '--type', 'aov',
-        '--input_mesh', '..\\..\\resources\\thinig10k\\0_499\\43665.ply',
+        '--input_mesh', '..\\..\\resources\\ABC\\abc_0099_stl2_v00\\0_499\\00990158\\00990158_c1f19583e2f854b23431b00a_trimesh_000.ply',
         ]
     main(params)
