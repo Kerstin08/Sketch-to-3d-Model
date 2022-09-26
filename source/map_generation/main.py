@@ -109,7 +109,7 @@ def main(args):
     parser.add_argument("--train", type=bool, default=True, help="Train or test")
     parser.add_argument("--input_dir", type=str, default="..\\..\\resources\\sketch_meshes", help="Directory where the input sketches for training are stored")
     parser.add_argument("--output_dir", type=str, default="..\\..\\checkpoint", help="Directory where the checkpoints or the test output is stored")
-    parser.add_argument("--logs_dir", type=str, default="..\\..\\logs", help="Directory where the checkpoints or the test output is stored")
+    parser.add_argument("--logs_dir", type=str, default="..\\..\\logs", help="Directory where the logs are stored")
     parser.add_argument("--type", type=str, default="normal", help="use \"normal\" or \"depth\" in order to train\\generate depth or normal images")
     parser.add_argument("--epochs", type=int, default=100, help="# of epoch")
     parser.add_argument("--lr", type=float, default=100, help="initial learning rate")
