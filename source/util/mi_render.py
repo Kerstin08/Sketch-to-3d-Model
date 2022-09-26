@@ -22,7 +22,7 @@ def avo(scene, aovs, distance, output_name, output_dirs, create_debug_pngs=False
     bitmap = mi.Bitmap(img, channel_names=['R', 'G', 'B'] + scene.integrator().aov_names())
     channels = dict(bitmap.split())
     if "depth" in aovs.values():
-        depth = mi.TensorXf(channels['dd.y']) / distance
+        depth = mi.TensorXf(channels['dd.y'])
         filename = output_name + "_depth.exr"
         output_dir = output_dirs['dd.y']
         path = os.path.join(output_dir, filename)
@@ -81,9 +81,11 @@ def run(type, input_mesh, output_dirs, fov, aovs=[], emitter_samples=0, output_n
     shape = create_scenedesc.create_shape(input_mesh, datatype)
 
     # bounding box diagonal is assumed to be 1, see mesh_preprocess_operations.py normalize_mesh
+    # round to 2 decimals
     distance = math.tan(math.radians(fov))/1.75
-    far_distance = distance * 2.5
     near_distance = distance / 2
+    far_distance = 1.0 + near_distance
+
     near_far_distance = far_distance - near_distance
     centroid = np.array([distance, -distance, distance])
     if len(output_name) <= 0:
@@ -129,6 +131,6 @@ if __name__ == '__main__':
     output_dirs = {'nn': '..\\..\\output', 'dd.y': '..\\..\\output', "dd_png": '..\\..\\output', "nn_png": '..\\..\\output', 'rendering': '..\\..\\output'}
     params = [
         '--type', 'aov',
-        '--input_mesh', '..\\..\\resources\\ABC\\abc_0099_stl2_v00\\0_499\\00990000\\00990000_6216c8dabde0a997e09b0f42_trimesh_000.ply',
+        '--input_mesh', '..\\..\\resources\\thinig10k\\0_499\\43665.ply',
         ]
     main(params)
