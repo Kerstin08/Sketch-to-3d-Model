@@ -27,7 +27,7 @@ def get_edge_dist(vertice_positions, edge_vert_indices):
         y = vertice_positions[1][pt1_index] - vertice_positions[1][pt2_index]
         z = vertice_positions[2][pt1_index] - vertice_positions[2][pt2_index]
         edge_lengths.append(dr.sqrt(dr.sqr(x) + dr.sqr(y) + dr.sqr(z)))
-    return np.array(edge_lengths)
+    return dr.cuda.ad.Array1f(edge_lengths)
 
 def smoothness_helper(v1, v2, v3):
     a = v2 - v1
@@ -41,15 +41,19 @@ def smoothness_helper(v1, v2, v3):
     cos = dot_ab / (magnitude_a * magnitude_b)
     sin = dr.sqrt(1 - dr.sqr(cos))
 
-    dist_a = dr.full(dr.cuda.ad.Float, dot_ab / sqr_magnitude_a, 3)
+    l = dot_ab / sqr_magnitude_a
+    dist_a = dr.full(dr.cuda.ad.Float, l, shape=3)
+    a = dr.cuda.ad.Float(a)
+    b = dr.cuda.ad.Float(b)
     c = a * dist_a
     cb = b-c
-    l1_cb = magnitude_b * sin
+    l1_cb = dr.cuda.ad.Float(magnitude_b * sin)
 
     return cb, l1_cb
 def smoothness(curr_faces, face_indices, vertice_positions):
     if len(curr_faces) > 2:
         print("Edge as more than 2 adjacent faces!")
+    #Todo: I think this needs to change in order for smoothness loss to have gradient
     vert_idx_face1 = [face_indices[0][curr_faces[0]],
                         face_indices[1][curr_faces[0]],
                         face_indices[2][curr_faces[0]]]
@@ -57,12 +61,12 @@ def smoothness(curr_faces, face_indices, vertice_positions):
                         face_indices[1][curr_faces[1]],
                         face_indices[2][curr_faces[1]]]
     joined_verts = list(set(vert_idx_face1).intersection(verts_idx_face2))
-    v1 = dr.cuda.Float([vertice_positions[0][joined_verts[0]], vertice_positions[1][joined_verts[0]], vertice_positions[2][joined_verts[0]]])
-    v2 = dr.cuda.Float([vertice_positions[0][joined_verts[1]], vertice_positions[1][joined_verts[1]], vertice_positions[2][joined_verts[1]]])
+    v1 = dr.scalar.Array3f(vertice_positions[0][joined_verts[0]], vertice_positions[1][joined_verts[0]], vertice_positions[2][joined_verts[0]])
+    v2 = dr.scalar.Array3f([vertice_positions[0][joined_verts[1]], vertice_positions[1][joined_verts[1]], vertice_positions[2][joined_verts[1]]])
     v3_face1_temp = set(vert_idx_face1).difference(joined_verts).pop()
-    v3_face1 = dr.cuda.Float([vertice_positions[0][v3_face1_temp], vertice_positions[1][v3_face1_temp], vertice_positions[2][v3_face1_temp]])
+    v3_face1 = dr.scalar.Array3f([vertice_positions[0][v3_face1_temp], vertice_positions[1][v3_face1_temp], vertice_positions[2][v3_face1_temp]])
     v3_face2_temp = set(verts_idx_face2).difference(joined_verts).pop()
-    v3_face2 = dr.cuda.Float([vertice_positions[0][v3_face2_temp], vertice_positions[1][v3_face2_temp], vertice_positions[2][v3_face2_temp]])
+    v3_face2 = dr.scalar.Array3f([vertice_positions[0][v3_face2_temp], vertice_positions[1][v3_face2_temp], vertice_positions[2][v3_face2_temp]])
 
     cb_face1, l1_cb_face1 = smoothness_helper(v1, v2, v3_face1)
     cb_face2, l1_cb_face2 = smoothness_helper(v1, v2, v3_face2)
@@ -190,6 +194,7 @@ params = mi.traverse(scene)
 print(params)
 initial_vertex_positions = dr.unravel(mi.Point3f, params['test.vertex_positions'])
 face_indices = dr.unravel(mi.Point3i, params['test.faces'])
+dr.enable_grad(face_indices)
 
 edge_vert_indices = []
 edge_vert_faces = {}
@@ -216,10 +221,12 @@ for i in range(len(face_indices[0])):
     else:
         edge_vert_faces[zx].append(i)
 initial_edge_lengths = get_edge_dist(initial_vertex_positions, edge_vert_indices)
+dr.enable_grad(initial_edge_lengths)
 
 opt = mi.ad.Adam(lr=learning_rate)
 vertex_count = params['test.vertex_count']
 opt['deform_verts'] = dr.full(mi.Point3f, 0, vertex_count)
+
 for epoch in range(num_epochs):
     offset_verts(params, opt)
 
@@ -234,17 +241,16 @@ for epoch in range(num_epochs):
 
     current_vertex_positions = dr.unravel(mi.Point3f, params['test.vertex_positions'])
     current_edge_lengths = get_edge_dist(current_vertex_positions, edge_vert_indices)
-    edge_loss = dr.cuda.ad.Float([1/len(initial_edge_lengths) * dr.sum(dr.sqr(np.subtract(initial_edge_lengths, current_edge_lengths)))])
-    dr.set_grad_enabled(edge_loss, True)
+    edge_loss = dr.sum(dr.sqr(initial_edge_lengths - current_edge_lengths)) * 1/len(initial_edge_lengths)
 
-    smoothness_loss = 0
-    dr.set_grad_enabled(smoothness_loss, True)
+    smoothness_loss = 0.0
     for key in edge_vert_faces:
         curr_faces = edge_vert_faces[key]
         cos = smoothness(curr_faces, face_indices, current_vertex_positions)
         smoothness_loss += cos
+    print(dr.grad_enabled(smoothness_loss))
 
-    loss = depth_loss * weight_depth + normal_loss * weight_normal + edge_loss * weight_edge
+    loss = depth_loss * weight_depth + normal_loss * weight_normal + edge_loss * weight_edge + smoothness_loss * weight_smooth
     dr.backward(loss)
 
     opt.step()
