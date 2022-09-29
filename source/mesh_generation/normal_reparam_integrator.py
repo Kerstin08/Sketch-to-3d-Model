@@ -77,7 +77,7 @@ class NormalReparamIntegrator(ADIntegrator):
 
         pi = scene.ray_intersect_preliminary(ray_reparam, active)
         si = pi.compute_surface_interaction(ray_reparam)
-        L += si.n
+        L += si.sh_frame.n
 
         return L, active, None
 
