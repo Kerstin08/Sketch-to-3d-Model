@@ -3,6 +3,7 @@ import os.path
 import numpy as np
 
 import source.util.mi_create_scenedesc as create_scenedesc
+import drjit as dr
 import argparse
 import mitsuba as mi
 from mitsuba.scalar_rgb import Transform4f as T
@@ -11,19 +12,25 @@ mi.set_variant('cuda_ad_rgb')
 
 def rendering(scene, output_name, output_dirs):
     img = mi.render(scene, seed=0, spp=256)
+    if dr.any(dr.isnan(img)):
+        print("Rendered image includes invalid data!")
+        return
     bitmap = mi.util.convert_to_bitmap(img)
     filename = output_name + "_rendering.png"
     output_dir = output_dirs["rendering"]
     path = os.path.join(output_dir, filename)
     mi.util.write_bitmap(path, bitmap)
 
-def avo(scene, aovs, output_name, output_dirs, create_debug_pngs=False):
+def avo(scene, aovs, output_name, output_dirs, create_debug_pngs=True):
     img = mi.render(scene, seed=0, spp=256)
+    if dr.any(dr.isnan(img)):
+        print("Rendered image includes invalid data!")
+        return
     bitmap = mi.Bitmap(img, channel_names=['R', 'G', 'B'] + scene.integrator().aov_names())
     channels = dict(bitmap.split())
     if "depth" in aovs.values():
         depth = mi.TensorXf(channels['dd.y'])
-        filename = output_name + "_depth_x.exr"
+        filename = output_name + "_depth.exr"
         output_dir = output_dirs['dd.y']
         path = os.path.join(output_dir, filename)
         mi.util.write_bitmap(path, depth)
@@ -31,7 +38,7 @@ def avo(scene, aovs, output_name, output_dirs, create_debug_pngs=False):
         if create_debug_pngs:
             bitmap = mi.Bitmap(depth, channel_names=['R', 'G', 'B'] + scene.integrator().aov_names())
             output_dir_png = output_dirs['dd_png']
-            png_filename = output_name + "_depth_x.png"
+            png_filename = output_name + "_depth.png"
             path = os.path.join(output_dir_png, png_filename)
             mi.util.write_bitmap(path, bitmap)
 
@@ -129,6 +136,6 @@ if __name__ == '__main__':
     output_dirs = {'nn': '..\\..\\output', 'dd.y': '..\\..\\output', "dd_png": '..\\..\\output', "nn_png": '..\\..\\output', 'rendering': '..\\..\\output'}
     params = [
         '--type', 'aov',
-        '--input_mesh', '..\\..\\resources\\ABC\\abc_0099_stl2_v00\\0_499\\00990158\\00990158_c1f19583e2f854b23431b00a_trimesh_000.ply',
+        '--input_mesh', '..\\..\\resources\\ABC\\abc_0099_stl2_v00\\0_499\\00990247\\00990247_ad629c15d8f3b4ae3a8abd66_trimesh_000.ply',
         ]
     main(params)
