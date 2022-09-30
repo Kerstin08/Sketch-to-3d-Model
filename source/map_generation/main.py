@@ -12,7 +12,7 @@ from source.mapgen_dataset import DataSet
 from pytorch_lightning.callbacks import ModelCheckpoint
 
 def run(train, input_dir, output_dir, logs_dir,
-        type, epochs, lr, batch_size, n_critic, weight_L1, weight_BCELoss,
+        type, epochs, lr, batch_size, n_critic, weight_L1,
         use_generated_model=False, generated_model_path="", use_comparison=True):
 
 
@@ -45,7 +45,7 @@ def run(train, input_dir, output_dir, logs_dir,
     if not os.path.exists(logs_dir):
         os.mkdir(logs_dir)
 
-    model = map_generation.MapGen(given_type, n_critic, channels, batch_size, weight_L1, weight_BCELoss, use_comparison, output_dir, lr)
+    model = map_generation.MapGen(given_type, n_critic, channels, batch_size, weight_L1, use_comparison, output_dir, lr)
     if use_generated_model:
         if not os.path.exists(generated_model_path):
             raise RuntimeError("Generated model paths are not given!")
@@ -99,7 +99,6 @@ def diff_args(args):
         args.batch_size,
         args.n_critic,
         args.weight_L1,
-        args.weight_BCELoss,
         args.use_generated_model,
         args.generated_model_path,
         args.use_comparison)
@@ -116,7 +115,6 @@ def main(args):
     parser.add_argument("--batch_size", type=int, default=1, help="# of epoch")
     parser.add_argument("--n_critic", type=int, default=5, help="# of n_critic")
     parser.add_argument("--weight_L1", type=int, default=50, help="L1 weight")
-    parser.add_argument("--weight_BCELoss", type=int, default=100, help="L1 weight")
     parser.add_argument("--use_generated_model", type=bool, default=False, help="If models are trained from scratch or already trained models are used")
     parser.add_argument("--generated_model_path", type=str, default="..\\..\\output\\test.ckpt", help="If test is used determine if comparison images should be generated")
     parser.add_argument("--use_comparison", type=bool, default=True, help="If test is used determine if comparison images should be generated")

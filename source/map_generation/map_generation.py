@@ -16,7 +16,7 @@ class Type(Enum):
 
 
 class MapGen(pl.LightningModule):
-    def __init__(self, type, n_critic, channels, batch_size, weight_L1, weight_BCELoss, generate_comparison, output_dir, lr):
+    def __init__(self, type, n_critic, channels, batch_size, weight_L1, generate_comparison, output_dir, lr):
         super(MapGen, self).__init__()
         self.G = Generator(channels)
         self.D = Discriminator(channels)
@@ -24,7 +24,6 @@ class MapGen(pl.LightningModule):
         self.batch_size = batch_size
         self.type = type
         self.weight_L1 = weight_L1
-        self.weight_BCELoss = weight_BCELoss
         self.generate_comparison = generate_comparison
         self.output_dir = output_dir
         self.d_pred_running_loss = 0
@@ -33,24 +32,6 @@ class MapGen(pl.LightningModule):
         self.g_running_loss = 0
         self.lr = lr
         self.L1 = torch.nn.L1Loss()
-        self.BCE = torch.nn.BCEWithLogitsLoss()
-
-    def gen_filenames(self, epoch=-1):
-        if epoch>0:
-            if self.type == Type.normal:
-                filename_G = "Gen_N_" + str(epoch) + ".pth"
-                filename_D = "Disc_N_" + str(epoch) + ".pth"
-            else:
-                filename_G = "Gen_D_" + str(epoch) + ".pth"
-                filename_D = "Disc_D_" + str(epoch) + ".pth"
-        else:
-            if self.type == Type.normal:
-                filename_G = "Gen_N_trained.pth"
-                filename_D = "Disc_N_trained.pth"
-            else:
-                filename_G = "Gen_D_trained.pth"
-                filename_D = "Disc_D_trained.pth"
-        return filename_G, filename_D
 
     def configure_optimizers(self):
         opt_g = torch.optim.RMSprop(self.G.parameters(), lr=(self.lr or self.learning_rate))
@@ -71,7 +52,7 @@ class MapGen(pl.LightningModule):
         d_loss_fake = torch.mean(pred_false)
         pixelwise_loss = self.L1(sample_batched['input'], fake_images)
         bce = self.BCE(pred_false, torch.ones(pred_false.size()).type_as(pred_false))
-        g_loss = -d_loss_fake + pixelwise_loss * self.weight_L1# + bce * self.weight_BCELoss
+        g_loss = -d_loss_fake + pixelwise_loss * self.weight_L1
         print("Fake: " + str(d_loss_fake))
         print("Pixelwise: " + str(pixelwise_loss) + " " + str(pixelwise_loss * self.weight_L1))
         print("BCE:" + str(bce) + " " + str(bce * self.weight_BCELoss))
