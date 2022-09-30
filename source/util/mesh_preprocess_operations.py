@@ -41,9 +41,6 @@ def translate_to_origin(mesh):
     matrix = np.eye(4)
     matrix[:, 3] = [dist[0], dist[1], dist[2], 1]
     mesh.apply_transform(matrix)
-    bounds = mesh.bounds
-    dim = abs(bounds[1] - bounds[0])
-    center = bounds[0] + dim / 2
     return mesh
 
 def diff_ars(args):

@@ -20,7 +20,7 @@ def gen_images(path, datatype, sketch_output_dirs, aov_output_dirs,
             path = mesh_preprocess.preprocess(path)
             if not path:
                 return
-        print(f'Processing ' + path, end='\r')
+        print('\r' + 'Processing ' + path, end='')
         if len(modelname_split_indicator_before) > 0 or len(modelname_split_indicator_after) > 0:
             ouput_name = path
             if len(modelname_split_indicator_before) > 0:
@@ -42,6 +42,9 @@ def gen_images(path, datatype, sketch_output_dirs, aov_output_dirs,
             gen_images(new_path, datatype, sketch_output_dirs, aov_output_dirs, fov, create_debug_png, modelname_split_indicator_before, modelname_split_indicator_after)
 
 def run(input_dir, output_dir, datatype, fov, create_debug_png, modelname_split_indicator_before="", modelname_split_indicator_after=""):
+    if not os.path.exists(input_dir):
+        print("Input directory " + str(input_dir) + " does not exits")
+        return
     # generate folders
     sketch_path = make_folder("sketch_", output_dir)
     n_path = make_folder("n_", output_dir)
@@ -72,7 +75,7 @@ def main(args):
 
 if __name__ == '__main__':
     params = [
-        '--input_dir', '..\\..\\..\\resources\\thinig10k\\0_499',
-        '--output_dir', '..\\..\\..\\output\\mapgen'
+        '--input_dir', '..\\..\\resources\\thinig10k',
+        '--output_dir', '..\\..\\output\\mapgen'
     ]
     main(params)
