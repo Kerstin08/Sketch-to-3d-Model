@@ -35,7 +35,7 @@ class DS(Dataset):
         target_path = self.image_paths_target[index]
         if self.data_type.value == map_generation.Type.normal.value:
             target_image = OpenEXR_conversions.getRGBimageEXR(target_path)
-            target_image_tensor = torch.from_numpy(target_image) * 0.5 + 0.5
+            target_image_tensor = torch.from_numpy(target_image)
             input_image = Image.open(input_path).convert("RGB")
         else:
             target_image = OpenEXR_conversions.getDepthimageEXR(target_path)

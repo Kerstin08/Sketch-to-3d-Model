@@ -51,12 +51,7 @@ class MapGen(pl.LightningModule):
         pred_false = self.D(input_predicted)
         d_loss_fake = torch.mean(pred_false)
         pixelwise_loss = self.L1(sample_batched['input'], fake_images)
-        bce = self.BCE(pred_false, torch.ones(pred_false.size()).type_as(pred_false))
         g_loss = -d_loss_fake + pixelwise_loss * self.weight_L1
-        print("Fake: " + str(d_loss_fake))
-        print("Pixelwise: " + str(pixelwise_loss) + " " + str(pixelwise_loss * self.weight_L1))
-        print("BCE:" + str(bce) + " " + str(bce * self.weight_BCELoss))
-        print("\n")
         self.g_running_loss += g_loss.item()*sample_batched['input'].size(0)
         self.log("g_Loss", g_loss.item(), on_epoch=True, prog_bar=True, logger=True, batch_size=self.batch_size)
         return g_loss
@@ -73,9 +68,6 @@ class MapGen(pl.LightningModule):
 
         # loss as defined by Wasserstein paper
         d_loss = -d_loss_real + d_loss_fake
-        print("Fake: " + str(d_loss_fake))
-        print("Real: " + str(d_loss_real))
-        print("\n")
         self.log("d_loss", d_loss.item(), on_epoch=True, prog_bar=True, logger=True, batch_size=self.batch_size)
 
         self.d_pred_running_loss += d_loss_fake.item() * sample_batched['input'].size(0)
