@@ -43,7 +43,7 @@ class DS(Dataset):
             input_image = Image.open(input_path).convert("L")
 
         transform = transforms.PILToTensor()
-        imput_image_tensor = transform(input_image).float()
+        imput_image_tensor = transform(input_image).float() / 255.0
         return {'input': imput_image_tensor,
                 'target': target_image_tensor,
                 'input_path': input_path,

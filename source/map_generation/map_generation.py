@@ -16,7 +16,7 @@ class Type(Enum):
 
 
 class MapGen(pl.LightningModule):
-    def __init__(self, type, n_critic, channels, batch_size, weight_L1, weight_BCELoss, generate_comparison, output_dir, lr):
+    def __init__(self, type, n_critic, channels, batch_size, weight_L1, generate_comparison, output_dir, lr):
         super(MapGen, self).__init__()
         self.G = Generator(channels)
         self.D = Discriminator(channels)
@@ -24,7 +24,6 @@ class MapGen(pl.LightningModule):
         self.batch_size = batch_size
         self.type = type
         self.weight_L1 = weight_L1
-        self.weight_BCELoss = weight_BCELoss
         self.generate_comparison = generate_comparison
         self.output_dir = output_dir
         self.d_pred_running_loss = 0
@@ -33,24 +32,6 @@ class MapGen(pl.LightningModule):
         self.g_running_loss = 0
         self.lr = lr
         self.L1 = torch.nn.L1Loss()
-        self.BCE = torch.nn.BCEWithLogitsLoss()
-
-    def gen_filenames(self, epoch=-1):
-        if epoch>0:
-            if self.type == Type.normal:
-                filename_G = "Gen_N_" + str(epoch) + ".pth"
-                filename_D = "Disc_N_" + str(epoch) + ".pth"
-            else:
-                filename_G = "Gen_D_" + str(epoch) + ".pth"
-                filename_D = "Disc_D_" + str(epoch) + ".pth"
-        else:
-            if self.type == Type.normal:
-                filename_G = "Gen_N_trained.pth"
-                filename_D = "Disc_N_trained.pth"
-            else:
-                filename_G = "Gen_D_trained.pth"
-                filename_D = "Disc_D_trained.pth"
-        return filename_G, filename_D
 
     def configure_optimizers(self):
         opt_g = torch.optim.RMSprop(self.G.parameters(), lr=(self.lr or self.learning_rate))
@@ -70,13 +51,9 @@ class MapGen(pl.LightningModule):
         pred_false = self.D(input_predicted)
         d_loss_fake = torch.mean(pred_false)
         pixelwise_loss = self.L1(sample_batched['input'], fake_images)
-        bce = self.BCE(pred_false, torch.ones(pred_false.size(),).type_as(pred_false))
-        try:
-            print(self.D.requires_grad)
-        except:
-            pass
-        g_loss = d_loss_fake + pixelwise_loss * self.weight_L1 + bce * self.weight_BCELoss
+        g_loss = -d_loss_fake + pixelwise_loss * self.weight_L1
         self.g_running_loss += g_loss.item()*sample_batched['input'].size(0)
+        self.log("g_Loss", g_loss.item(), on_epoch=True, prog_bar=True, logger=True, batch_size=self.batch_size)
         return g_loss
 
     def discriminator_step(self, sample_batched, fake_images):
@@ -90,11 +67,13 @@ class MapGen(pl.LightningModule):
         d_loss_real = torch.mean(pred_true)
 
         # loss as defined by Wasserstein paper
-        d_loss = -d_loss_fake + d_loss_real
+        d_loss = -d_loss_real + d_loss_fake
+        self.log("d_loss", d_loss.item(), on_epoch=True, prog_bar=True, logger=True, batch_size=self.batch_size)
 
         self.d_pred_running_loss += d_loss_fake.item() * sample_batched['input'].size(0)
         self.d_real_running_loss += d_loss_real.item() * sample_batched['input'].size(0)
-        self.d_real_running_loss += d_loss.item() * sample_batched['input'].size(0)
+        self.d_running_loss += d_loss.item() * sample_batched['input'].size(0)
+
         return d_loss
 
     def training_step(self, sample_batched, batch_idx, optimizer_idx):
@@ -104,6 +83,8 @@ class MapGen(pl.LightningModule):
 
         if optimizer_idx == 1:
             loss = self.discriminator_step(sample_batched, fake_images)
+        if self.global_step % 2 == 0:
+            self.log("global_step", float(self.global_step), on_step=True, batch_size=self.batch_size)
         return loss
 
     def training_epoch_end(self, outputs):
@@ -111,7 +92,6 @@ class MapGen(pl.LightningModule):
         self.log("discriminator_trainingLoss_realImages", self.d_real_running_loss, on_epoch=True, prog_bar=True, logger=True, batch_size=self.batch_size)
         self.log("discriminator_trainingLoss_predictedImages", self.d_pred_running_loss, on_epoch=True, prog_bar=True, logger=True, batch_size=self.batch_size)
         self.log("discriminator_trainingLoss", self.d_running_loss,  on_epoch=True, prog_bar=True, logger=True, batch_size=self.batch_size)
-        self.log("global_step", self.global_step, on_epoch=True, prog_bar=True, logger=True, batch_size=self.batch_size)
         self.d_running_loss = 0
         self.d_pred_running_loss = 0
         self.d_real_running_loss = 0
