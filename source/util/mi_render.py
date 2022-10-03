@@ -82,7 +82,7 @@ def run(type, input_path, output_dirs, fov, aovs=[], emitter_samples=0, output_n
     datatype = input_path.rsplit(".", 1)[1]
     if datatype != "obj" and datatype != "ply":
         print("Given datatype cannot be processed, must be either obj or ply type.")
-        #return
+        return
     shape = create_scenedesc.create_shape(input_path, datatype)
 
     # bounding box diagonal is assumed to be 1, see mesh_preprocess_operations.py normalize_mesh
