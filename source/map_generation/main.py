@@ -53,18 +53,18 @@ def run(train, input_dir, output_dir, logs_dir,
 
 
     checkpoint_callback = ModelCheckpoint(
-        save_top_k=10,
+        save_top_k=5,
         save_last=True,
         monitor="global_step",
         mode="max",
         dirpath=output_dir,
         filename="MapGen-{epoch:02d}-{global_step}",
-        every_n_train_steps=2
+        every_n_train_steps=500
     )
     logger = TensorBoardLogger(logs_dir, name="trainModel")
     # Todo: exchange dataset for test, since there should be no target dir any more
     dataSet = DataSet.DS(sketch_dir, target_dir, given_type)
-    trainer = Trainer(accelerator='cpu' if torch.cuda.is_available() else 'cpu',
+    trainer = Trainer(accelerator='gpu' if torch.cuda.is_available() else 'cpu',
                       devices=1,
                       max_epochs=epochs,
                       callbacks=[checkpoint_callback],
@@ -108,8 +108,8 @@ def main(args):
     parser = argparse.ArgumentParser(prog="mapgen_dataset")
     parser.add_argument("--train", type=bool, default=True, help="Train or test")
     parser.add_argument("--input_dir", type=str, default="..\\..\\resources\\sketch_meshes", help="Directory where the input sketches for training are stored")
-    parser.add_argument("--output_dir", type=str, default="..\\..\\checkpoint", help="Directory where the checkpoints or the test output is stored")
-    parser.add_argument("--logs_dir", type=str, default="..\\..\\logs", help="Directory where the logs are stored")
+    parser.add_argument("--output_dir", type=str, default="checkpoint", help="Directory where the checkpoints or the test output is stored")
+    parser.add_argument("--logs_dir", type=str, default="logs", help="Directory where the logs are stored")
     parser.add_argument("--type", type=str, default="normal", help="use \"normal\" or \"depth\" in order to train\\generate depth or normal images")
     parser.add_argument("--epochs", type=int, default=10, help="# of epoch")
     parser.add_argument("--lr", type=float, default=100, help="initial learning rate")
@@ -124,9 +124,9 @@ def main(args):
 
 if __name__ == '__main__':
     params = [
-        '--input_dir', '..\\..\\resources\\mapgen_dataset\\ABC\\test',
+        '--input_dir', '0_2000_normal',
         '--type', 'normal',
-        '--epochs', '10',
+        '--epochs', '100',
         '--lr', '2e-4'
     ]
     main(params)
