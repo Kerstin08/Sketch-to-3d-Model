@@ -62,6 +62,7 @@ def run(train, input_dir, output_dir, logs_dir,
         every_n_train_steps=2
     )
     logger = TensorBoardLogger(logs_dir, name="trainModel")
+    # Todo: exchange dataset for test, since there should be no target dir any more
     dataSet = DataSet.DS(sketch_dir, target_dir, given_type)
     trainer = Trainer(accelerator='cpu' if torch.cuda.is_available() else 'cpu',
                       devices=1,
