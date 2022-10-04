@@ -50,7 +50,7 @@ class MapGen(pl.LightningModule):
         input_predicted = torch.cat((sample_batched['input'], fake_images), 1)
         pred_false = self.D(input_predicted)
         d_loss_fake = torch.mean(pred_false)
-        pixelwise_loss = self.L1(sample_batched['input'], fake_images)
+        pixelwise_loss = self.L1(sample_batched['target'], fake_images)
         g_loss = -d_loss_fake + pixelwise_loss * self.weight_L1
         self.g_running_loss += g_loss.item()*sample_batched['input'].size(0)
         self.log("g_Loss", g_loss.item(), on_epoch=True, prog_bar=True, logger=True, batch_size=self.batch_size)
@@ -99,7 +99,7 @@ class MapGen(pl.LightningModule):
 
     def validation_step(self, sample_batched, batch_idx):
         predicted_image = self(sample_batched)
-        pixelwise_loss = self.L1(sample_batched['input'], predicted_image)
+        pixelwise_loss = self.L1(sample_batched['target'], predicted_image)
         self.log("val_loss", pixelwise_loss.item(), batch_size=self.batch_size)
         grid = torchvision.utils.make_grid(predicted_image[:6])
         logger = self.logger.experiment
