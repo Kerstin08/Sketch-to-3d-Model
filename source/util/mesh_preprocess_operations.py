@@ -2,7 +2,6 @@ import trimesh
 import math
 import numpy as np
 import argparse
-
 def preprocess(path):
     try:
         mesh = trimesh.load(path)
@@ -13,6 +12,11 @@ def preprocess(path):
     if not mesh.area > 0:
         print(str(path) + " contains no usable model!")
         return None
+
+    cleaned_mesh = clean_mesh(path, mesh)
+    if not cleaned_mesh:
+        return None
+
     norm_mesh = normalize_mesh(mesh)
     trans_norm_mesh = translate_to_origin(norm_mesh)
     if path.rsplit(".", 1)[1] != "ply":
@@ -21,6 +25,26 @@ def preprocess(path):
     with open (path, "wb+") as output:
         output.write(ply)
     return path
+
+def clean_mesh(path, mesh):
+    mesh.process()
+    mesh.remove_unreferenced_vertices()
+    mesh.remove_degenerate_faces()
+    mesh.remove_duplicate_faces()
+
+    if not mesh.is_watertight:
+        mesh.fill_holes()
+        trimesh.repair.fill_holes(mesh)
+
+    if not mesh.is_winding_consistent:
+        trimesh.repair.fix_inversion(mesh, multibody=True)
+        trimesh.repair.fix_normals(mesh, multibody=True)
+        trimesh.repair.fix_winding(mesh)
+
+    if not mesh.is_watertight or not mesh.is_winding_consistent:
+        print(str(path) + " contains invalid normals or is not solid!")
+        return None
+    return mesh
 
 def normalize_mesh(mesh):
     bounds = mesh.bounds
