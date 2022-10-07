@@ -66,7 +66,7 @@ class MeshGen():
         return cb, l1_cb
     def smoothness(self, curr_faces, face_indices, vertice_positions):
         if len(curr_faces) > 2:
-            print("Edge as more than 2 adjacent faces!")
+            raise Exception("Mesh is invalid! Edge has more than 2 adjacent faces!")
         vert_idx_face1 = [face_indices[0][curr_faces[0]],
                             face_indices[1][curr_faces[0]],
                             face_indices[2][curr_faces[0]]]
@@ -111,8 +111,7 @@ class MeshGen():
         datatype = basic_mesh.rsplit(".", 1)[1]
         basic_mesh_name = basic_mesh.rsplit("\\", 1)[1].rsplit(datatype)[0]
         if datatype != "obj" and datatype != "ply":
-            print("Given datatype cannot be processed, must be either obj or ply type.")
-            return
+            raise Exception("Datatype of given mesh {} cannot be processed! Must either be .ply or .obj".format(basic_mesh))
         shape = create_scenedesc.create_shape(basic_mesh, datatype)
         distance = math.tan(math.radians(self.fov))/1.75
         near_distance = distance

@@ -4,6 +4,7 @@ from source.util import mesh_preprocess_operations as mesh_preprocess
 import argparse
 import os
 
+# Todo: if linux path things are different and if there is no path, only a file, this is not working
 def make_folder(prefix, dir):
     original_path_split = dir.rsplit("\\", 1)
     dir_name = prefix + original_path_split[1]
@@ -22,19 +23,19 @@ def gen_images(path, datatype, sketch_output_dirs, aov_output_dirs,
                 return
         print('\r' + 'Processing ' + path, end='')
         if len(modelname_split_indicator_before) > 0 or len(modelname_split_indicator_after) > 0:
-            ouput_name = path
+            output_name = path
             if len(modelname_split_indicator_before) > 0:
-                ouput_name = ouput_name.rsplit(modelname_split_indicator_before, 1)[1]
+                output_name = output_name.rsplit(modelname_split_indicator_before, 1)[1]
             if len(modelname_split_indicator_after) > 0:
-                ouput_name = ouput_name.rsplit(modelname_split_indicator_after, 1)[0]
-            ouput_name = ouput_name.replace("\\", "_")
+                output_name = output_name.rsplit(modelname_split_indicator_after, 1)[0]
+            output_name = output_name.replace("\\", "_")
         else:
             split_datatype = ".ply" if datatype == "stl" else "." + datatype
-            ouput_name = path.rsplit("\\", 1)[1].rsplit(split_datatype)[0]
+            output_name = path.rsplit("\\", 1)[1].rsplit(split_datatype)[0]
         # generate sketches
-        lineGen.run("rendering", path, sketch_output_dirs, fov, 4, ouput_name)
-       # # generate depth and normal
-        render.run("aov", path, aov_output_dirs, fov, {"dd.y": "depth", "nn": "sh_normal"}, 4, ouput_name, create_debug_png=create_debug_png)
+        lineGen.run("rendering", path, sketch_output_dirs, fov, 4, output_name)
+        # generate depth and normal
+        render.run("aov", path, aov_output_dirs, fov, {"dd.y": "depth", "nn": "sh_normal"}, 4, output_name, create_debug_png=create_debug_png)
         return
     for path, _, files in os.walk(path):
         for file in files:
@@ -43,8 +44,7 @@ def gen_images(path, datatype, sketch_output_dirs, aov_output_dirs,
 
 def run(input_dir, output_dir, datatype, fov, create_debug_png, modelname_split_indicator_before="", modelname_split_indicator_after=""):
     if not os.path.exists(input_dir):
-        print("Input directory " + str(input_dir) + " does not exits")
-        return
+        raise Exception("Input directory {} does not exits".format(input_dir))
     # generate folders
     sketch_path = make_folder("sketch_", output_dir)
     n_path = make_folder("n_", output_dir)
@@ -75,7 +75,7 @@ def main(args):
 
 if __name__ == '__main__':
     params = [
-        '--input_dir', '..\\..\\resources\\thinig10k',
+        '--input_dir', '..\\..\\resources\\ABC\\abc_0099_stl2_v00',
         '--output_dir', '..\\..\\output\\mapgen'
     ]
     main(params)

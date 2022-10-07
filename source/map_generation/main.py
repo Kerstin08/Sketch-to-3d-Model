@@ -17,7 +17,7 @@ def run(train, input_dir, output_dir, logs_dir,
 
 
     if len(input_dir) <= 0 or not os.path.exists(input_dir):
-        raise RuntimeError("Input and Target image dirs are not given or do not exist!")
+        raise Exception("Input directory is not given or does not exist!")
 
     sketch_dir = os.path.join(input_dir, "sketch_mapgen")
 
@@ -30,25 +30,25 @@ def run(train, input_dir, output_dir, logs_dir,
         target_dir = os.path.join(input_dir, "n_mapgen")
         channels = 3
     else:
-        raise RuntimeError("Given type should either be \"normal\" or \"depth\"!")
+        raise Exception("Given type should either be \"normal\" or \"depth\"!")
 
     if not os.path.exists(sketch_dir) or not os.path.exists(target_dir):
-        raise RuntimeError("Sketch dir: " + sketch_dir +  " or target dir: " + target_dir + " does not exits!")
+        raise Exception("Sketch dir: {} or target dir: {} does not exits!".format(sketch_dir, target_dir))
 
     if len(output_dir) <= 0:
-        raise RuntimeError("Checkpoint Path is not given!")
+        raise Exception("Checkpoint Path is not given!")
     if not os.path.exists(output_dir):
         os.mkdir(output_dir)
 
     if len(logs_dir) <= 0:
-        raise RuntimeError("Logs Path is not given!")
+        raise Exception("Logs Path is not given!")
     if not os.path.exists(logs_dir):
         os.mkdir(logs_dir)
 
     model = map_generation.MapGen(given_type, n_critic, channels, batch_size, weight_L1, use_comparison, output_dir, lr)
     if use_generated_model:
         if not os.path.exists(generated_model_path):
-            raise RuntimeError("Generated model paths are not given!")
+            raise Exception("Generated model paths are not given!")
         model.load_from_checkpoint(generated_model_path)
 
 

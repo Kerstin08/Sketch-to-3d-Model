@@ -3,6 +3,7 @@ import os
 import source.map_generation.main as map_gen
 import source.topology.main as topology_determination
 import source.mesh_generation.deform_mesh as deform_mesh
+import source.util.sketch_preprocess_operations as preprocess_sketch
 
 # Topology
 ## (1.a. split input points into different input sketches based on different "classes", which are signaled by different colors)
@@ -34,10 +35,9 @@ def run(output_dir, logs_dir,
         ):
     for x in (image_sketch, genus_dir, depth_map_gen_model, normal_map_gen_model):
         if not os.path.exists(x):
-            print(str(x) + " does not exist")
+            raise Exception("{} does not exist".format(x))
     basic_mesh = topology(image_sketch, genus_dir)
-    #Todo: remove user input points from (scaled) 265x256 input sketch in order to generate cleaned sketch
-    cleaned_sketch = 0
+    cleaned_sketch = preprocess_sketch.clean_userinput(image_sketch)
     normal_output_path = os.path.join(output_dir, "normal")
     depth_output_path = os.path.join(output_dir, "depth")
     logs_meshGen = os.path.join(logs_dir, "mesh_generation")
