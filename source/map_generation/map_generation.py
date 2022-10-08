@@ -36,10 +36,15 @@ class MapGen(pl.LightningModule):
     def configure_optimizers(self):
         opt_g = torch.optim.RMSprop(self.G.parameters(), lr=(self.lr or self.learning_rate))
         opt_d = torch.optim.RMSprop(self.D.parameters(), lr=(self.lr or self.learning_rate))
-        return (
-            {'optimizer': opt_g, 'frequency': 1},
-            {'optimizer': opt_d, 'frequency': self.n_critic}
-        )
+
+        sch_g = torch.optim.lr_scheduler.StepLR(opt_g, step_size=20, gamma=0.1)
+        sch_d = torch.optim.lr_scheduler.StepLR(opt_d, step_size=20, gamma=0.1)
+        sch_g_config = {'scheduler': sch_g, 'name': 'scheduler_g'}
+        sch_d_config = {'scheduler': sch_d, 'name': 'scheduler_d'}
+
+        return [{'optimizer': opt_g, 'frequency': 1, 'lr_scheduler': sch_g_config},
+                {'optimizer': opt_d, 'frequency': self.n_critic, 'lr_scheduler': sch_d_config}]
+
 
     def forward(self, sample_batched):
         x = sample_batched['input']
@@ -53,7 +58,7 @@ class MapGen(pl.LightningModule):
         pixelwise_loss = self.L1(sample_batched['target'], fake_images)
         g_loss = -d_loss_fake + pixelwise_loss * self.weight_L1
         self.g_running_loss += g_loss.item()*sample_batched['input'].size(0)
-        self.log("g_Loss", g_loss.item(), on_epoch=True, prog_bar=True, logger=True, batch_size=self.batch_size)
+        self.log("g_Loss", float(g_loss.item()), on_epoch=True, prog_bar=True, logger=True, batch_size=self.batch_size)
         return g_loss
 
     def discriminator_step(self, sample_batched, fake_images):
@@ -68,7 +73,7 @@ class MapGen(pl.LightningModule):
 
         # loss as defined by Wasserstein paper
         d_loss = -d_loss_real + d_loss_fake
-        self.log("d_loss", d_loss.item(), on_epoch=True, prog_bar=True, logger=True, batch_size=self.batch_size)
+        self.log("d_loss", float(d_loss.item()), on_epoch=True, prog_bar=True, logger=True, batch_size=self.batch_size)
 
         self.d_pred_running_loss += d_loss_fake.item() * sample_batched['input'].size(0)
         self.d_real_running_loss += d_loss_real.item() * sample_batched['input'].size(0)
@@ -83,19 +88,19 @@ class MapGen(pl.LightningModule):
 
         if optimizer_idx == 1:
             loss = self.discriminator_step(sample_batched, fake_images)
-        if self.global_step % 2 == 0:
-            self.log("global_step", float(self.global_step), on_step=True, batch_size=self.batch_size)
+        #if self.global_step % 2 == 0:
+        self.log("global_step", float(self.global_step), on_step=True, batch_size=self.batch_size)
         return loss
 
     def training_epoch_end(self, outputs):
-        self.log("generator_trainingLoss", self.g_running_loss, on_epoch=True, prog_bar=True, logger=True, batch_size=self.batch_size)
-        self.log("discriminator_trainingLoss_realImages", self.d_real_running_loss, on_epoch=True, prog_bar=True, logger=True, batch_size=self.batch_size)
-        self.log("discriminator_trainingLoss_predictedImages", self.d_pred_running_loss, on_epoch=True, prog_bar=True, logger=True, batch_size=self.batch_size)
-        self.log("discriminator_trainingLoss", self.d_running_loss,  on_epoch=True, prog_bar=True, logger=True, batch_size=self.batch_size)
-        self.d_running_loss = 0
-        self.d_pred_running_loss = 0
-        self.d_real_running_loss = 0
-        self.g_running_loss = 0
+        self.log("generator_trainingLoss", float(self.g_running_loss), on_epoch=True, prog_bar=True, logger=True, batch_size=self.batch_size)
+        self.log("discriminator_trainingLoss_realImages", float(self.d_real_running_loss), on_epoch=True, prog_bar=True, logger=True, batch_size=self.batch_size)
+        self.log("discriminator_trainingLoss_predictedImages", float(self.d_pred_running_loss), on_epoch=True, prog_bar=True, logger=True, batch_size=self.batch_size)
+        self.log("discriminator_trainingLoss", float(self.d_running_loss),  on_epoch=True, prog_bar=True, logger=True, batch_size=self.batch_size)
+        self.d_running_loss = 0.0
+        self.d_pred_running_loss = 0.0
+        self.d_real_running_loss = 0.0
+        self.g_running_loss = 0.0
 
     def validation_step(self, sample_batched, batch_idx):
         predicted_image = self(sample_batched)

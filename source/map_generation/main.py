@@ -10,6 +10,7 @@ from torch.utils.data import DataLoader
 import torch.utils.data as data
 from source.mapgen_dataset import DataSet
 from pytorch_lightning.callbacks import ModelCheckpoint
+from pytorch_lightning.callbacks import LearningRateMonitor
 
 def run(train, input_dir, output_dir, logs_dir,
         type, epochs, lr, batch_size, n_critic, weight_L1,
@@ -59,17 +60,18 @@ def run(train, input_dir, output_dir, logs_dir,
         mode="max",
         dirpath=output_dir,
         filename="MapGen-{epoch:02d}-{global_step}",
-        every_n_train_steps=500
+        every_n_train_steps=1
     )
+    lr_monitor = LearningRateMonitor(logging_interval='step')
     logger = TensorBoardLogger(logs_dir, name="trainModel")
     # Todo: exchange dataset for test, since there should be no target dir any more
     dataSet = DataSet.DS(sketch_dir, target_dir, given_type)
-    trainer = Trainer(accelerator='gpu' if torch.cuda.is_available() else 'cpu',
+    trainer = Trainer(accelerator='cpu' if torch.cuda.is_available() else 'cpu',
                       devices=1,
                       max_epochs=epochs,
-                      callbacks=[checkpoint_callback],
+                      callbacks=[checkpoint_callback, lr_monitor],
                       logger=logger,
-                      log_every_n_steps=10)
+                      log_every_n_steps=1)
     if train:
         train_set_size = int(len(dataSet) * 0.8)
         valid_set_size = len(dataSet) - train_set_size
@@ -115,7 +117,7 @@ def main(args):
     parser.add_argument("--lr", type=float, default=100, help="initial learning rate")
     parser.add_argument("--batch_size", type=int, default=1, help="# of epoch")
     parser.add_argument("--n_critic", type=int, default=5, help="# of n_critic")
-    parser.add_argument("--weight_L1", type=int, default=50, help="L1 weight")
+    parser.add_argument("--weight_L1", type=int, default=500, help="L1 weight")
     parser.add_argument("--use_generated_model", type=bool, default=False, help="If models are trained from scratch or already trained models are used")
     parser.add_argument("--generated_model_path", type=str, default="..\\..\\output\\test.ckpt", help="If test is used determine if comparison images should be generated")
     parser.add_argument("--use_comparison", type=bool, default=True, help="If test is used determine if comparison images should be generated")
@@ -126,7 +128,7 @@ if __name__ == '__main__':
     params = [
         '--input_dir', '0_2000_normal',
         '--type', 'normal',
-        '--epochs', '100',
-        '--lr', '2e-4'
+        '--epochs', '3',
+        '--lr', '0.01'
     ]
     main(params)
