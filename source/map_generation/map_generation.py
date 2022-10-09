@@ -42,8 +42,8 @@ class MapGen(pl.LightningModule):
         sch_g_config = {'scheduler': sch_g, 'name': 'scheduler_g'}
         sch_d_config = {'scheduler': sch_d, 'name': 'scheduler_d'}
 
-        return [{'optimizer': opt_g, 'frequency': 1, 'lr_scheduler': sch_g_config},
-                {'optimizer': opt_d, 'frequency': self.n_critic, 'lr_scheduler': sch_d_config}]
+        return [{'optimizer': opt_g, 'frequency': 1},#, 'lr_scheduler': sch_g_config},
+                {'optimizer': opt_d, 'frequency': self.n_critic}]#, 'lr_scheduler': sch_d_config}]
 
 
     def forward(self, sample_batched):
@@ -88,8 +88,8 @@ class MapGen(pl.LightningModule):
 
         if optimizer_idx == 1:
             loss = self.discriminator_step(sample_batched, fake_images)
-        #if self.global_step % 2 == 0:
-        self.log("global_step", float(self.global_step), on_step=True, batch_size=self.batch_size)
+        if self.global_step % 500 == 0:
+            self.log("global_step", float(self.global_step), on_step=True, batch_size=self.batch_size)
         return loss
 
     def training_epoch_end(self, outputs):
@@ -108,7 +108,8 @@ class MapGen(pl.LightningModule):
         self.log("val_loss", pixelwise_loss.item(), batch_size=self.batch_size)
         grid = torchvision.utils.make_grid(predicted_image[:6])
         logger = self.logger.experiment
-        logger.add_image("generated_images", grid, 0)
+        image_name = str(self.global_step) + "generated_images"
+        logger.add_image(image_name, grid, 0)
 
     def test_step(self, sample_batched, batch_idx):
         predicted_image = self(sample_batched['input'])

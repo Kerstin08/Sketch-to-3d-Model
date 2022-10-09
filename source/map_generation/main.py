@@ -60,18 +60,19 @@ def run(train, input_dir, output_dir, logs_dir,
         mode="max",
         dirpath=output_dir,
         filename="MapGen-{epoch:02d}-{global_step}",
-        every_n_train_steps=1
+        every_n_train_steps=500
     )
-    lr_monitor = LearningRateMonitor(logging_interval='step')
+    #lr_monitor = LearningRateMonitor(logging_interval='step')
     logger = TensorBoardLogger(logs_dir, name="trainModel")
     # Todo: exchange dataset for test, since there should be no target dir any more
     dataSet = DataSet.DS(sketch_dir, target_dir, given_type)
-    trainer = Trainer(accelerator='cpu' if torch.cuda.is_available() else 'cpu',
-                      devices=1,
+    trainer = Trainer(accelerator='gpu' if torch.cuda.is_available() else 'cpu',
+                      devices=-1,
                       max_epochs=epochs,
-                      callbacks=[checkpoint_callback, lr_monitor],
+                      callbacks=[checkpoint_callback],#, lr_monitor],
                       logger=logger,
-                      log_every_n_steps=1)
+                      log_every_n_steps=10,
+                      strategy="dp")
     if train:
         train_set_size = int(len(dataSet) * 0.8)
         valid_set_size = len(dataSet) - train_set_size
@@ -126,9 +127,9 @@ def main(args):
 
 if __name__ == '__main__':
     params = [
-        '--input_dir', '0_2000_normal',
+        '--input_dir', 'datasets/0_2000_normal',
         '--type', 'normal',
-        '--epochs', '3',
-        '--lr', '0.01'
+        '--epochs', '10',
+        '--lr', '2e-4'
     ]
     main(params)
