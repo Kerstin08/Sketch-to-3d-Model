@@ -26,10 +26,6 @@ class MapGen(pl.LightningModule):
         self.weight_L1 = weight_L1
         self.generate_comparison = generate_comparison
         self.output_dir = output_dir
-        self.d_pred_running_loss = 0
-        self.d_real_running_loss = 0
-        self.d_running_loss = 0
-        self.g_running_loss = 0
         self.lr = lr
         self.L1 = torch.nn.L1Loss()
 
@@ -57,7 +53,6 @@ class MapGen(pl.LightningModule):
         d_loss_fake = torch.mean(pred_false)
         pixelwise_loss = self.L1(sample_batched['target'], fake_images)
         g_loss = -d_loss_fake + pixelwise_loss * self.weight_L1
-        self.g_running_loss += g_loss.item()*sample_batched['input'].size(0)
         self.log("g_Loss", float(g_loss.item()), on_epoch=True, prog_bar=True, logger=True, batch_size=self.batch_size)
         return g_loss
 
@@ -74,10 +69,8 @@ class MapGen(pl.LightningModule):
         # loss as defined by Wasserstein paper
         d_loss = -d_loss_real + d_loss_fake
         self.log("d_loss", float(d_loss.item()), on_epoch=True, prog_bar=True, logger=True, batch_size=self.batch_size)
-
-        self.d_pred_running_loss += d_loss_fake.item() * sample_batched['input'].size(0)
-        self.d_real_running_loss += d_loss_real.item() * sample_batched['input'].size(0)
-        self.d_running_loss += d_loss.item() * sample_batched['input'].size(0)
+        self.log("d_loss_real", float(d_loss_real.item()), on_epoch=True, prog_bar=True, logger=True, batch_size=self.batch_size)
+        self.log("d_loss_fake", float(d_loss_fake.item()), on_epoch=True, prog_bar=True, logger=True, batch_size=self.batch_size)
 
         return d_loss
 
@@ -91,16 +84,6 @@ class MapGen(pl.LightningModule):
         if self.global_step % 500 == 0:
             self.log("global_step", float(self.global_step), on_step=True, batch_size=self.batch_size)
         return loss
-
-    def training_epoch_end(self, outputs):
-        self.log("generator_trainingLoss", float(self.g_running_loss), on_epoch=True, prog_bar=True, logger=True, batch_size=self.batch_size)
-        self.log("discriminator_trainingLoss_realImages", float(self.d_real_running_loss), on_epoch=True, prog_bar=True, logger=True, batch_size=self.batch_size)
-        self.log("discriminator_trainingLoss_predictedImages", float(self.d_pred_running_loss), on_epoch=True, prog_bar=True, logger=True, batch_size=self.batch_size)
-        self.log("discriminator_trainingLoss", float(self.d_running_loss),  on_epoch=True, prog_bar=True, logger=True, batch_size=self.batch_size)
-        self.d_running_loss = 0.0
-        self.d_pred_running_loss = 0.0
-        self.d_real_running_loss = 0.0
-        self.g_running_loss = 0.0
 
     def validation_step(self, sample_batched, batch_idx):
         predicted_image = self(sample_batched)
