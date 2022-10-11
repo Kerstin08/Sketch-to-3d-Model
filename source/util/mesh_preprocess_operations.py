@@ -12,6 +12,9 @@ def preprocess(path):
     if not mesh.area > 0:
         print(str(path) + " contains no usable model!")
         return None
+    if mesh.body_count > 1:
+        print(str(path) + " contains more than one model!")
+        return None
 
     cleaned_mesh = clean_mesh(path, mesh)
     if not cleaned_mesh:
