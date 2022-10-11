@@ -71,8 +71,8 @@ def run(train, input_dir, output_dir, logs_dir,
                       max_epochs=epochs,
                       callbacks=[checkpoint_callback],#, lr_monitor],
                       logger=logger,
-                      log_every_n_steps=10,
-                      strategy="dp")
+                      strategy="dp",
+                      precision=16)
     if train:
         train_set_size = int(len(dataSet) * 0.8)
         valid_set_size = len(dataSet) - train_set_size
@@ -116,7 +116,7 @@ def main(args):
     parser.add_argument("--type", type=str, default="normal", help="use \"normal\" or \"depth\" in order to train\\generate depth or normal images")
     parser.add_argument("--epochs", type=int, default=10, help="# of epoch")
     parser.add_argument("--lr", type=float, default=100, help="initial learning rate")
-    parser.add_argument("--batch_size", type=int, default=1, help="# of epoch")
+    parser.add_argument("--batch_size", type=int, default=12, help="size of batches")
     parser.add_argument("--n_critic", type=int, default=5, help="# of n_critic")
     parser.add_argument("--weight_L1", type=int, default=500, help="L1 weight")
     parser.add_argument("--use_generated_model", type=bool, default=False, help="If models are trained from scratch or already trained models are used")
@@ -127,9 +127,9 @@ def main(args):
 
 if __name__ == '__main__':
     params = [
-        '--input_dir', 'datasets/0_2000_normal',
+        '--input_dir', 'datasets/mixed_0_2500_normal',
         '--type', 'normal',
-        '--epochs', '10',
+        '--epochs', '100',
         '--lr', '2e-4'
     ]
     main(params)
