@@ -10,13 +10,11 @@ from torch.utils.data import DataLoader
 import torch.utils.data as data
 from source.mapgen_dataset import DataSet
 from pytorch_lightning.callbacks import ModelCheckpoint
-from pytorch_lightning.callbacks import LearningRateMonitor
+
 
 def run(train, input_dir, output_dir, logs_dir,
-        type, epochs, lr, batch_size, n_critic, weight_L1,
+        type, epochs, lr, batch_size, n_critic, weight_L1, gradient_penalty_coefficient,
         use_generated_model=False, generated_model_path="", use_comparison=True):
-
-
     if len(input_dir) <= 0 or not os.path.exists(input_dir):
         raise Exception("Input directory is not given or does not exist!")
 
@@ -46,30 +44,45 @@ def run(train, input_dir, output_dir, logs_dir,
     if not os.path.exists(logs_dir):
         os.mkdir(logs_dir)
 
-    model = map_generation.MapGen(given_type, n_critic, channels, batch_size, weight_L1, use_comparison, output_dir, lr)
+    model = map_generation.MapGen(type=given_type,
+                                  n_critic=n_critic,
+                                  channels=channels,
+                                  batch_size=batch_size,
+                                  weight_L1=weight_L1,
+                                  gradient_penalty_coefficient=gradient_penalty_coefficient,
+                                  generate_comparison=use_comparison,
+                                  output_dir=output_dir,
+                                  lr=lr)
+
     if use_generated_model:
         if not os.path.exists(generated_model_path):
             raise Exception("Generated model paths are not given!")
-        model.load_from_checkpoint(generated_model_path)
-
+        model.load_from_checkpoint(generated_model_path,
+                                   type=given_type,
+                                   n_critic=n_critic,
+                                   channels=channels,
+                                   batch_size=batch_size,
+                                   weight_L1=weight_L1,
+                                   gradient_penalty_coefficient=gradient_penalty_coefficient,
+                                   generate_comparison=use_comparison,
+                                   output_dir=output_dir,
+                                   lr=lr)
 
     checkpoint_callback = ModelCheckpoint(
         save_top_k=5,
         save_last=True,
-        monitor="global_step",
-        mode="max",
+        monitor="val_loss",
+        mode="min",
         dirpath=output_dir,
-        filename="MapGen-{epoch:02d}-{global_step}",
-        every_n_train_steps=500
+        filename="MapGen-{epoch:02d}-{val_loss}",
     )
-    #lr_monitor = LearningRateMonitor(logging_interval='step')
     logger = TensorBoardLogger(logs_dir, name="trainModel")
     # Todo: exchange dataset for test, since there should be no target dir any more
     dataSet = DataSet.DS(sketch_dir, target_dir, given_type)
     trainer = Trainer(accelerator='gpu' if torch.cuda.is_available() else 'cpu',
                       devices=-1,
                       max_epochs=epochs,
-                      callbacks=[checkpoint_callback],#, lr_monitor],
+                      callbacks=[checkpoint_callback],
                       logger=logger,
                       strategy="dp",
                       precision=16)
@@ -79,9 +92,9 @@ def run(train, input_dir, output_dir, logs_dir,
         seed = torch.Generator().manual_seed(42)
         train_set, valid_set = data.random_split(dataSet, [train_set_size, valid_set_size], seed)
         dataloader_train = DataLoader(train_set, batch_size=batch_size,
-                                shuffle=True, num_workers=4)
+                                      shuffle=True, num_workers=4)
         dataloader_vaild = DataLoader(valid_set, batch_size=batch_size,
-                                shuffle=False, num_workers=4)
+                                      shuffle=False, num_workers=4)
         trainer.fit(model, dataloader_train, dataloader_vaild)
 
     else:
@@ -103,33 +116,45 @@ def diff_args(args):
         args.batch_size,
         args.n_critic,
         args.weight_L1,
+        args.gradient_penalty_coefficient,
         args.use_generated_model,
         args.generated_model_path,
         args.use_comparison)
 
+
 def main(args):
     parser = argparse.ArgumentParser(prog="mapgen_dataset")
     parser.add_argument("--train", type=bool, default=True, help="Train or test")
-    parser.add_argument("--input_dir", type=str, default="..\\..\\resources\\sketch_meshes", help="Directory where the input sketches for training are stored")
-    parser.add_argument("--output_dir", type=str, default="checkpoint", help="Directory where the checkpoints or the test output is stored")
+    parser.add_argument("--input_dir", type=str, default="..\\..\\resources\\sketch_meshes",
+                        help="Directory where the input sketches for training are stored")
+    parser.add_argument("--output_dir", type=str, default="checkpoint",
+                        help="Directory where the checkpoints or the test output is stored")
     parser.add_argument("--logs_dir", type=str, default="logs", help="Directory where the logs are stored")
-    parser.add_argument("--type", type=str, default="normal", help="use \"normal\" or \"depth\" in order to train\\generate depth or normal images")
+    parser.add_argument("--type", type=str, default="normal",
+                        help="use \"normal\" or \"depth\" in order to train\\generate depth or normal images")
     parser.add_argument("--epochs", type=int, default=10, help="# of epoch")
-    parser.add_argument("--lr", type=float, default=100, help="initial learning rate")
-    parser.add_argument("--batch_size", type=int, default=12, help="size of batches")
+    parser.add_argument("--lr", type=float, default=2e-4, help="initial learning rate")
+    parser.add_argument("--batch_size", type=int, default=4, help="size of batches")
     parser.add_argument("--n_critic", type=int, default=5, help="# of n_critic")
     parser.add_argument("--weight_L1", type=int, default=500, help="L1 weight")
-    parser.add_argument("--use_generated_model", type=bool, default=False, help="If models are trained from scratch or already trained models are used")
-    parser.add_argument("--generated_model_path", type=str, default="..\\..\\output\\test.ckpt", help="If test is used determine if comparison images should be generated")
-    parser.add_argument("--use_comparison", type=bool, default=True, help="If test is used determine if comparison images should be generated")
+    parser.add_argument("--gradient_penalty_coefficient", type=int, default=10, help="gradient penalty coefficient")
+    parser.add_argument("--use_generated_model", type=bool, default=False,
+                        help="If models are trained from scratch or already trained models are used")
+    parser.add_argument("--generated_model_path", type=str, default="..\\..\\output\\test.ckpt",
+                        help="If test is used determine if comparison images should be generated")
+    parser.add_argument("--use_comparison", type=bool, default=True,
+                        help="If test is used determine if comparison images should be generated")
     args = parser.parse_args(args)
     diff_args(args)
+
 
 if __name__ == '__main__':
     params = [
         '--input_dir', 'datasets/mixed_0_2500_normal',
-        '--type', 'normal',
-        '--epochs', '100',
-        '--lr', '2e-4'
+        '--input_dir',
+        r'C:\Users\Kerstin\Documents\MasterThesis\masterthesis_hofer_kerstin\resources\mapgen_dataset\mixed_0_2500_depth',
+        '--type', 'depth',
+        '--epochs', '150',
+        '--lr', '5e-5'
     ]
     main(params)

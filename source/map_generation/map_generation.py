@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision
+from networkx.utils.misc import np
 
 from torchvision.utils import make_grid
 from enum import Enum
@@ -16,8 +17,9 @@ class Type(Enum):
 
 
 class MapGen(pl.LightningModule):
-    def __init__(self, type, n_critic, channels, batch_size, weight_L1, generate_comparison, output_dir, lr):
+    def __init__(self, type, n_critic, channels, batch_size, weight_L1, gradient_penalty_coefficient, generate_comparison, output_dir, lr):
         super(MapGen, self).__init__()
+        self.save_hyperparameters()
         self.G = Generator(channels)
         self.D = Discriminator(channels)
         self.n_critic = n_critic
@@ -28,18 +30,14 @@ class MapGen(pl.LightningModule):
         self.output_dir = output_dir
         self.lr = lr
         self.L1 = torch.nn.L1Loss()
+        self.gradient_penalty_coefficient = gradient_penalty_coefficient
 
     def configure_optimizers(self):
         opt_g = torch.optim.RMSprop(self.G.parameters(), lr=(self.lr or self.learning_rate))
         opt_d = torch.optim.RMSprop(self.D.parameters(), lr=(self.lr or self.learning_rate))
 
-        sch_g = torch.optim.lr_scheduler.StepLR(opt_g, step_size=20, gamma=0.1)
-        sch_d = torch.optim.lr_scheduler.StepLR(opt_d, step_size=20, gamma=0.1)
-        sch_g_config = {'scheduler': sch_g, 'name': 'scheduler_g'}
-        sch_d_config = {'scheduler': sch_d, 'name': 'scheduler_d'}
-
-        return [{'optimizer': opt_g, 'frequency': 1},#, 'lr_scheduler': sch_g_config},
-                {'optimizer': opt_d, 'frequency': self.n_critic}]#, 'lr_scheduler': sch_d_config}]
+        return [{'optimizer': opt_g, 'frequency': 1},
+                {'optimizer': opt_d, 'frequency': self.n_critic}]
 
 
     def forward(self, sample_batched):
@@ -56,6 +54,22 @@ class MapGen(pl.LightningModule):
         self.log("g_Loss", float(g_loss.item()), on_epoch=True, prog_bar=True, logger=True, batch_size=self.batch_size)
         return g_loss
 
+    def gradient_penalty(self, real_images, fake_images):
+        alpha = torch.rand((real_images.size(0), 1, 1, 1)).to(real_images.device)
+        alpha = alpha.expand_as(real_images)
+        interpolation = alpha * real_images + ((1 - alpha) * fake_images)
+        d_interpolated = self.discriminator(interpolation)
+        gradients = torch.autograd.grad(
+            outputs=d_interpolated,
+            inputs=interpolation,
+            grad_outputs=torch.ones_like(d_interpolated),
+            create_graph=True,
+            retain_graph=True,
+        )[0]
+        gradients = gradients.view(real_images.size(0), -1)
+        grad_norm = gradients.norm(2, 1)
+        return torch.mean((grad_norm - 1) ** 2)
+
     def discriminator_step(self, sample_batched, fake_images):
         print("Discriminator")
         input_predicted = torch.cat((sample_batched['input'], fake_images), 1)
@@ -65,9 +79,10 @@ class MapGen(pl.LightningModule):
         input_target = torch.cat((sample_batched['input'], sample_batched['target']), 1)
         pred_true = self.D(input_target)
         d_loss_real = torch.mean(pred_true)
+        gradient_penalty = self.gradient_penalty(input_target, input_predicted)
 
         # loss as defined by Wasserstein paper
-        d_loss = -d_loss_real + d_loss_fake
+        d_loss = -d_loss_real + d_loss_fake + self.gradient_penalty_coefficient * gradient_penalty
         self.log("d_loss", float(d_loss.item()), on_epoch=True, prog_bar=True, logger=True, batch_size=self.batch_size)
         self.log("d_loss_real", float(d_loss_real.item()), on_epoch=True, prog_bar=True, logger=True, batch_size=self.batch_size)
         self.log("d_loss_fake", float(d_loss_fake.item()), on_epoch=True, prog_bar=True, logger=True, batch_size=self.batch_size)
@@ -81,8 +96,6 @@ class MapGen(pl.LightningModule):
 
         if optimizer_idx == 1:
             loss = self.discriminator_step(sample_batched, fake_images)
-        if self.global_step % 500 == 0:
-            self.log("global_step", float(self.global_step), on_step=True, batch_size=self.batch_size)
         return loss
 
     def validation_step(self, sample_batched, batch_idx):
