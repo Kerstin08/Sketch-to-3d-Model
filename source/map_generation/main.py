@@ -13,7 +13,7 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 
 
 def run(train, input_dir, output_dir, logs_dir,
-        type, epochs, lr, batch_size, n_critic, weight_L1, gradient_penalty_coefficient,
+        type, epochs, lr, batch_size, n_critic, weight_L1,
         use_generated_model=False, generated_model_path="", use_comparison=True):
     if len(input_dir) <= 0 or not os.path.exists(input_dir):
         raise Exception("Input directory is not given or does not exist!")
@@ -49,7 +49,6 @@ def run(train, input_dir, output_dir, logs_dir,
                                   channels=channels,
                                   batch_size=batch_size,
                                   weight_L1=weight_L1,
-                                  gradient_penalty_coefficient=gradient_penalty_coefficient,
                                   generate_comparison=use_comparison,
                                   output_dir=output_dir,
                                   lr=lr)
@@ -63,7 +62,6 @@ def run(train, input_dir, output_dir, logs_dir,
                                    channels=channels,
                                    batch_size=batch_size,
                                    weight_L1=weight_L1,
-                                   gradient_penalty_coefficient=gradient_penalty_coefficient,
                                    generate_comparison=use_comparison,
                                    output_dir=output_dir,
                                    lr=lr)
@@ -116,7 +114,6 @@ def diff_args(args):
         args.batch_size,
         args.n_critic,
         args.weight_L1,
-        args.gradient_penalty_coefficient,
         args.use_generated_model,
         args.generated_model_path,
         args.use_comparison)
@@ -137,7 +134,6 @@ def main(args):
     parser.add_argument("--batch_size", type=int, default=4, help="size of batches")
     parser.add_argument("--n_critic", type=int, default=5, help="# of n_critic")
     parser.add_argument("--weight_L1", type=int, default=500, help="L1 weight")
-    parser.add_argument("--gradient_penalty_coefficient", type=int, default=10, help="gradient penalty coefficient")
     parser.add_argument("--use_generated_model", type=bool, default=False,
                         help="If models are trained from scratch or already trained models are used")
     parser.add_argument("--generated_model_path", type=str, default="..\\..\\output\\test.ckpt",
