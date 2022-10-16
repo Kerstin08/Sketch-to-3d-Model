@@ -1,11 +1,11 @@
 import os.path
+import time
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision
-from networkx.utils.misc import np
-
+from source.util import OpenEXR_utils
 from torchvision.utils import make_grid
 from enum import Enum
 import shutil
@@ -17,7 +17,7 @@ class Type(Enum):
 
 
 class MapGen(pl.LightningModule):
-    def __init__(self, type, n_critic, channels, batch_size, weight_L1, generate_comparison, output_dir, lr):
+    def __init__(self, type, n_critic, channels, batch_size, weight_L1, output_dir, lr):
         super(MapGen, self).__init__()
         self.save_hyperparameters()
         self.G = Generator(channels)
@@ -26,7 +26,6 @@ class MapGen(pl.LightningModule):
         self.batch_size = batch_size
         self.type = type
         self.weight_L1 = weight_L1
-        self.generate_comparison = generate_comparison
         self.output_dir = output_dir
         self.lr = lr
         self.L1 = torch.nn.L1Loss()
@@ -52,11 +51,6 @@ class MapGen(pl.LightningModule):
         g_loss = -d_loss_fake + pixelwise_loss * self.weight_L1
         self.log("g_Loss", float(g_loss.item()), on_epoch=True, prog_bar=True, logger=True, batch_size=self.batch_size)
         return g_loss
-
-        # Compute and return Gradient Norm
-        gradients = gradients.view(batch_size, -1)
-        grad_norm = gradients.norm(2, 1)
-        return torch.mean((grad_norm - 1) ** 2)
 
     def discriminator_step(self, sample_batched, fake_images):
         print("Discriminator")
@@ -95,26 +89,16 @@ class MapGen(pl.LightningModule):
         logger.add_image(image_name, grid, 0)
 
     def test_step(self, sample_batched, batch_idx):
-        predicted_image = self(sample_batched['input'])
-        imagename = sample_batched['input_path'].rsplit("\\", 1)[-1]
-        if self.generate_comparison:
-            if len(self.output_dir) <= 0:
-                raise RuntimeError("Directory to store comparison images is not given")
-            Grid = make_grid([sample_batched['input'], sample_batched['target'], predicted_image])
-            img = torchvision.transforms.ToPILImage(Grid)
-            image_path = os.path.join(self.output_dir, "comparison_" + imagename)
-            img.save(image_path)
+        predicted_image = self(sample_batched)
+        imagename = sample_batched['input_path'][0].rsplit("\\", 1)[-1].split("_", 1)[0]
+        if self.type == Type.depth:
+            OpenEXR_utils.writeDepthImage(predicted_image, os.path.join(self.output_dir, imagename + "_depth.exr"))
         else:
-            if self.type == Type.normal:
-                output_dir_generated = os.path.join(self.output_dir, "predicted_normals")
-            else:
-                output_dir_generated = os.path.join(self.output_dir, "predicted_depth")
-            if os.path.exists(output_dir_generated):
-                shutil.rmtree(output_dir_generated)
-            os.mkdir(output_dir_generated)
-            img = torchvision.transforms.ToPILImage(predicted_image)
-            image_path = os.path.join(self.output_dir, str(batch_idx) + imagename)
-            img.save(image_path)
+            OpenEXR_utils.writeRGBImage(predicted_image, os.path.join(self.output_dir, imagename + "_normal.exr"))
+        transform = torchvision.transforms.ToPILImage()
+        img = transform(torch.squeeze(predicted_image))
+        image_path = os.path.join(self.output_dir, imagename + ".png")
+        img.save(image_path)
 
 # Generator
 class Generator(nn.Module):

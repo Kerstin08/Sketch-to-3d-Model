@@ -1,6 +1,6 @@
 import torch
 
-import source.util.OpenEXR_conversions as OpenEXR_conversions
+import source.util.OpenEXR_utils as OpenEXR_conversions
 import os
 
 path = "..\\..\\resources\\mapgen_dataset\\ABC"

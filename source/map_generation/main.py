@@ -8,17 +8,23 @@ from pytorch_lightning.loggers import TensorBoardLogger
 import torch
 from torch.utils.data import DataLoader
 import torch.utils.data as data
-from source.mapgen_dataset import DataSet
+from source.mapgen_dataset import dataset
 from pytorch_lightning.callbacks import ModelCheckpoint
 
 
 def run(train, input_dir, output_dir, logs_dir,
         type, epochs, lr, batch_size, n_critic, weight_L1,
-        use_generated_model=False, generated_model_path="", use_comparison=True):
-    if len(input_dir) <= 0 or not os.path.exists(input_dir):
-        raise Exception("Input directory is not given or does not exist!")
+        use_generated_model=False, generated_model_path=""):
+    if train:
+        train(input_dir, output_dir, logs_dir,
+        type, epochs, lr, batch_size, n_critic, weight_L1,
+        use_generated_model, generated_model_path)
+    else:
+        test(input_dir, output_dir, type, batch_size, generated_model_path)
 
-    sketch_dir = os.path.join(input_dir, "sketch_mapgen")
+def train(input_dir, output_dir, logs_dir,
+        type, epochs, lr, batch_size, n_critic, weight_L1,
+        use_generated_model=False, generated_model_path=""):
 
     if type == "depth":
         given_type = map_generation.Type.depth
@@ -31,6 +37,7 @@ def run(train, input_dir, output_dir, logs_dir,
     else:
         raise Exception("Given type should either be \"normal\" or \"depth\"!")
 
+    sketch_dir = os.path.join(input_dir, "sketch_mapgen")
     if not os.path.exists(sketch_dir) or not os.path.exists(target_dir):
         raise Exception("Sketch dir: {} or target dir: {} does not exits!".format(sketch_dir, target_dir))
 
@@ -49,7 +56,6 @@ def run(train, input_dir, output_dir, logs_dir,
                                   channels=channels,
                                   batch_size=batch_size,
                                   weight_L1=weight_L1,
-                                  generate_comparison=use_comparison,
                                   output_dir=output_dir,
                                   lr=lr)
 
@@ -62,7 +68,6 @@ def run(train, input_dir, output_dir, logs_dir,
                                    channels=channels,
                                    batch_size=batch_size,
                                    weight_L1=weight_L1,
-                                   generate_comparison=use_comparison,
                                    output_dir=output_dir,
                                    lr=lr)
 
@@ -75,32 +80,60 @@ def run(train, input_dir, output_dir, logs_dir,
         filename="MapGen-{epoch:02d}-{val_loss}",
     )
     logger = TensorBoardLogger(logs_dir, name="trainModel")
-    # Todo: exchange dataset for test, since there should be no target dir any more
-    dataSet = DataSet.DS(sketch_dir, target_dir, given_type)
-    trainer = Trainer(accelerator='gpu' if torch.cuda.is_available() else 'cpu',
-                      devices=-1,
+    dataSet = dataset.DS(True, given_type, sketch_dir, target_dir)
+    trainer = Trainer(accelerator='cpu' if torch.cuda.is_available() else 'cpu',
+                      devices=1,
                       max_epochs=epochs,
                       callbacks=[checkpoint_callback],
                       logger=logger,
-                      strategy="dp",
                       precision=16)
-    if train:
-        train_set_size = int(len(dataSet) * 0.8)
-        valid_set_size = len(dataSet) - train_set_size
-        seed = torch.Generator().manual_seed(42)
-        train_set, valid_set = data.random_split(dataSet, [train_set_size, valid_set_size], seed)
-        dataloader_train = DataLoader(train_set, batch_size=batch_size,
-                                      shuffle=True, num_workers=4)
-        dataloader_vaild = DataLoader(valid_set, batch_size=batch_size,
-                                      shuffle=False, num_workers=4)
-        trainer.fit(model, dataloader_train, dataloader_vaild)
+    train_set_size = int(len(dataSet) * 0.8)
+    valid_set_size = len(dataSet) - train_set_size
+    seed = torch.Generator().manual_seed(42)
+    train_set, valid_set = data.random_split(dataSet, [train_set_size, valid_set_size], seed)
+    dataloader_train = DataLoader(train_set, batch_size=batch_size,
+                                  shuffle=True, num_workers=4)
+    dataloader_vaild = DataLoader(valid_set, batch_size=batch_size,
+                                  shuffle=False, num_workers=4)
+    trainer.fit(model, dataloader_train, dataloader_vaild)
 
+def test(input_dir, output_dir,
+        type, batch_size, generated_model_path=""):
+
+    if len(input_dir) <= 0 or not os.path.exists(input_dir):
+        raise Exception("Input directory is not given or does not exist!")
+    sketch_dir = os.path.join(input_dir, "sketch_mapgen")
+
+    if type == "depth":
+        given_type = map_generation.Type.depth
+        channels = 1
+    elif type == "normal":
+        given_type = map_generation.Type.normal
+        channels = 3
     else:
-        if not use_generated_model:
-            warnings.warn("Map generation is called on untrained models!")
-        dataloader = DataLoader(dataSet, batch_size=1,
-                                shuffle=False, num_workers=0)
-        trainer.test(model, dataloaders=dataloader)
+        raise Exception("Given type should either be \"normal\" or \"depth\"!")
+
+    if not os.path.exists(sketch_dir):
+        raise Exception("Sketch dir: {} does not exits!".format(sketch_dir))
+
+    if len(output_dir) <= 0:
+        raise Exception("Output Path is not given!")
+    if not os.path.exists(output_dir):
+        os.mkdir(output_dir)
+
+    if not os.path.exists(generated_model_path):
+        raise Exception("Generated model paths are not given!")
+    model = map_generation.MapGen.load_from_checkpoint(generated_model_path, type=given_type,
+                                  channels=channels,
+                                  batch_size=batch_size,
+                                  output_dir=output_dir)
+
+    dataSet = dataset.DS(False, given_type, sketch_dir)
+    trainer = Trainer(accelerator='cpu' if torch.cuda.is_available() else 'cpu',
+                      devices=1)
+    dataloader = DataLoader(dataSet, batch_size=1,
+                                shuffle=False, num_workers=4)
+    trainer.test(model, dataloaders=dataloader)
 
 
 def diff_args(args):
@@ -115,16 +148,15 @@ def diff_args(args):
         args.n_critic,
         args.weight_L1,
         args.use_generated_model,
-        args.generated_model_path,
-        args.use_comparison)
+        args.generated_model_path)
 
 
 def main(args):
     parser = argparse.ArgumentParser(prog="mapgen_dataset")
-    parser.add_argument("--train", type=bool, default=True, help="Train or test")
+    parser.add_argument("--train", type=bool, default=False, help="Train or test")
     parser.add_argument("--input_dir", type=str, default="..\\..\\resources\\sketch_meshes",
                         help="Directory where the input sketches for training are stored")
-    parser.add_argument("--output_dir", type=str, default="checkpoint",
+    parser.add_argument("--output_dir", type=str, default="..\\..\\output\\test",
                         help="Directory where the checkpoints or the test output is stored")
     parser.add_argument("--logs_dir", type=str, default="logs", help="Directory where the logs are stored")
     parser.add_argument("--type", type=str, default="normal",
@@ -134,11 +166,9 @@ def main(args):
     parser.add_argument("--batch_size", type=int, default=4, help="size of batches")
     parser.add_argument("--n_critic", type=int, default=5, help="# of n_critic")
     parser.add_argument("--weight_L1", type=int, default=500, help="L1 weight")
-    parser.add_argument("--use_generated_model", type=bool, default=False,
+    parser.add_argument("--use_generated_model", type=bool, default=True,
                         help="If models are trained from scratch or already trained models are used")
     parser.add_argument("--generated_model_path", type=str, default="..\\..\\output\\test.ckpt",
-                        help="If test is used determine if comparison images should be generated")
-    parser.add_argument("--use_comparison", type=bool, default=True,
                         help="If test is used determine if comparison images should be generated")
     args = parser.parse_args(args)
     diff_args(args)
@@ -146,11 +176,10 @@ def main(args):
 
 if __name__ == '__main__':
     params = [
-        '--input_dir', 'datasets/mixed_0_2500_normal',
-        '--input_dir',
-        r'C:\Users\Kerstin\Documents\MasterThesis\masterthesis_hofer_kerstin\resources\mapgen_dataset\mixed_0_2500_depth',
-        '--type', 'depth',
-        '--epochs', '150',
-        '--lr', '5e-5'
+        '--input_dir', r'C:\Users\Kerstin\Documents\MasterThesis\masterthesis_hofer_kerstin\resources\mapgen_dataset\test',
+        '--type', 'normal',
+        '--epochs', '100',
+        '--lr', '5e-5',
+        '--generated_model_path', r'C:\Users\Kerstin\Documents\MasterThesis\masterthesis_hofer_kerstin\checkpoint\normal_10_12_lr2e-5\last.ckpt'
     ]
     main(params)

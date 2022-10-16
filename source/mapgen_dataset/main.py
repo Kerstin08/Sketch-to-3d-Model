@@ -33,9 +33,9 @@ def gen_images(path, datatype, sketch_output_dirs, aov_output_dirs,
             split_datatype = ".ply" if datatype == "stl" else "." + datatype
             output_name = path.rsplit("\\", 1)[1].rsplit(split_datatype)[0]
         # generate sketches
-        lineGen.run("rendering", path, sketch_output_dirs, fov, 4, output_name)
+       # lineGen.run("rendering", path, sketch_output_dirs, fov, 4, output_name)
         # generate depth and normal
-        render.run("aov", path, aov_output_dirs, fov, {"dd.y": "depth", "nn": "sh_normal"}, 4, output_name, create_debug_png=create_debug_png)
+        render.run("aov", path, aov_output_dirs, fov, {"nn": "sh_normal"}, 4, output_name, create_debug_png=create_debug_png)
         return
     for path, _, files in os.walk(path):
         for file in files:
