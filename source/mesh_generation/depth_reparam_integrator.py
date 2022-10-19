@@ -76,7 +76,7 @@ class DepthReparamIntegrator(ADIntegrator):
 
         pi = scene.ray_intersect_preliminary(ray_reparam, active)
         si = pi.compute_surface_interaction(ray_reparam)
-        L += dr.select(si.is_valid(), si.t, 0)
+        L += dr.select(si.is_valid(), si.t, 2)
 
         return L, active, None
 

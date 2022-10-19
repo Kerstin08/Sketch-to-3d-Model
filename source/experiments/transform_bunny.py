@@ -107,6 +107,22 @@ for it in range(20):
 
     depth_img = mi.render(scene, params, seed=it, spp=16, integrator=depth_integrator_lodaded)
     normal_img = mi.render(scene, seed=it, spp=16, integrator=normal_integrator_lodaded)
+    mask = depth_img.array < 1.5
+    curr_min_val = dr.min(depth_img)
+    masked_img = dr.select(mask,
+                           depth_img.array,
+                           0.0)
+    curr_max_val = dr.max(masked_img)
+    wanted_range_min, wanted_range_max = 0.0, 0.5
+    depth = dr.select(mask,
+                      (depth_img.array - curr_min_val) * (
+                              (wanted_range_max - wanted_range_min) / (
+                              curr_max_val - curr_min_val)) + wanted_range_min,
+                      1.0)
+    depth_tens = mi.TensorXf(depth, shape=(64, 64, 3))
+    print(dr.grad_enabled(depth_img))
+    print(dr.grad_enabled(depth))
+    print(dr.grad_enabled(depth_tens))
 
     depth_loss = dr.sum(dr.sqr(depth_img - depth_img_ref)) / len(depth_img)
     normal_loss = dr.sum(dr.sqr(normal_img - normal_img_ref)) / len(normal_img)

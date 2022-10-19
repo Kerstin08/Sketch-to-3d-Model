@@ -27,13 +27,9 @@ def train(input_dir, output_dir, logs_dir,
         use_generated_model=False, generated_model_path=""):
 
     if type == "depth":
-        given_type = map_generation.Type.depth
         target_dir = os.path.join(input_dir, "d_mapgen")
-        channels = 1
     elif type == "normal":
-        given_type = map_generation.Type.normal
         target_dir = os.path.join(input_dir, "n_mapgen")
-        channels = 3
     else:
         raise Exception("Given type should either be \"normal\" or \"depth\"!")
 
@@ -51,9 +47,7 @@ def train(input_dir, output_dir, logs_dir,
     if not os.path.exists(logs_dir):
         os.mkdir(logs_dir)
 
-    model = map_generation.MapGen(type=given_type,
-                                  n_critic=n_critic,
-                                  channels=channels,
+    model = map_generation.MapGen(n_critic=n_critic,
                                   batch_size=batch_size,
                                   weight_L1=weight_L1,
                                   output_dir=output_dir,
@@ -63,9 +57,7 @@ def train(input_dir, output_dir, logs_dir,
         if not os.path.exists(generated_model_path):
             raise Exception("Generated model paths are not given!")
         model.load_from_checkpoint(generated_model_path,
-                                   type=given_type,
                                    n_critic=n_critic,
-                                   channels=channels,
                                    batch_size=batch_size,
                                    weight_L1=weight_L1,
                                    output_dir=output_dir,
@@ -80,7 +72,7 @@ def train(input_dir, output_dir, logs_dir,
         filename="MapGen-{epoch:02d}-{val_loss}",
     )
     logger = TensorBoardLogger(logs_dir, name="trainModel")
-    dataSet = dataset.DS(True, given_type, sketch_dir, target_dir)
+    dataSet = dataset.DS(True, sketch_dir, target_dir)
     trainer = Trainer(accelerator='cpu' if torch.cuda.is_available() else 'cpu',
                       devices=1,
                       max_epochs=epochs,
@@ -106,10 +98,8 @@ def test(input_dir, output_dir,
 
     if type == "depth":
         given_type = map_generation.Type.depth
-        channels = 1
     elif type == "normal":
         given_type = map_generation.Type.normal
-        channels = 3
     else:
         raise Exception("Given type should either be \"normal\" or \"depth\"!")
 
@@ -123,8 +113,8 @@ def test(input_dir, output_dir,
 
     if not os.path.exists(generated_model_path):
         raise Exception("Generated model paths are not given!")
-    model = map_generation.MapGen.load_from_checkpoint(generated_model_path, type=given_type,
-                                  channels=channels,
+    model = map_generation.MapGen.load_from_checkpoint(generated_model_path,
+                                  type=given_type,
                                   batch_size=batch_size,
                                   output_dir=output_dir)
 
@@ -176,10 +166,11 @@ def main(args):
 
 if __name__ == '__main__':
     params = [
-        '--input_dir', r'C:\Users\Kerstin\Documents\MasterThesis\masterthesis_hofer_kerstin\resources\mapgen_dataset\test',
-        '--type', 'normal',
+        '--input_dir', r'C:\Users\Kerstin\Documents\MasterThesis\masterthesis_hofer_kerstin\resources\mapgen_dataset\mixed_test_3500_3999',
+        '--output_dir', r'C:\Users\Kerstin\Documents\MasterThesis\masterthesis_hofer_kerstin\checkpoint\depth_masked_10_18\94_output',
+        '--type', 'depth',
         '--epochs', '100',
         '--lr', '5e-5',
-        '--generated_model_path', r'C:\Users\Kerstin\Documents\MasterThesis\masterthesis_hofer_kerstin\checkpoint\normal_10_12_lr2e-5\last.ckpt'
+        '--generated_model_path', r'C:\Users\Kerstin\Documents\MasterThesis\masterthesis_hofer_kerstin\checkpoint\depth_masked_10_18\MapGen-epoch=94-val_loss=0.02430247701704502.ckpt'
     ]
     main(params)

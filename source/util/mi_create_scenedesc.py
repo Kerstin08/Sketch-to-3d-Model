@@ -12,11 +12,10 @@ def create_shape(input_mesh, datatype):
     }
     return shape
 
-def create_intergrator_aov(aovs):
-    integrator_aovs = ""
-    for aov in aovs:
-        integrator_aovs += str(aov + ":" + aovs[aov] + ",")
-    integrator = {"type": "aov", "aovs": integrator_aovs}
+def create_integrator_aov():
+    integrator = {
+        'type': 'depth_reparam'
+    }
     return integrator
 
 def create_integrator_direct(emitter_samples):

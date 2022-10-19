@@ -17,14 +17,13 @@ class Type(Enum):
 
 
 class MapGen(pl.LightningModule):
-    def __init__(self, type, n_critic, channels, batch_size, weight_L1, output_dir, lr):
+    def __init__(self, n_critic, batch_size, weight_L1, output_dir, lr):
         super(MapGen, self).__init__()
         self.save_hyperparameters()
-        self.G = Generator(channels)
-        self.D = Discriminator(channels)
+        self.G = Generator()
+        self.D = Discriminator()
         self.n_critic = n_critic
         self.batch_size = batch_size
-        self.type = type
         self.weight_L1 = weight_L1
         self.output_dir = output_dir
         self.lr = lr
@@ -91,10 +90,7 @@ class MapGen(pl.LightningModule):
     def test_step(self, sample_batched, batch_idx):
         predicted_image = self(sample_batched)
         imagename = sample_batched['input_path'][0].rsplit("\\", 1)[-1].split("_", 1)[0]
-        if self.type == Type.depth:
-            OpenEXR_utils.writeDepthImage(predicted_image, os.path.join(self.output_dir, imagename + "_depth.exr"))
-        else:
-            OpenEXR_utils.writeRGBImage(predicted_image, os.path.join(self.output_dir, imagename + "_normal.exr"))
+        OpenEXR_utils.writeRGBImage(predicted_image, os.path.join(self.output_dir, imagename + "_normal.exr"))
         transform = torchvision.transforms.ToPILImage()
         img = transform(torch.squeeze(predicted_image))
         image_path = os.path.join(self.output_dir, imagename + ".png")
@@ -102,10 +98,10 @@ class MapGen(pl.LightningModule):
 
 # Generator
 class Generator(nn.Module):
-    def __init__(self, channels):
+    def __init__(self):
         super(Generator, self).__init__()
         # Encoder
-        self.e_conv1 = nn.Conv2d(channels, 64, 4)
+        self.e_conv1 = nn.Conv2d(3, 64, 4)
         self.e_conv2 = nn.Conv2d(64, 128, 4)
         self.e_conv2_bn = nn.BatchNorm2d(128)
         self.e_conv3 = nn.Conv2d(128, 256, 4)
@@ -139,7 +135,7 @@ class Generator(nn.Module):
         self.d_deconv6_bn = nn.BatchNorm2d(128)
         self.d_deconv7 = nn.ConvTranspose2d(256, 64, 4)
         self.d_deconv7_bn = nn.BatchNorm2d(64)
-        self.d_deconv8 = nn.ConvTranspose2d(128, channels, 4)
+        self.d_deconv8 = nn.ConvTranspose2d(128, 3, 4)
 
 
     def forward(self, x):
@@ -184,9 +180,9 @@ class Generator(nn.Module):
 
 # Discriminator
 class Discriminator(nn.Module):
-    def __init__(self, channels):
+    def __init__(self):
         super(Discriminator, self).__init__()
-        self.conv1 = nn.Conv2d(2*channels, 64, 4)
+        self.conv1 = nn.Conv2d(6, 64, 4)
         self.conv2 = nn.Conv2d(64, 128, 4)
         self.conv2_bn = nn.BatchNorm2d(128)
         self.conv3 = nn.Conv2d(128, 256, 4)

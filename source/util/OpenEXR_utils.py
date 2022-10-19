@@ -22,23 +22,6 @@ def getRGBimageEXR(path):
         channels.append(channel)
     RGB = np.stack(channels, axis=0)
     return RGB
-
-def getDepthimageEXR(path):
-    channel_names = 'T'
-    channel = exr2numpy(path, channel_names)
-    return np.copy(channel)
-
-def writeDepthImage(image, path):
-    img = np.squeeze(image)
-    size = img.shape
-    exrHeader = OpenEXR.Header(size[1], size[0])
-
-    exrHeader['channels'] = {"T": Imath.Channel(Imath.PixelType(Imath.PixelType.FLOAT), 1, 1)}
-    exrOut = OpenEXR.OutputFile(path, exrHeader)
-    GRAY = (img[:, :]).astype(np.float32).tobytes()
-    exrOut.writePixels({'T': GRAY})
-    exrOut.close()
-
 def writeRGBImage(image, path):
     img = image.numpy().squeeze()
     size = img.shape

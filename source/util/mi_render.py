@@ -7,6 +7,7 @@ import drjit as dr
 import argparse
 import mitsuba as mi
 from mitsuba.scalar_rgb import Transform4f as T
+import source.mesh_generation.depth_reparam_integrator
 mi.set_variant('cuda_ad_rgb')
 
 
@@ -19,43 +20,56 @@ def rendering(scene, output_name, output_dirs):
     mi.util.write_bitmap(path, bitmap)
 
 def avo(scene, input_path, aovs, output_name, output_dirs, create_debug_pngs=True):
-    img = mi.render(scene, seed=0, spp=256)
-    # If mesh has invalid mesh vertices, rendering contains nan.
-    if dr.any(dr.isnan(img)):
-        print("Rendered image " + output_name + " includes invalid data! Vertex normals in input model " + input_path + " might be corrupt.")
-        return
-    bitmap = mi.Bitmap(img, channel_names=['R', 'G', 'B'] + scene.integrator().aov_names())
-    channels = dict(bitmap.split())
     if "depth" in aovs.values():
-        depth = channels['dd.y']
+        depth_integrator = source.util.mi_create_scenedesc.create_integrator_aov()
+        depth_integrator_lodaded = mi.load_dict(depth_integrator)
+        img = mi.render(scene, seed=0, spp=256, integrator=depth_integrator_lodaded)
+        # If mesh has invalid mesh vertices, rendering contains nan.
+        if dr.any(dr.isnan(img)):
+            print(
+                "Rendered image " + output_name + " includes invalid data! Vertex normals in input model " + input_path + " might be corrupt.")
+            return
+
+        mask = img.array < 1.5
+        curr_min_val = dr.min(img)
+        masked_img = dr.select(mask,
+                    img.array,
+                    0.0)
+        curr_max_val = dr.max(masked_img)
+        wanted_range_min, wanted_range_max = 0.0, 0.75
+        depth = dr.select(mask,
+                          (img.array - curr_min_val) * (
+                                  (wanted_range_max - wanted_range_min) / (
+                                      curr_max_val - curr_min_val)) + wanted_range_min,
+                          1.0)
+        depth_tens = mi.TensorXf(depth, shape=(256, 256, 3))
+
         filename = output_name + "_depth.exr"
         output_dir = output_dirs['dd.y']
         path = os.path.join(output_dir, filename)
-        mi.util.write_bitmap(path, depth)
+        mi.util.write_bitmap(path, depth_tens)
 
         if create_debug_pngs:
-            bitmap = mi.Bitmap(depth, channel_names=['R', 'G', 'B'] + scene.integrator().aov_names())
             output_dir_png = output_dirs['dd_png']
             png_filename = output_name + "_depth.png"
             path = os.path.join(output_dir_png, png_filename)
-            mi.util.write_bitmap(path, bitmap)
+            mi.util.write_bitmap(path, depth_tens)
 
-    if "sh_normal" in aovs.values():
-        normal = mi.TensorXf(channels['nn']) * 0.5 + 0.5
-        filename = output_name + "_normal.exr"
-        output_dir = output_dirs['nn']
-        path = os.path.join(output_dir, filename)
-        mi.util.write_bitmap(path, normal)
-
-        if create_debug_pngs:
-            png_filename = output_name + "_normal.png"
-            output_dir_png = output_dirs['nn_png']
-            path = os.path.join(output_dir_png, png_filename)
-            mi.util.write_bitmap(path, normal)
-
+    #if "sh_normal" in aovs.values():
+    #    normal = mi.TensorXf(channels['nn'])
+    #    filename = output_name + "_normal.exr"
+    #    output_dir = output_dirs['nn']
+    #    path = os.path.join(output_dir, filename)
+    #    mi.util.write_bitmap(path, normal)
+#
+    #    if create_debug_pngs:
+    #        png_filename = output_name + "_normal.png"
+    #        output_dir_png = output_dirs['nn_png']
+    #        path = os.path.join(output_dir_png, png_filename)
+    #        mi.util.write_bitmap(path, normal)
+#
 def create_aov(aovs, shape, camera, input_path, output_name, output_dirs, create_debug_pngs):
-    integrator_aov = create_scenedesc.create_intergrator_aov(aovs)
-    scene_desc = {"type": "scene", "shape": shape, "camera": camera, "integrator": integrator_aov}
+    scene_desc = {"type": "scene", "shape": shape, "camera": camera}
     # Sometimes mesh data is not incorrect and could not be loaded
     try:
         scene = mi.load_dict(scene_desc)
@@ -133,7 +147,7 @@ def main(args):
 if __name__ == '__main__':
     output_dirs = {'nn': '..\\..\\output', 'dd.y': '..\\..\\output', "dd_png": '..\\..\\output', "nn_png": '..\\..\\output', 'rendering': '..\\..\\output'}
     params = [
-        '--type', 'combined',
-        '--input_path', '..\\..\\resources\\ABC\\abc_0099_stl2_v00\\0_499\\00990247\\00990247_ad629c15d8f3b4ae3a8abd66_trimesh_000.ply',
+        '--type', 'aov',
+        '--input_path', '..\\..\\resources\\ABC\\abc_0099_stl2_v00\\0_499\\00990000\\00990000_6216c8dabde0a997e09b0f42_trimesh_000.ply',
         ]
     main(params)

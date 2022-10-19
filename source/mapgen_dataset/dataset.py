@@ -8,9 +8,8 @@ from source.map_generation import map_generation
 
 
 class DS(Dataset):
-    def __init__(self, train, data_type, dir_input, dir_target=""):
+    def __init__(self, train, dir_input, dir_target=""):
         self.train = train
-        self.data_type = data_type
         self.dir_input = dir_input
         self.image_paths_input = sorted(self.create_dataSet(dir_input))
         self._dir_target = dir_target
@@ -53,10 +52,7 @@ class DS(Dataset):
     def __getitem__(self, index):
         # input is sketch, therefore png file
         input_path = self.image_paths_input[index]
-        if self.data_type.value == map_generation.Type.normal.value:
-            input_image = Image.open(input_path).convert("RGB")
-        else:
-            input_image = Image.open(input_path).convert("L")
+        input_image = Image.open(input_path).convert("RGB")
         transform = transforms.PILToTensor()
         input_image_tensor = transform(input_image).float() / 255.0
         if not self.train:
@@ -66,13 +62,8 @@ class DS(Dataset):
         # target is either normal or depth file, therefore exr
         if self.train:
             target_path = self._image_paths_target[index]
-            if self.data_type.value == map_generation.Type.normal.value:
-                target_image = OpenEXR_utils.getRGBimageEXR(target_path)
-                target_image_tensor = torch.from_numpy(target_image)
-
-            else:
-                target_image = OpenEXR_utils.getDepthimageEXR(target_path)
-                target_image_tensor = 1.0 - torch.unsqueeze(torch.from_numpy(target_image), dim=0)
+            target_image = OpenEXR_utils.getRGBimageEXR(target_path)
+            target_image_tensor = torch.from_numpy(target_image)
             return {'input': input_image_tensor,
                     'target': target_image_tensor,
                     'input_path': input_path,

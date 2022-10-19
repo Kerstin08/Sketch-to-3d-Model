@@ -35,7 +35,7 @@ def gen_images(path, datatype, sketch_output_dirs, aov_output_dirs,
         # generate sketches
        # lineGen.run("rendering", path, sketch_output_dirs, fov, 4, output_name)
         # generate depth and normal
-        render.run("aov", path, aov_output_dirs, fov, {"nn": "sh_normal"}, 4, output_name, create_debug_png=create_debug_png)
+        render.run("aov", path, aov_output_dirs, fov, {"dd.y": "depth", "nn": "sh_normal"}, 4, output_name, create_debug_png=create_debug_png)
         return
     for path, _, files in os.walk(path):
         for file in files:
@@ -75,7 +75,7 @@ def main(args):
 
 if __name__ == '__main__':
     params = [
-        '--input_dir', '..\\..\\resources\\ABC\\abc_0099_stl2_v00',
+        '--input_dir', '..\\..\\resources\\thingi10k',
         '--output_dir', '..\\..\\output\\mapgen'
     ]
     main(params)
