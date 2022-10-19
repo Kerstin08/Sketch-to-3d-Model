@@ -1,25 +1,19 @@
 import os
-
-mesh_dict = {
-    0: 'genus0.ply',
-    1: 'genus1.ply',
-    2: 'genus2.ply',
-    3: 'genus3.ply',
-    4: 'genus4.ply',
-}
+import json
 
 def get_basic_mesh_path(number_holes, path=""):
-    genus = mesh_dict.get(number_holes)
-    if not genus:
-        raise Exception("No base mesh exists for given genus {}".format(genus))
-
-    if len(path) == 0:
-        path = genus
-    else:
-        path = os.path.join(path, genus)
-
-    if not os.path.exists(path):
-        if not genus:
-            raise Exception("No base mesh exists in {} for given genus {}".format(path, genus))
-
-    return path
+    for root, dirs, files in os.walk(path):
+        for file in files:
+            if file == "basic_meshes.json":
+                f = open(os.path.join(root, file), "r")
+                f_json = json.load(f)
+                shapes = f_json["shapes"]
+                try:
+                    f_basic_mesh = shapes[str(number_holes)]
+                except Exception:
+                    raise RuntimeError("No base mesh exists for given genus {}".format(number_holes))
+                path = os.path.join(root, f_basic_mesh)
+                if not os.path.exists(path):
+                    raise Exception("No base mesh exists in {} for given genus {}".format(path, number_holes))
+                return path
+    raise Exception("No base mesh exists for given genus {} or json file basic_meshes.json matching genera to filenames does not exist! ".format(number_holes))
