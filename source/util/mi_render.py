@@ -8,6 +8,7 @@ import argparse
 import mitsuba as mi
 from mitsuba.scalar_rgb import Transform4f as T
 import source.mesh_generation.depth_reparam_integrator
+import source.mesh_generation.normal_reparam_integrator
 mi.set_variant('cuda_ad_rgb')
 
 
@@ -21,7 +22,7 @@ def rendering(scene, output_name, output_dirs):
 
 def avo(scene, input_path, aovs, output_name, output_dirs, create_debug_pngs=True):
     if "depth" in aovs.values():
-        depth_integrator = source.util.mi_create_scenedesc.create_integrator_aov()
+        depth_integrator = source.util.mi_create_scenedesc.create_integrator_depth()
         depth_integrator_lodaded = mi.load_dict(depth_integrator)
         img = mi.render(scene, seed=0, spp=256, integrator=depth_integrator_lodaded)
         # If mesh has invalid mesh vertices, rendering contains nan.
@@ -55,18 +56,25 @@ def avo(scene, input_path, aovs, output_name, output_dirs, create_debug_pngs=Tru
             path = os.path.join(output_dir_png, png_filename)
             mi.util.write_bitmap(path, depth_tens)
 
-    #if "sh_normal" in aovs.values():
-    #    normal = mi.TensorXf(channels['nn'])
-    #    filename = output_name + "_normal.exr"
-    #    output_dir = output_dirs['nn']
-    #    path = os.path.join(output_dir, filename)
-    #    mi.util.write_bitmap(path, normal)
-#
-    #    if create_debug_pngs:
-    #        png_filename = output_name + "_normal.png"
-    #        output_dir_png = output_dirs['nn_png']
-    #        path = os.path.join(output_dir_png, png_filename)
-    #        mi.util.write_bitmap(path, normal)
+    if "sh_normal" in aovs.values():
+        depth_integrator = source.util.mi_create_scenedesc.create_integrator_normal()
+        depth_integrator_lodaded = mi.load_dict(depth_integrator)
+        img = mi.render(scene, seed=0, spp=256, integrator=depth_integrator_lodaded)
+        # If mesh has invalid mesh vertices, rendering contains nan.
+        if dr.any(dr.isnan(img)):
+            print(
+                "Rendered image " + output_name + " includes invalid data! Vertex normals in input model " + input_path + " might be corrupt.")
+            return
+        filename = output_name + "_normal.exr"
+        output_dir = output_dirs['nn']
+        path = os.path.join(output_dir, filename)
+        mi.util.write_bitmap(path, img)
+
+        if create_debug_pngs:
+            output_dir_png = output_dirs['nn_png']
+            png_filename = output_name + "_normal.png"
+            path = os.path.join(output_dir_png, png_filename)
+            mi.util.write_bitmap(path, img)
 #
 def create_aov(aovs, shape, camera, input_path, output_name, output_dirs, create_debug_pngs):
     scene_desc = {"type": "scene", "shape": shape, "camera": camera}
@@ -139,7 +147,7 @@ def main(args):
     parser.add_argument("--input_path", type=str)
     parser.add_argument("--output_dirs", type=dict, default={'nn': '..\\..\\output', 'dd.y': '..\\..\\output', "dd_png": '..\\..\\output', "nn_png": '..\\..\\output', 'rendering': '..\\..\\output'})
     parser.add_argument("--fov", type=int, default=50)
-    parser.add_argument("--aovs", type=dir, default={"dd.y": "depth", "nn": "sh_normal"})
+    parser.add_argument("--aovs", type=dir, default={"nn": "sh_normal"})
     parser.add_argument("--emitter_samples", type=int, default=4)
     args = parser.parse_args(args)
     diff_ars(args)
@@ -148,6 +156,6 @@ if __name__ == '__main__':
     output_dirs = {'nn': '..\\..\\output', 'dd.y': '..\\..\\output', "dd_png": '..\\..\\output', "nn_png": '..\\..\\output', 'rendering': '..\\..\\output'}
     params = [
         '--type', 'aov',
-        '--input_path', '..\\..\\resources\\ABC\\abc_0099_stl2_v00\\0_499\\00990000\\00990000_6216c8dabde0a997e09b0f42_trimesh_000.ply',
+        '--input_path', '..\\..\\resources\\ABC\\abc_0099_stl2_v00\\0_499\\00990027\\00990027_523151fa223eff350f891bee_trimesh_000.ply',
         ]
     main(params)

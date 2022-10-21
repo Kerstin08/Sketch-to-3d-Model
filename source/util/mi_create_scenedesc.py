@@ -12,9 +12,15 @@ def create_shape(input_mesh, datatype):
     }
     return shape
 
-def create_integrator_aov():
+def create_integrator_depth():
     integrator = {
         'type': 'depth_reparam'
+    }
+    return integrator
+
+def create_integrator_normal():
+    integrator = {
+        'type': 'normal_reparam'
     }
     return integrator
 

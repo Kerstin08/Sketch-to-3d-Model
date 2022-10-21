@@ -12,10 +12,10 @@ from source.mapgen_dataset import dataset
 from pytorch_lightning.callbacks import ModelCheckpoint
 
 
-def run(train, input_dir, output_dir, logs_dir,
+def run(train_b, input_dir, output_dir, logs_dir,
         type, epochs, lr, batch_size, n_critic, weight_L1,
         use_generated_model=False, generated_model_path=""):
-    if train:
+    if train_b:
         train(input_dir, output_dir, logs_dir,
         type, epochs, lr, batch_size, n_critic, weight_L1,
         use_generated_model, generated_model_path)
@@ -27,7 +27,7 @@ def train(input_dir, output_dir, logs_dir,
         use_generated_model=False, generated_model_path=""):
 
     if type == "depth":
-        target_dir = os.path.join(input_dir, "d_mapgen")
+        target_dir = os.path.join(input_dir, "d_mapgen_normalized")
     elif type == "normal":
         target_dir = os.path.join(input_dir, "n_mapgen")
     else:
@@ -35,7 +35,7 @@ def train(input_dir, output_dir, logs_dir,
 
     sketch_dir = os.path.join(input_dir, "sketch_mapgen")
     if not os.path.exists(sketch_dir) or not os.path.exists(target_dir):
-        raise Exception("Sketch dir: {} or target dir: {} does not exits!".format(sketch_dir, target_dir))
+        raise Exception("Sketch dir: {} or target dir: {} does not exists!".format(sketch_dir, target_dir))
 
     if len(output_dir) <= 0:
         raise Exception("Checkpoint Path is not given!")
@@ -118,7 +118,7 @@ def test(input_dir, output_dir,
                                   batch_size=batch_size,
                                   output_dir=output_dir)
 
-    dataSet = dataset.DS(False, given_type, sketch_dir)
+    dataSet = dataset.DS(False, sketch_dir)
     trainer = Trainer(accelerator='cpu' if torch.cuda.is_available() else 'cpu',
                       devices=1)
     dataloader = DataLoader(dataSet, batch_size=1,
@@ -167,10 +167,10 @@ def main(args):
 if __name__ == '__main__':
     params = [
         '--input_dir', r'C:\Users\Kerstin\Documents\MasterThesis\masterthesis_hofer_kerstin\resources\mapgen_dataset\mixed_test_3500_3999',
-        '--output_dir', r'C:\Users\Kerstin\Documents\MasterThesis\masterthesis_hofer_kerstin\checkpoint\depth_masked_10_18\94_output',
+        '--output_dir', r'C:\Users\Kerstin\Documents\MasterThesis\masterthesis_hofer_kerstin\checkpoint\depth_masked_10_20\85_output',
         '--type', 'depth',
         '--epochs', '100',
         '--lr', '5e-5',
-        '--generated_model_path', r'C:\Users\Kerstin\Documents\MasterThesis\masterthesis_hofer_kerstin\checkpoint\depth_masked_10_18\MapGen-epoch=94-val_loss=0.02430247701704502.ckpt'
+        '--generated_model_path', r'C:\Users\Kerstin\Documents\MasterThesis\masterthesis_hofer_kerstin\checkpoint\depth_masked_10_20\MapGen-epoch=85-val_loss=0.07336107641458511.ckpt'
     ]
     main(params)

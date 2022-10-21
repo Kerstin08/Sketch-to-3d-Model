@@ -143,7 +143,6 @@ class Generator(nn.Module):
         # down: encoder
         # outermost: downconv, uprelu, upconv, nn.Tanh
         # innermost: downconv, downrelu, downnorm, uprelu, upconv, upnorm
-        # Todo: up for discussion if in innermost downnorm is needed or not
         # everything inbetween: downrelu, downconv, downnorm, uprelu, upconv, upnorm
         # Encoder
         # outermost

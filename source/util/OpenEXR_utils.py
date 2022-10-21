@@ -4,7 +4,6 @@ import numpy as np
 
 def exr2numpy(exr_path, chanel_name):
     file = OpenEXR.InputFile(exr_path)
-    header = file.header()
     dw = file.header()['dataWindow']
     size = (dw.max.x - dw.min.x + 1, dw.max.y - dw.min.y + 1)
     Float_Type = Imath.PixelType(Imath.PixelType.FLOAT)
@@ -13,14 +12,14 @@ def exr2numpy(exr_path, chanel_name):
     return (channel)
 
 
-def getRGBimageEXR(path):
+def getRGBimageEXR(path, axis):
     # RGB, although data is technically xyz, however due to the conversion to vector this is RGB
     channel_names = ['R', 'G', 'B']
     channels = []
     for channel_name in channel_names:
         channel = exr2numpy(path, channel_name)
         channels.append(channel)
-    RGB = np.stack(channels, axis=0)
+    RGB = np.stack(channels, axis=axis)
     return RGB
 def writeRGBImage(image, path):
     img = image.numpy().squeeze()

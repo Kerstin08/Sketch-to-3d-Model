@@ -25,7 +25,7 @@ class MeshGen():
         self.output_dir = output_dir
         self.lr = lr
         self.writer = SummaryWriter(logs)
-        self.epoch = epochs
+        self.epochs = epochs
         self.initial_vertex_positions = None
         self.fov = 60
     def write_output_renders(self, render_depth, render_normal, image_name):
@@ -94,7 +94,7 @@ class MeshGen():
     def offset_verts(self, params, opt):
         opt['deform_verts'] = dr.clamp(opt['deform_verts'], -0.5, 0.5)
         trafo = mi.Transform4f.translate(opt['deform_verts'].x)
-        params['test.vertex_positions'] = dr.ravel(trafo @ self.initial_vertex_positions)
+        params['shape.vertex_positions'] = dr.ravel(trafo @ self.initial_vertex_positions)
         params.update()
 
     def deform_mesh(self, normal_map, depth_map, basic_mesh):
@@ -109,7 +109,6 @@ class MeshGen():
         normal_integrator_lodaded = mi.load_dict(normal_integrator)
 
         datatype = basic_mesh.rsplit(".", 1)[1]
-        basic_mesh_name = basic_mesh.rsplit("\\", 1)[1].rsplit(datatype)[0]
         if datatype != "obj" and datatype != "ply":
             raise Exception("Datatype of given mesh {} cannot be processed! Must either be .ply or .obj".format(basic_mesh))
         shape = create_scenedesc.create_shape(basic_mesh, datatype)
@@ -133,10 +132,10 @@ class MeshGen():
 
         params = mi.traverse(scene)
         print(params)
-        vertex_positions_str = str(basic_mesh_name) + ".vertex_positions"
-        vertex_count_str = str(basic_mesh_name) + ".vertex_count"
-        face_str = str(basic_mesh_name) + ".faces"
-        face_count_str = str(basic_mesh_name) + ".face_count"
+        vertex_positions_str = "shape.vertex_positions"
+        vertex_count_str = "shape.vertex_count"
+        face_str = "shape.faces"
+        face_count_str = "shape.face_count"
         self.initial_vertex_positions = dr.unravel(mi.Point3f, params[vertex_positions_str])
         face_indices = dr.unravel(mi.Point3i, params[face_str])
 
@@ -164,24 +163,45 @@ class MeshGen():
                 edge_vert_faces[zx] = [i]
             else:
                 edge_vert_faces[zx].append(i)
-            initial_edge_lengths = self.get_edge_dist(self.initial_vertex_positions, edge_vert_indices)
-            dr.enable_grad(initial_edge_lengths)
 
-            opt = mi.ad.Adam(lr=self.learning_rate)
-            vertex_count = params[vertex_count_str]
-            opt['deform_verts'] = dr.full(mi.Point3f, 0, vertex_count)
+        for key in edge_vert_faces:
+            print(key)
+            curr_faces = edge_vert_faces[key]
+            if len(curr_faces)<2:
+                print(key)
+        initial_edge_lengths = self.get_edge_dist(self.initial_vertex_positions, edge_vert_indices)
+        dr.enable_grad(initial_edge_lengths)
+
+        opt = mi.ad.Adam(lr=self.lr)
+        vertex_count = params[vertex_count_str]
+        opt['deform_verts'] = dr.full(mi.Point3f, 0, vertex_count)
 
         for epoch in range(self.epochs):
             self.offset_verts(params, opt)
 
-            normal_img = mi.render(scene, params, seed=epoch, spp=16, integrator=normal_integrator_lodaded)
-            depth_img = mi.render(scene, params, seed=epoch, spp=16, integrator=depth_integrator_lodaded)
+            normal_img = mi.render(scene, params, seed=epoch, spp=256, integrator=normal_integrator_lodaded)
+            depth_img = mi.render(scene, params, seed=epoch, spp=256, integrator=depth_integrator_lodaded)
+            mask = depth_img.array < 1.5
+            curr_min_val = dr.min(depth_img)
+            masked_img = dr.select(mask,
+                                   depth_img.array,
+                                   0.0)
+            curr_max_val = dr.max(masked_img)
+            wanted_range_min, wanted_range_max = 0.0, 0.5
+            depth = dr.select(mask,
+                              (depth_img.array - curr_min_val) * (
+                                      (wanted_range_max - wanted_range_min) / (
+                                      curr_max_val - curr_min_val)) + wanted_range_min,
+                              1.0)
+            depth_tens = mi.TensorXf(depth, shape=(256, 256, 3))
+
             if epoch % 10 == 0:
                 image_name = "deformed_images" + str(epoch)
                 self.write_output_renders(depth_img, normal_img, image_name)
 
-            depth_loss = dr.sum(dr.sqr(depth_img - depth_map)) / len(depth_img)
-            normal_loss = dr.sum(dr.sqr(normal_img - normal_map)) / len(normal_img)
+            depth_loss = dr.sum(depth_tens - depth_map)
+            normal_loss = dr.sum(normal_img - normal_map)
+
 
             current_vertex_positions = dr.unravel(mi.Point3f, params[vertex_positions_str])
 
@@ -191,6 +211,7 @@ class MeshGen():
 
             smoothness_loss = 0.0
             for key in edge_vert_faces:
+                print(key)
                 curr_faces = edge_vert_faces[key]
                 cos = self.smoothness(curr_faces, face_indices, current_vertex_positions)
                 smoothness_loss += cos

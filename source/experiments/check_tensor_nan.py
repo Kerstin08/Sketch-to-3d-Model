@@ -15,7 +15,7 @@ for root, dirs, files in os.walk(path):
                     for root2, dirs2, files2 in os.walk(os.path.join(root1, dirname1)):
                         for filename in files2:
                             target_path = os.path.join(root2, filename)
-                            target_image = OpenEXR_conversions.getRGBimageEXR(target_path)
+                            target_image = OpenEXR_conversions.getRGBimageEXR(target_path, 0)
                             target_image_tensor = torch.from_numpy(target_image)
                             if torch.isnan(target_image_tensor).any():
                                 print(target_path)
