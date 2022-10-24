@@ -67,6 +67,8 @@ class MeshGen():
     def smoothness(self, curr_faces, face_indices, vertice_positions):
         if len(curr_faces) > 2:
             raise Exception("Mesh is invalid! Edge has more than 2 adjacent faces!")
+        if len(curr_faces) < 2:
+            raise Exception("Mesh is invalid! Edge has less than 2 adjacent faces!")
         vert_idx_face1 = [face_indices[0][curr_faces[0]],
                             face_indices[1][curr_faces[0]],
                             face_indices[2][curr_faces[0]]]
@@ -164,11 +166,6 @@ class MeshGen():
             else:
                 edge_vert_faces[zx].append(i)
 
-        for key in edge_vert_faces:
-            print(key)
-            curr_faces = edge_vert_faces[key]
-            if len(curr_faces)<2:
-                print(key)
         initial_edge_lengths = self.get_edge_dist(self.initial_vertex_positions, edge_vert_indices)
         dr.enable_grad(initial_edge_lengths)
 
@@ -211,7 +208,6 @@ class MeshGen():
 
             smoothness_loss = 0.0
             for key in edge_vert_faces:
-                print(key)
                 curr_faces = edge_vert_faces[key]
                 cos = self.smoothness(curr_faces, face_indices, current_vertex_positions)
                 smoothness_loss += cos

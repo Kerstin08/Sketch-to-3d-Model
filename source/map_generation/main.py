@@ -26,14 +26,8 @@ def train(input_dir, output_dir, logs_dir,
         type, epochs, lr, batch_size, n_critic, weight_L1,
         use_generated_model=False, generated_model_path=""):
 
-    if type == "depth":
-        target_dir = os.path.join(input_dir, "d_mapgen_normalized")
-    elif type == "normal":
-        target_dir = os.path.join(input_dir, "n_mapgen")
-    else:
-        raise Exception("Given type should either be \"normal\" or \"depth\"!")
-
     sketch_dir = os.path.join(input_dir, "sketch_mapgen")
+    target_dir = os.path.join(input_dir, "target_mapgen")
     if not os.path.exists(sketch_dir) or not os.path.exists(target_dir):
         raise Exception("Sketch dir: {} or target dir: {} does not exists!".format(sketch_dir, target_dir))
 
@@ -72,20 +66,31 @@ def train(input_dir, output_dir, logs_dir,
         filename="MapGen-{epoch:02d}-{val_loss}",
     )
     logger = TensorBoardLogger(logs_dir, name="trainModel")
-    dataSet = dataset.DS(True, sketch_dir, target_dir)
+
+    sketch_train_dir = os.path.join(sketch_dir, "train")
+    if not os.path.exists(sketch_train_dir):
+        raise Exception("Train dir in {} does not exist".format(sketch_dir))
+    sketch_val_dir = os.path.join(sketch_dir, "val")
+    if not os.path.exists(sketch_val_dir):
+        raise Exception("Val dir in {} does not exist".format(sketch_dir))
+    target_train_dir = os.path.join(target_dir, "train")
+    if not os.path.exists(target_train_dir):
+        raise Exception("Train dir in {} does not exist".format(target_dir))
+    target_val_dir = os.path.join(target_dir, "val")
+    if not os.path.exists(target_val_dir):
+        raise Exception("Val dir in {} does not exist".format(target_dir))
+
+    dataSet_train = dataset.DS(True, sketch_train_dir, target_train_dir)
+    dataSet_val = dataset.DS(True, sketch_val_dir, target_val_dir)
     trainer = Trainer(accelerator='cpu' if torch.cuda.is_available() else 'cpu',
                       devices=1,
                       max_epochs=epochs,
                       callbacks=[checkpoint_callback],
                       logger=logger,
                       precision=16)
-    train_set_size = int(len(dataSet) * 0.8)
-    valid_set_size = len(dataSet) - train_set_size
-    seed = torch.Generator().manual_seed(42)
-    train_set, valid_set = data.random_split(dataSet, [train_set_size, valid_set_size], seed)
-    dataloader_train = DataLoader(train_set, batch_size=batch_size,
+    dataloader_train = DataLoader(dataSet_train, batch_size=batch_size,
                                   shuffle=True, num_workers=4)
-    dataloader_vaild = DataLoader(valid_set, batch_size=batch_size,
+    dataloader_vaild = DataLoader(dataSet_val, batch_size=batch_size,
                                   shuffle=False, num_workers=4)
     trainer.fit(model, dataloader_train, dataloader_vaild)
 
@@ -94,17 +99,14 @@ def test(input_dir, output_dir,
 
     if len(input_dir) <= 0 or not os.path.exists(input_dir):
         raise Exception("Input directory is not given or does not exist!")
+
     sketch_dir = os.path.join(input_dir, "sketch_mapgen")
-
-    if type == "depth":
-        given_type = map_generation.Type.depth
-    elif type == "normal":
-        given_type = map_generation.Type.normal
-    else:
-        raise Exception("Given type should either be \"normal\" or \"depth\"!")
-
     if not os.path.exists(sketch_dir):
-        raise Exception("Sketch dir: {} does not exits!".format(sketch_dir))
+        raise Exception("Sketch dir: {} does not exists!".format(sketch_dir))
+
+    test_dir = os.path.join(sketch_dir, "test")
+    if not os.path.exists(test_dir):
+        raise Exception("Test dir in {} does not exist".format(sketch_dir))
 
     if len(output_dir) <= 0:
         raise Exception("Output Path is not given!")
@@ -114,11 +116,11 @@ def test(input_dir, output_dir,
     if not os.path.exists(generated_model_path):
         raise Exception("Generated model paths are not given!")
     model = map_generation.MapGen.load_from_checkpoint(generated_model_path,
-                                  type=given_type,
                                   batch_size=batch_size,
                                   output_dir=output_dir)
 
-    dataSet = dataset.DS(False, sketch_dir)
+
+    dataSet = dataset.DS(False, test_dir)
     trainer = Trainer(accelerator='cpu' if torch.cuda.is_available() else 'cpu',
                       devices=1)
     dataloader = DataLoader(dataSet, batch_size=1,
@@ -143,7 +145,7 @@ def diff_args(args):
 
 def main(args):
     parser = argparse.ArgumentParser(prog="mapgen_dataset")
-    parser.add_argument("--train", type=bool, default=False, help="Train or test")
+    parser.add_argument("--train", type=bool, default=True, help="Train or test")
     parser.add_argument("--input_dir", type=str, default="..\\..\\resources\\sketch_meshes",
                         help="Directory where the input sketches for training are stored")
     parser.add_argument("--output_dir", type=str, default="..\\..\\output\\test",
@@ -156,7 +158,7 @@ def main(args):
     parser.add_argument("--batch_size", type=int, default=4, help="size of batches")
     parser.add_argument("--n_critic", type=int, default=5, help="# of n_critic")
     parser.add_argument("--weight_L1", type=int, default=500, help="L1 weight")
-    parser.add_argument("--use_generated_model", type=bool, default=True,
+    parser.add_argument("--use_generated_model", type=bool, default=False,
                         help="If models are trained from scratch or already trained models are used")
     parser.add_argument("--generated_model_path", type=str, default="..\\..\\output\\test.ckpt",
                         help="If test is used determine if comparison images should be generated")
@@ -166,11 +168,11 @@ def main(args):
 
 if __name__ == '__main__':
     params = [
-        '--input_dir', r'C:\Users\Kerstin\Documents\MasterThesis\masterthesis_hofer_kerstin\resources\mapgen_dataset\mixed_test_3500_3999',
-        '--output_dir', r'C:\Users\Kerstin\Documents\MasterThesis\masterthesis_hofer_kerstin\checkpoint\depth_masked_10_20\85_output',
-        '--type', 'depth',
+        '--input_dir', r'C:\Users\Kerstin\Documents\MasterThesis\masterthesis_hofer_kerstin\resources\mapgen_dataset\su_dataset',
+        '--output_dir', r'C:\Users\Kerstin\Documents\MasterThesis\masterthesis_hofer_kerstin\checkpoint\su_300_cgan\200_output',
+        '--type', 'normal',
         '--epochs', '100',
         '--lr', '5e-5',
-        '--generated_model_path', r'C:\Users\Kerstin\Documents\MasterThesis\masterthesis_hofer_kerstin\checkpoint\depth_masked_10_20\MapGen-epoch=85-val_loss=0.07336107641458511.ckpt'
+        '--generated_model_path', r'C:\Users\Kerstin\Documents\MasterThesis\masterthesis_hofer_kerstin\checkpoint\su_300_cgan\MapGen-epoch=200-val_loss=0.008135649375617504.ckpt'
     ]
     main(params)
