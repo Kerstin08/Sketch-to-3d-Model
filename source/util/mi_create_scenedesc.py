@@ -46,6 +46,7 @@ def create_camera(transform, fov, near, far, width, height):
                   "height": height,
                   'rfilter': {'type': 'gaussian'},
                   "pixel_format": "rgb",
+                  'sample_border': True
               },
               "sampler":
                   {"type": "independent",

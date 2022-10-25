@@ -16,7 +16,7 @@ from torch.utils.tensorboard import SummaryWriter
 mi.set_variant('cuda_ad_rgb')
 
 class MeshGen():
-    def __init__(self, output_dir, logs, weight_depth, weight_normal, weight_smoothness, weight_edge, epochs, lr):
+    def __init__(self, output_dir, logs, weight_depth, weight_normal, weight_smoothness, weight_edge, epochs, log_frequency, lr):
         super(MeshGen, self).__init__()
         self.weight_depth = weight_depth
         self.weight_normal = weight_normal
@@ -24,11 +24,13 @@ class MeshGen():
         self.weight_edge = weight_edge
         self.output_dir = output_dir
         self.lr = lr
+        self.logs = logs
         self.writer = SummaryWriter(logs)
         self.epochs = epochs
         self.initial_vertex_positions = None
         self.fov = 60
-    def write_output_renders(self, render_depth, render_normal, image_name):
+        self.log_frequency = log_frequency
+    def write_output_renders(self, render_normal, render_depth, image_name):
         ref_bpm_normal = mi.util.convert_to_bitmap(render_normal)
         ref_np_normal = np.transpose(np.array(ref_bpm_normal), (2, 0, 1))
         ref_bpm_depth = mi.util.convert_to_bitmap(render_depth)
@@ -100,7 +102,7 @@ class MeshGen():
         params.update()
 
     def deform_mesh(self, normal_map, depth_map, basic_mesh):
-        self.write_output_renders(depth_map, normal_map, "ref_images")
+        self.write_output_renders(normal_map, depth_map, "ref_images")
         depth_integrator = {
                 'type': 'depth_reparam'
         }
@@ -130,7 +132,7 @@ class MeshGen():
         scene = mi.load_dict(scene_desc)
         normal_img_init = mi.render(scene, seed=0, spp=1024, integrator=normal_integrator_lodaded)
         depth_img_init = mi.render(scene, seed=0, spp=1024, integrator=depth_integrator_lodaded)
-        self.write_output_renders(depth_img_init, normal_img_init, "init_images")
+        self.write_output_renders(normal_img_init, depth_img_init, "init_images")
 
         params = mi.traverse(scene)
         print(params)
@@ -192,12 +194,12 @@ class MeshGen():
                               1.0)
             depth_tens = mi.TensorXf(depth, shape=(256, 256, 3))
 
-            if epoch % 10 == 0:
+            if epoch % self.log_frequency == 0 or epoch==epoch-1:
                 image_name = "deformed_images" + str(epoch)
-                self.write_output_renders(depth_img, normal_img, image_name)
+                self.write_output_renders(normal_img, depth_img, image_name)
 
-            depth_loss = dr.sum(depth_tens - depth_map)
-            normal_loss = dr.sum(normal_img - normal_map)
+            depth_loss = dr.sum(abs(depth_tens - depth_map))
+            normal_loss = dr.sum(abs(normal_img - normal_map))
 
 
             current_vertex_positions = dr.unravel(mi.Point3f, params[vertex_positions_str])
@@ -212,18 +214,13 @@ class MeshGen():
                 cos = self.smoothness(curr_faces, face_indices, current_vertex_positions)
                 smoothness_loss += cos
 
-            print(dr.grad_enabled(depth_loss))
-            print(dr.grad_enabled(normal_loss))
-            print(dr.grad_enabled(edge_loss))
-            print(dr.grad_enabled(smoothness_loss))
-
-            loss = depth_loss * self.weight_depth + normal_loss * self.weight_normal + edge_loss * self.weight_edge + smoothness_loss * self.weight_smooth
+            loss = depth_loss * self.weight_depth + normal_loss * self.weight_normal + edge_loss * self.weight_edge + smoothness_loss * self.weight_smoothness
             dr.backward(loss)
 
             opt.step()
 
             self.writer.add_scalar("loss", loss[0], epoch)
-            print(f"Epochs {epoch:02d}: error={loss[0]:6f} loss_normal={normal_loss[0]:6f} loss_depth={depth_loss[0]:6f} loss_edge={edge_loss[0]:6f}", end='\r')
+            print("Epochs {}: error={} loss_normal={} loss_depth={} loss_edge={} loss_smoothness={}".format(epoch, loss[0], normal_loss[0], depth_loss[0], edge_loss[0], smoothness_loss[0]))
 
         self.writer.close()
         mesh = mi.Mesh(
@@ -238,5 +235,5 @@ class MeshGen():
         mesh_params["vertex_positions"] = dr.ravel(params[vertex_positions_str])
         mesh_params["faces"] = dr.ravel(params[face_str])
         mesh_params.update()
-        output_path = os.path.join(self.output_dir, "deform_mesh.py")
+        output_path = os.path.join(self.output_dir, "deform_mesh.ply")
         mesh.write_ply(output_path)
