@@ -82,12 +82,13 @@ def train(input_dir, output_dir, logs_dir,
 
     dataSet_train = dataset.DS(True, sketch_train_dir, target_train_dir)
     dataSet_val = dataset.DS(True, sketch_val_dir, target_val_dir)
-    trainer = Trainer(accelerator='cpu' if torch.cuda.is_available() else 'cpu',
-                      devices=1,
+    trainer = Trainer(accelerator='gpu' if torch.cuda.is_available() else 'cpu',
+                      devices=4,
                       max_epochs=epochs,
                       callbacks=[checkpoint_callback],
                       logger=logger,
-                      precision=16)
+                      precision=16,
+                      strategy="ddp")
     dataloader_train = DataLoader(dataSet_train, batch_size=batch_size,
                                   shuffle=True, num_workers=4)
     dataloader_vaild = DataLoader(dataSet_val, batch_size=batch_size,
@@ -121,7 +122,7 @@ def test(input_dir, output_dir,
 
 
     dataSet = dataset.DS(False, test_dir)
-    trainer = Trainer(accelerator='cpu' if torch.cuda.is_available() else 'cpu',
+    trainer = Trainer(accelerator='gpu' if torch.cuda.is_available() else 'cpu',
                       devices=1)
     dataloader = DataLoader(dataSet, batch_size=1,
                                 shuffle=False, num_workers=4)
@@ -145,20 +146,20 @@ def diff_args(args):
 
 def main(args):
     parser = argparse.ArgumentParser(prog="mapgen_dataset")
-    parser.add_argument("--train", type=bool, default=True, help="Train or test")
+    parser.add_argument("--train", type=bool, default=False, help="Train or test")
     parser.add_argument("--input_dir", type=str, default="..\\..\\resources\\sketch_meshes",
                         help="Directory where the input sketches for training are stored")
-    parser.add_argument("--output_dir", type=str, default="..\\..\\output\\test",
+    parser.add_argument("--output_dir", type=str, default="checkpoints",
                         help="Directory where the checkpoints or the test output is stored")
     parser.add_argument("--logs_dir", type=str, default="logs", help="Directory where the logs are stored")
     parser.add_argument("--type", type=str, default="normal",
                         help="use \"normal\" or \"depth\" in order to train\\generate depth or normal images")
     parser.add_argument("--epochs", type=int, default=10, help="# of epoch")
-    parser.add_argument("--lr", type=float, default=2e-4, help="initial learning rate")
+    parser.add_argument("--lr", type=float, default=2e-5, help="initial learning rate")
     parser.add_argument("--batch_size", type=int, default=4, help="size of batches")
     parser.add_argument("--n_critic", type=int, default=5, help="# of n_critic")
     parser.add_argument("--weight_L1", type=int, default=500, help="L1 weight")
-    parser.add_argument("--use_generated_model", type=bool, default=False,
+    parser.add_argument("--use_generated_model", type=bool, default=True,
                         help="If models are trained from scratch or already trained models are used")
     parser.add_argument("--generated_model_path", type=str, default="..\\..\\output\\test.ckpt",
                         help="If test is used determine if comparison images should be generated")
@@ -168,11 +169,11 @@ def main(args):
 
 if __name__ == '__main__':
     params = [
-        '--input_dir', r'C:\Users\Kerstin\Documents\MasterThesis\masterthesis_hofer_kerstin\resources\mapgen_dataset\su_dataset',
-        '--output_dir', r'C:\Users\Kerstin\Documents\MasterThesis\masterthesis_hofer_kerstin\checkpoint\su_300_cgan\200_output',
+        '--input_dir', 'datasets/su_dataset',
         '--type', 'normal',
-        '--epochs', '100',
+        '--epochs', '200',
         '--lr', '5e-5',
-        '--generated_model_path', r'C:\Users\Kerstin\Documents\MasterThesis\masterthesis_hofer_kerstin\checkpoint\su_300_cgan\MapGen-epoch=200-val_loss=0.008135649375617504.ckpt'
+        '--output_dir', "checkpoint/176_output",
+        '--generated_model_path', "checkpoint/MapGen-epoch=176-val_loss=0.08904778212308884.ckpt"
     ]
     main(params)

@@ -22,7 +22,7 @@ def getRGBimageEXR(path, axis):
     RGB = np.stack(channels, axis=axis)
     return RGB
 def writeRGBImage(image, path):
-    img = image.numpy().squeeze()
+    img = image.detach().cpu().numpy().squeeze()
     size = img.shape
     header = OpenEXR.Header(size[1], size[2])
     half_chan = Imath.Channel(Imath.PixelType(Imath.PixelType.HALF))
