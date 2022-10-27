@@ -1,6 +1,8 @@
 import os
 import torch
 import pytorch_lightning as pl
+import numpy as np
+from PIL import Image
 import torchvision
 
 from enum import Enum
@@ -43,7 +45,7 @@ class MapGen(pl.LightningModule):
         input_predicted = torch.cat((sample_batched['input'], fake_images), 1)
         pred_false = self.D(input_predicted)
         d_loss_fake = torch.mean(pred_false)
-        pixelwise_loss = self.L1(sample_batched['target'], fake_images)
+        pixelwise_loss = self.L1(fake_images, sample_batched['target'])
         g_loss = -d_loss_fake + pixelwise_loss * self.weight_L1
         self.log("g_Loss", float(g_loss.item()), on_epoch=True, prog_bar=True, logger=True, batch_size=self.batch_size)
         return g_loss
@@ -71,25 +73,26 @@ class MapGen(pl.LightningModule):
         if optimizer_idx == 0:
             loss = self.generator_step(sample_batched, fake_images)
 
-        if optimizer_idx == 1:
+        elif optimizer_idx == 1:
             loss = self.discriminator_step(sample_batched, fake_images)
         return loss
 
     def validation_step(self, sample_batched, batch_idx):
         predicted_image = self(sample_batched)
-        pixelwise_loss = self.L1(sample_batched['target'], predicted_image)
+        pixelwise_loss = self.L1(predicted_image, sample_batched['target'])
         self.log("val_loss", pixelwise_loss.item(), batch_size=self.batch_size)
-        grid = torchvision.utils.make_grid(predicted_image[:6])
+        grid = torch.cat((predicted_image, sample_batched['target']), 2)
+        grid_comp = torchvision.utils.make_grid(grid[:6])
         logger = self.logger.experiment
-        image_name = str(self.global_step) + "generated_images"
-        logger.add_image(image_name, grid, 0)
+        image_name_pred = str(self.global_step) + "generated_and_target_images"
+        logger.add_image(image_name_pred, 1-grid_comp*127.5, 0)
 
     def test_step(self, sample_batched, batch_idx):
         predicted_image = self(sample_batched)
+        predicted_image_norm = 1-predicted_image*127.5
         imagename = sample_batched['input_path'][0].rsplit("/", 1)[-1].split("_", 1)[0]
         OpenEXR_utils.writeRGBImage(predicted_image, os.path.join(self.output_dir, imagename + "_normal.exr"))
         transform = torchvision.transforms.ToPILImage()
-        img = transform(torch.squeeze(predicted_image))
+        img = transform(torch.squeeze(predicted_image_norm))
         image_path = os.path.join(self.output_dir, imagename)
         img.save(image_path)
-
