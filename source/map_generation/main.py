@@ -42,15 +42,13 @@ def train(input_dir, output_dir, logs_dir,
         os.mkdir(logs_dir)
 
     if type == "depth":
-        channel = 1
         given_type = map_generation.Type.depth
     elif type == "normal":
-        channel = 3
         given_type = map_generation.Type.normal
     else:
         raise Exception("Given type should either be \"normal\" or \"depth\"!")
 
-    model = map_generation.MapGen(channel=channel,
+    model = map_generation.MapGen(data_type=given_type,
                                   n_critic=n_critic,
                                   batch_size=batch_size,
                                   weight_L1=weight_L1,
@@ -61,7 +59,6 @@ def train(input_dir, output_dir, logs_dir,
         if not os.path.exists(generated_model_path):
             raise Exception("Generated model paths are not given!")
         model.load_from_checkpoint(generated_model_path,
-                                   channel=channel,
                                    n_critic=n_critic,
                                    batch_size=batch_size,
                                    weight_L1=weight_L1,
@@ -113,8 +110,9 @@ def test(input_dir, output_dir,
         raise Exception("Input directory is not given or does not exist!")
 
     sketch_dir = os.path.join(input_dir, "sketch_mapgen")
-    if not os.path.exists(sketch_dir):
-        raise Exception("Sketch dir: {} does not exists!".format(sketch_dir))
+    target_dir = os.path.join(input_dir, "target_mapgen")
+    if not os.path.exists(sketch_dir) or not os.path.exists(target_dir):
+        raise Exception("Sketch dir: {} or target dir: {} does not exists!".format(sketch_dir, target_dir))
 
     test_dir = os.path.join(sketch_dir, "test")
     if not os.path.exists(test_dir):
@@ -139,7 +137,7 @@ def test(input_dir, output_dir,
                                   output_dir=output_dir)
 
 
-    dataSet = dataset.DS(False, given_type, test_dir)
+    dataSet = dataset.DS(False, given_type, test_dir, target_dir)
     trainer = Trainer(accelerator='gpu' if torch.cuda.is_available() else 'cpu',
                       devices=1)
     dataloader = DataLoader(dataSet, batch_size=1,
@@ -187,9 +185,9 @@ def main(args):
 
 if __name__ == '__main__':
     params = [
-        '--input_dir', 'datasets/su_dataset',
+        '--input_dir', 'datasets/mixed_0_2500_normal',
         '--type', 'normal',
-        '--epochs', '200',
+        '--epochs', '300',
         '--lr', '5e-5',
         '--output_dir', "checkpoint/176_output",
         '--generated_model_path', "checkpoint/MapGen-epoch=176-val_loss=0.08904778212308884.ckpt"

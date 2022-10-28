@@ -16,9 +16,10 @@ class Type(Enum):
     depth = 2
 
 class MapGen(pl.LightningModule):
-    def __init__(self, channel, n_critic, batch_size, weight_L1, output_dir, lr):
+    def __init__(self, data_type, channel, n_critic, batch_size, weight_L1, output_dir, lr):
         super(MapGen, self).__init__()
         self.save_hyperparameters()
+        self.data_type = data_type
         self.G = Generator(channel)
         self.D = Discriminator(channel)
         self.n_critic = n_critic
@@ -27,6 +28,17 @@ class MapGen(pl.LightningModule):
         self.output_dir = output_dir
         self.lr = lr
         self.L1 = torch.nn.L1Loss()
+
+    @property
+    def channel(self):
+        return self.channel
+
+    @channel.setter
+    def channel(self):
+        if self.data_type == Type.depth:
+            self._channel = 1
+        else:
+            self._channel = 3
 
     def configure_optimizers(self):
         opt_g = torch.optim.RMSprop(self.G.parameters(), lr=(self.lr or self.learning_rate))
@@ -100,8 +112,10 @@ class MapGen(pl.LightningModule):
     def test_step(self, sample_batched, batch_idx):
         predicted_image = self(sample_batched)
         predicted_image_norm = (predicted_image+1.0)*127.5
+        target_image_norm = (sample_batched['target']+1.0)*127.5
         imagename = sample_batched['input_path'][0].rsplit("/", 1)[-1].split("_", 1)[0]
-        OpenEXR_utils.writeRGBImage(predicted_image, os.path.join(self.output_dir, imagename + "_normal.exr"))
-        img = Image.fromarray(torch.squeeze(predicted_image_norm).int().cpu().numpy().astype(np.uint8).transpose(1, 2, 0))
-        image_path = os.path.join(self.output_dir, imagename)
+        OpenEXR_utils.writeRGBImage(predicted_image, self.data_type, os.path.join(self.output_dir, imagename + "_normal.exr"))
+        comp = torch.cat((predicted_image_norm, target_image_norm), 3)
+        img = Image.fromarray(torch.squeeze(comp).int().cpu().numpy().astype(np.uint8).transpose(1, 2, 0))
+        image_path = os.path.join(self.output_dir, imagename + ".png")
         img.save(image_path)
