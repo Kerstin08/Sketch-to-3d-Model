@@ -16,12 +16,12 @@ class Type(Enum):
     depth = 2
 
 class MapGen(pl.LightningModule):
-    def __init__(self, data_type, channel, n_critic, batch_size, weight_L1, output_dir, lr):
+    def __init__(self, data_type, n_critic, batch_size, weight_L1, output_dir, lr):
         super(MapGen, self).__init__()
         self.save_hyperparameters()
         self.data_type = data_type
-        self.G = Generator(channel)
-        self.D = Discriminator(channel)
+        self.G = Generator(self.channel)
+        self.D = Discriminator(self.channel)
         self.n_critic = n_critic
         self.batch_size = batch_size
         self.weight_L1 = weight_L1
@@ -31,14 +31,11 @@ class MapGen(pl.LightningModule):
 
     @property
     def channel(self):
-        return self.channel
-
-    @channel.setter
-    def channel(self):
         if self.data_type == Type.depth:
-            self._channel = 1
+            return 1
         else:
-            self._channel = 3
+            return 3
+
 
     def configure_optimizers(self):
         opt_g = torch.optim.RMSprop(self.G.parameters(), lr=(self.lr or self.learning_rate))
