@@ -81,18 +81,27 @@ class MapGen(pl.LightningModule):
         predicted_image = self(sample_batched)
         pixelwise_loss = self.L1(predicted_image, sample_batched['target'])
         self.log("val_loss", pixelwise_loss.item(), batch_size=self.batch_size)
-        grid = torch.cat((predicted_image, sample_batched['target']), 2)
-        grid_comp = torchvision.utils.make_grid(grid[:6])
+        target_norm = (sample_batched['target']+1)/2
+        predicted_list = predicted_image[:6]
+        transformed_images = []
+        target_list = target_norm[:6]
+        for i in range(len(predicted_list)):
+            curr_pred = predicted_list[i]
+            curr_target = target_list[i]
+            i_norm = (curr_pred+1.0) / 2
+            pred_target = torch.cat((i_norm, curr_target), 1)
+            transformed_images.append(pred_target)
+
+        grid = torchvision.utils.make_grid(transformed_images)
         logger = self.logger.experiment
         image_name_pred = str(self.global_step) + "generated_and_target_images"
-        logger.add_image(image_name_pred, 1-grid_comp*127.5, 0)
+        logger.add_image(image_name_pred, grid, 0)
 
     def test_step(self, sample_batched, batch_idx):
         predicted_image = self(sample_batched)
-        predicted_image_norm = 1-predicted_image*127.5
+        predicted_image_norm = (predicted_image+1.0)*127.5
         imagename = sample_batched['input_path'][0].rsplit("/", 1)[-1].split("_", 1)[0]
         OpenEXR_utils.writeRGBImage(predicted_image, os.path.join(self.output_dir, imagename + "_normal.exr"))
-        transform = torchvision.transforms.ToPILImage()
-        img = transform(torch.squeeze(predicted_image_norm))
+        img = Image.fromarray(torch.squeeze(predicted_image_norm).int().cpu().numpy().astype(np.uint8).transpose(1, 2, 0))
         image_path = os.path.join(self.output_dir, imagename)
         img.save(image_path)
