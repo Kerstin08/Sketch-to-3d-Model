@@ -12,24 +12,33 @@ def exr2numpy(exr_path, chanel_name):
     return (channel)
 
 
-def getRGBimageEXR(path, axis):
+def getRGBimageEXR(path, data_type, axis):
     # RGB, although data is technically xyz, however due to the conversion to vector this is RGB
-    channel_names = ['R', 'G', 'B']
+    if data_type == map_generation.Type.normal.value:
+        channel_names = ['R', 'G', 'B']
+    else:
+        channel_names = ['R']
     channels = []
     for channel_name in channel_names:
         channel = exr2numpy(path, channel_name)
         channels.append(channel)
     RGB = np.stack(channels, axis=axis)
     return RGB
-def writeRGBImage(image, path):
+
+def writeRGBImage(image, data_type, path):
     img = image.detach().cpu().numpy().squeeze()
     size = img.shape
     header = OpenEXR.Header(size[1], size[2])
     half_chan = Imath.Channel(Imath.PixelType(Imath.PixelType.HALF))
     header['channels'] = dict([(c, half_chan) for c in "RGB"])
     out = OpenEXR.OutputFile(path, header)
-    R = (img[0, :, :]).astype(np.float16).tostring()
-    G = (img[1, :, :]).astype(np.float16).tostring()
-    B = (img[2, :, :]).astype(np.float16).tostring()
+    if data_type == map_generation.Type.normal.value:
+        R = (img[0, :, :]).astype(np.float16).tostring()
+        G = (img[1, :, :]).astype(np.float16).tostring()
+        B = (img[2, :, :]).astype(np.float16).tostring()
+    else:
+        R = (img[0, :, :]).astype(np.float16).tostring()
+        G = (img[0, :, :]).astype(np.float16).tostring()
+        B = (img[0, :, :]).astype(np.float16).tostring()
     out.writePixels({'R': R, 'G': G, 'B': B})
     out.close()

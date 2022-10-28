@@ -16,11 +16,11 @@ class Type(Enum):
     depth = 2
 
 class MapGen(pl.LightningModule):
-    def __init__(self, n_critic, batch_size, weight_L1, output_dir, lr):
+    def __init__(self, channel, n_critic, batch_size, weight_L1, output_dir, lr):
         super(MapGen, self).__init__()
         self.save_hyperparameters()
-        self.G = Generator()
-        self.D = Discriminator()
+        self.G = Generator(channel)
+        self.D = Discriminator(channel)
         self.n_critic = n_critic
         self.batch_size = batch_size
         self.weight_L1 = weight_L1

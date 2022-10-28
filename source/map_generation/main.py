@@ -41,7 +41,17 @@ def train(input_dir, output_dir, logs_dir,
     if not os.path.exists(logs_dir):
         os.mkdir(logs_dir)
 
-    model = map_generation.MapGen(n_critic=n_critic,
+    if type == "depth":
+        channel = 1
+        given_type = map_generation.Type.depth
+    elif type == "normal":
+        channel = 3
+        given_type = map_generation.Type.normal
+    else:
+        raise Exception("Given type should either be \"normal\" or \"depth\"!")
+
+    model = map_generation.MapGen(channel=channel,
+                                  n_critic=n_critic,
                                   batch_size=batch_size,
                                   weight_L1=weight_L1,
                                   output_dir=output_dir,
@@ -51,6 +61,7 @@ def train(input_dir, output_dir, logs_dir,
         if not os.path.exists(generated_model_path):
             raise Exception("Generated model paths are not given!")
         model.load_from_checkpoint(generated_model_path,
+                                   channel=channel,
                                    n_critic=n_critic,
                                    batch_size=batch_size,
                                    weight_L1=weight_L1,
@@ -80,8 +91,8 @@ def train(input_dir, output_dir, logs_dir,
     if not os.path.exists(target_val_dir):
         raise Exception("Val dir in {} does not exist".format(target_dir))
 
-    dataSet_train = dataset.DS(True, sketch_train_dir, target_train_dir)
-    dataSet_val = dataset.DS(True, sketch_val_dir, target_val_dir)
+    dataSet_train = dataset.DS(True, given_type, sketch_train_dir, target_train_dir)
+    dataSet_val = dataset.DS(True, given_type, sketch_val_dir, target_val_dir)
     trainer = Trainer(accelerator='gpu' if torch.cuda.is_available() else 'cpu',
                       devices=4,
                       max_epochs=epochs,
@@ -114,6 +125,13 @@ def test(input_dir, output_dir,
     if not os.path.exists(output_dir):
         os.mkdir(output_dir)
 
+    if type == "depth":
+        given_type = map_generation.Type.depth
+    elif type == "normal":
+        given_type = map_generation.Type.normal
+    else:
+        raise Exception("Given type should either be \"normal\" or \"depth\"!")
+
     if not os.path.exists(generated_model_path):
         raise Exception("Generated model paths are not given!")
     model = map_generation.MapGen.load_from_checkpoint(generated_model_path,
@@ -121,7 +139,7 @@ def test(input_dir, output_dir,
                                   output_dir=output_dir)
 
 
-    dataSet = dataset.DS(False, test_dir)
+    dataSet = dataset.DS(False, given_type, test_dir)
     trainer = Trainer(accelerator='gpu' if torch.cuda.is_available() else 'cpu',
                       devices=1)
     dataloader = DataLoader(dataSet, batch_size=1,

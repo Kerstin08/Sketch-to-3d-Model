@@ -40,10 +40,10 @@ class Decoder(nn.Module):
         return fx
 
 class Generator(nn.Module):
-    def __init__(self):
+    def __init__(self, channel):
         super().__init__()
         # Encoder
-        self.e_conv1 = nn.Conv2d(3, 64, kernel_size=4, stride=2, padding=1)
+        self.e_conv1 = nn.Conv2d(channel, 64, kernel_size=4, stride=2, padding=1)
         self.e_conv2 = Encoder(64, 128)
         self.e_conv3 = Encoder(128, 256)
         self.e_conv4 = Encoder(256, 512)
@@ -60,7 +60,7 @@ class Generator(nn.Module):
         self.d_deconv5 = Decoder(1024, 256)
         self.d_deconv6 = Decoder(512, 128)
         self.d_deconv7 = Decoder(256, 64)
-        self.d_deconv8 = nn.ConvTranspose2d(128, 3, kernel_size=4, stride=2, padding=1)
+        self.d_deconv8 = nn.ConvTranspose2d(128, channel, kernel_size=4, stride=2, padding=1)
 
 
     def forward(self, x):

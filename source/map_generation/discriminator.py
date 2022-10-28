@@ -1,10 +1,11 @@
+import torch
 import torch.nn as nn
 
 
 class Discriminator(nn.Module):
-    def __init__(self):
+    def __init__(self, channel):
         super(Discriminator, self).__init__()
-        self.conv1 = nn.Conv2d(6, 64, kernel_size=4, stride=2, padding=1)
+        self.conv1 = nn.Conv2d(2*channel, 64, kernel_size=4, stride=2, padding=1)
         self.conv2 = nn.Conv2d(64, 128, kernel_size=4, stride=2, padding=1)
         self.conv2_in = nn.InstanceNorm2d(128)
         self.conv3 = nn.Conv2d(128, 256, kernel_size=4, stride=2, padding=1)
