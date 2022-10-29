@@ -120,14 +120,14 @@ class MapGen(pl.LightningModule):
         predicted_image = self(sample_batched)
         pixelwise_loss = self.L1(predicted_image, sample_batched['target'])
         self.log("val_loss", pixelwise_loss.item(), batch_size=self.batch_size)
-        target_norm = (sample_batched['target']+1)/2
+        target_norm = (sample_batched['target'] + 1) / 2
         predicted_list = predicted_image[:6]
         transformed_images = []
         target_list = target_norm[:6]
         for i in range(len(predicted_list)):
             curr_pred = predicted_list[i]
             curr_target = target_list[i]
-            i_norm = (curr_pred+1.0) / 2
+            i_norm = (curr_pred + 1.0) / 2
             pred_target = torch.cat((i_norm, curr_target), 1)
             transformed_images.append(pred_target)
 
@@ -138,11 +138,23 @@ class MapGen(pl.LightningModule):
 
     def test_step(self, sample_batched, batch_idx):
         predicted_image = self(sample_batched)
-        predicted_image_norm = (predicted_image+1.0)*127.5
-        target_image_norm = (sample_batched['target']+1.0)*127.5
         imagename = sample_batched['input_path'][0].rsplit("/", 1)[-1].split("_", 1)[0]
-        OpenEXR_utils.writeRGBImage(predicted_image, self.data_type, os.path.join(self.output_dir, imagename + "_normal.exr"))
+        predicted_image_norm = (predicted_image+1.0) * 127.5
+        target_image_norm = (sample_batched['target']+1.0) * 127.5
+
         comp = torch.cat((predicted_image_norm, target_image_norm), 3)
-        img = Image.fromarray(torch.squeeze(comp).int().cpu().numpy().astype(np.uint8).transpose(1, 2, 0))
+        temp = torch.squeeze(comp).int().cpu().numpy().astype(np.uint8)
+        if self.data_type == data_type.Type.normal:
+            img = Image.fromarray(temp.transpose(1, 2, 0))
+        else:
+            img = Image.fromarray(temp)
         image_path = os.path.join(self.output_dir, imagename + ".png")
         img.save(image_path)
+
+        if self.data_type == data_type.Type.normal:
+            OpenEXR_utils.writeRGBImage(predicted_image, self.data_type, os.path.join(self.output_dir, imagename + "_normal.exr"))
+        else:
+            predicted_image = (predicted_image + 1) / 2
+            OpenEXR_utils.writeRGBImage(predicted_image, self.data_type, os.path.join(self.output_dir, imagename + "_depth.exr"))
+
+

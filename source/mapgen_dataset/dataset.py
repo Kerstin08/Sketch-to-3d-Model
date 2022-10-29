@@ -43,8 +43,9 @@ class DS(Dataset):
         target_path = self.image_paths_target[index]
         target_image = OpenEXR_utils.getRGBimageEXR(target_path, self.data_type, 0)
         target_image_tensor = torch.from_numpy(target_image)
+        torch.set_printoptions(profile="full")
         if self.data_type.value == data_type.Type.depth.value:
-            target_image_tensor *= 2 - 1
+            target_image_tensor = target_image_tensor * 2 - 1
         return {'input': input_image_tensor,
                 'target': target_image_tensor,
                 'input_path': input_path,
