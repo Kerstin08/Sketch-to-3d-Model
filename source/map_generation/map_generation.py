@@ -70,23 +70,6 @@ class MapGen(pl.LightningModule):
         gradients = gradients.view(real_images.size(0), -1)
         grad_norm = gradients.norm(2, 1)
         return torch.mean((grad_norm - 1) ** 2)
-    def compute_gradient_penalty(self, real_samples, fake_samples):
-        alpha = torch.Tensor(np.random.random((real_samples.size(0), 1, 1, 1))).to(self.device)
-        interpolates = (alpha * real_samples + ((1 - alpha) * fake_samples)).requires_grad_(True)
-        interpolates = interpolates.to(self.device)
-        d_interpolates = self.D(interpolates)
-        fake = torch.Tensor(real_samples.shape[0], 1).fill_(1.0).to(self.device)
-        gradients = torch.autograd.grad(
-            outputs=d_interpolates,
-            inputs=interpolates,
-            grad_outputs=fake,
-            create_graph=True,
-            retain_graph=True,
-            only_inputs=True,
-        )[0]
-        gradients = gradients.view(gradients.size(0), -1).to(self.device)
-        gradient_penalty = ((gradients.norm(2, dim=1) - 1) ** 2).mean()
-        return gradient_penalty
 
     def discriminator_step(self, sample_batched, fake_images):
         print("Discriminator")
