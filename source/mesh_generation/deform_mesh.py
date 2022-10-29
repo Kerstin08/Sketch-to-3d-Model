@@ -5,11 +5,21 @@ import mitsuba as mi
 import numpy as np
 import source.util.mi_create_scenedesc as create_scenedesc
 import math
-import torch
-import torchvision
+import pytorch3d
+from pytorch3d.loss import (
+    chamfer_distance,
+    mesh_edge_loss,
+    mesh_laplacian_smoothing,
+    mesh_normal_consistency,
+)
+from pytorch3d.structures import Meshes
+from pytorch3d.io import load_ply
 from mitsuba.scalar_rgb import Transform4f as T
 import normal_reparam_integrator
 import depth_reparam_integrator
+import time
+
+
 
 from torch.utils.tensorboard import SummaryWriter
 
@@ -27,7 +37,6 @@ class MeshGen():
         self.logs = logs
         self.writer = SummaryWriter(logs)
         self.epochs = epochs
-        self.initial_vertex_positions = None
         self.fov = 60
         self.log_frequency = log_frequency
     def write_output_renders(self, render_normal, render_depth, image_name):
@@ -52,53 +61,82 @@ class MeshGen():
         b = v3 - v1
 
         sqr_magnitude_a = dr.sum(dr.sqr(a))
-        sqr_magnitude_b = dr.sum(dr.sqr(b))
-        magnitude_a = dr.sqrt(sqr_magnitude_a)
-        magnitude_b = dr.sqrt(sqr_magnitude_b)
         dot_ab = dr.sum(a * b)
-        cos = dot_ab / (magnitude_a * magnitude_b)
-        sin = dr.sqrt(1 - dr.sqr(cos))
 
         l = dot_ab / sqr_magnitude_a
-        dist_a = dr.repeat(l, 3)
-        c = a * dist_a
+        c = a * l
         cb = b-c
-        l1_cb = magnitude_b * sin
+        l1_cb = dr.sqrt(dr.sum(dr.sqr(cb)))
 
         return cb, l1_cb
-    def smoothness(self, curr_faces, face_indices, vertice_positions):
-        if len(curr_faces) > 2:
-            raise Exception("Mesh is invalid! Edge has more than 2 adjacent faces!")
-        if len(curr_faces) < 2:
-            raise Exception("Mesh is invalid! Edge has less than 2 adjacent faces!")
-        vert_idx_face1 = [face_indices[0][curr_faces[0]],
-                            face_indices[1][curr_faces[0]],
-                            face_indices[2][curr_faces[0]]]
-        verts_idx_face2 = [face_indices[0][curr_faces[1]],
-                            face_indices[1][curr_faces[1]],
-                            face_indices[2][curr_faces[1]]]
-        raveled_vertice_positions = dr.ravel(vertice_positions)
-        joined_verts = list(set(vert_idx_face1).intersection(verts_idx_face2))
-        v3_face1_idx = set(vert_idx_face1).difference(joined_verts).pop()
-        v3_face2_idx = set(verts_idx_face2).difference(joined_verts).pop()
-        v1 = dr.gather(dr.cuda.ad.Float, raveled_vertice_positions, [3 * joined_verts[0], 3 * joined_verts[0]+1, 3 * joined_verts[0]+2])
-        v2 = dr.gather(dr.cuda.ad.Float, raveled_vertice_positions, [3 * joined_verts[1], 3 * joined_verts[1]+1, 3 * joined_verts[1]+2])
-        v3_face1 = dr.gather(dr.cuda.ad.Float, raveled_vertice_positions, [3 * v3_face1_idx, 3 * v3_face1_idx+1, 3 * v3_face1_idx+2])
-        v3_face2 = dr.gather(dr.cuda.ad.Float, raveled_vertice_positions, [3 * v3_face2_idx, 3 * v3_face2_idx+1, 3 * v3_face2_idx+2])
+
+    def preprocess_edge_params(self, face_indices):
+        edge_vert_indices = []
+        edge_vert_faces = {}
+        for i in range(len(face_indices[0])):
+            x = face_indices[0][i]
+            y = face_indices[1][i]
+            z = face_indices[2][i]
+            xy = (x, y) if x < y else (y, x)
+            if xy not in edge_vert_indices:
+                edge_vert_indices.append(xy)
+                edge_vert_faces[xy] = [i]
+            else:
+                edge_vert_faces[xy].append(i)
+            yz = (y, z) if y < z else (z, y)
+            if yz not in edge_vert_indices:
+                edge_vert_indices.append(yz)
+                edge_vert_faces[yz] = [i]
+            else:
+                edge_vert_faces[yz].append(i)
+            zx = (z, x) if z < x else (x, z)
+            if zx not in edge_vert_indices:
+                edge_vert_indices.append(zx)
+                edge_vert_faces[zx] = [i]
+            else:
+                edge_vert_faces[zx].append(i)
+        return edge_vert_indices, edge_vert_faces
+
+    def preprocess_smoothness_params(self, edge_vert_faces, face_indices):
+        v1_x, v1_y, v1_z = [], [], []
+        v2_x, v2_y, v2_z = [], [], []
+        v3_x_f1, v3_y_f1, v3_z_f1 = [], [], []
+        v3_x_f2, v3_y_f2, v3_z_f2 = [], [], []
+        for key in edge_vert_faces:
+            curr_faces = edge_vert_faces[key]
+            vert_idx_face1 = [face_indices[0][curr_faces[0]],
+                                face_indices[1][curr_faces[0]],
+                                face_indices[2][curr_faces[0]]]
+            verts_idx_face2 = [face_indices[0][curr_faces[1]],
+                                face_indices[1][curr_faces[1]],
+                                face_indices[2][curr_faces[1]]]
+            joined_verts = list(set(vert_idx_face1).intersection(verts_idx_face2))
+
+            v1_x.append(3 * joined_verts[0])
+            v1_y.append(3 * joined_verts[0] + 1)
+            v1_z.append(3 * joined_verts[0] + 2)
+            v2_x.append(3 * joined_verts[1])
+            v2_y.append(3 * joined_verts[1] + 1)
+            v2_z.append(3 * joined_verts[1] + 2)
+            v3_face1 = (set(vert_idx_face1).difference(joined_verts).pop())
+            v3_x_f1.append(3 * v3_face1)
+            v3_y_f1.append(3 * v3_face1 + 1)
+            v3_z_f1.append(3 * v3_face1 + 2)
+            v3_face2 = (set(verts_idx_face2).difference(joined_verts).pop())
+            v3_x_f2.append(3 * v3_face2)
+            v3_y_f2.append(3 * v3_face2 + 1)
+            v3_z_f2.append(3 * v3_face2 + 2)
+        v1 = [v1_x, v1_y, v1_z]
+        v2 = [v2_x, v2_y, v2_z]
+        v3_face1_idx = [v3_x_f1, v3_y_f1, v3_z_f1]
+        v3_face2_idx = [v3_x_f2, v3_y_f2, v3_z_f2]
+        return v1, v2, v3_face1_idx, v3_face2_idx
 
 
-        cb_face1, l1_cb_face1 = self.smoothness_helper(v1, v2, v3_face1)
-        cb_face2, l1_cb_face2 = self.smoothness_helper(v1, v2, v3_face2)
-
-        x = dr.sum(cb_face1 * cb_face2)
-        y = (l1_cb_face1 * l1_cb_face2)
-        z = x / y
-        return z
-
-    def offset_verts(self, params, opt):
+    def offset_verts(self, params, opt, initial_vertex_positions):
         opt['deform_verts'] = dr.clamp(opt['deform_verts'], -0.5, 0.5)
         trafo = mi.Transform4f.translate(opt['deform_verts'].x)
-        params['shape.vertex_positions'] = dr.ravel(trafo @ self.initial_vertex_positions)
+        params['shape.vertex_positions'] = dr.ravel(trafo @ initial_vertex_positions)
         params.update()
 
     def deform_mesh(self, normal_map, depth_map, basic_mesh):
@@ -140,43 +178,21 @@ class MeshGen():
         vertex_count_str = "shape.vertex_count"
         face_str = "shape.faces"
         face_count_str = "shape.face_count"
-        self.initial_vertex_positions = dr.unravel(mi.Point3f, params[vertex_positions_str])
+        initial_vertex_positions = dr.unravel(mi.Point3f, params[vertex_positions_str])
         face_indices = dr.unravel(mi.Point3i, params[face_str])
 
-        edge_vert_indices = []
-        edge_vert_faces = {}
-        for i in range(len(face_indices[0])):
-            x = face_indices[0][i]
-            y = face_indices[1][i]
-            z = face_indices[2][i]
-            xy = (x, y) if x < y else (y, x)
-            if xy not in edge_vert_indices:
-                edge_vert_indices.append(xy)
-                edge_vert_faces[xy] = [i]
-            else:
-                edge_vert_faces[xy].append(i)
-            yz = (y, z) if y < z else (z, y)
-            if yz not in edge_vert_indices:
-                edge_vert_indices.append(yz)
-                edge_vert_faces[yz] = [i]
-            else:
-                edge_vert_faces[yz].append(i)
-            zx = (z, x) if z < x else (x, z)
-            if zx not in edge_vert_indices:
-                edge_vert_indices.append(zx)
-                edge_vert_faces[zx] = [i]
-            else:
-                edge_vert_faces[zx].append(i)
-
-        initial_edge_lengths = self.get_edge_dist(self.initial_vertex_positions, edge_vert_indices)
+        edge_vert_indices, edge_vert_faces = self.preprocess_edge_params(face_indices)
+        initial_edge_lengths = self.get_edge_dist(initial_vertex_positions, edge_vert_indices)
         dr.enable_grad(initial_edge_lengths)
+
+        face_v1, face_v2, face_v3_face1, face_v3_face2 = self.preprocess_smoothness_params(edge_vert_faces, face_indices)
 
         opt = mi.ad.Adam(lr=self.lr)
         vertex_count = params[vertex_count_str]
         opt['deform_verts'] = dr.full(mi.Point3f, 0, vertex_count)
 
         for epoch in range(self.epochs):
-            self.offset_verts(params, opt)
+            self.offset_verts(params, opt, initial_vertex_positions)
 
             normal_img = mi.render(scene, params, seed=epoch, spp=256, integrator=normal_integrator_lodaded)
             depth_img = mi.render(scene, params, seed=epoch, spp=256, integrator=depth_integrator_lodaded)
@@ -208,11 +224,58 @@ class MeshGen():
 
             edge_loss = dr.sum(dr.sqr(initial_edge_lengths - current_edge_lengths)) * 1/len(initial_edge_lengths)
 
-            smoothness_loss = 0.0
-            for key in edge_vert_faces:
-                curr_faces = edge_vert_faces[key]
-                cos = self.smoothness(curr_faces, face_indices, current_vertex_positions)
-                smoothness_loss += cos
+            mesh = mi.Mesh(
+                "deformed_mesh",
+                vertex_count=vertex_count,
+                face_count=params[face_count_str],
+                has_vertex_normals=True,
+                has_vertex_texcoords=False,
+            )
+
+            mesh_params = mi.traverse(mesh)
+            mesh_params["vertex_positions"] = dr.ravel(params[vertex_positions_str])
+            mesh_params["faces"] = dr.ravel(params[face_str])
+            mesh_params.update()
+            output_path = os.path.join(self.output_dir, "deform_mesh.ply")
+            mesh.write_ply(output_path)
+
+            verts, faces = load_ply(output_path)
+            new_src_mesh = Meshes(verts=[verts], faces=[faces])
+            loss_edge = mesh_edge_loss(new_src_mesh)
+
+            x = dr.sum(dr.sqr(current_edge_lengths)) * 1/len(initial_edge_lengths)
+            print(x)
+            print(loss_edge)
+
+            raveled_vertice_positions = dr.ravel(current_vertex_positions)
+            v1 = dr.cuda.ad.Array3f(
+                    dr.gather(dr.cuda.ad.Float, raveled_vertice_positions, face_v1[0]),
+                    dr.gather(dr.cuda.ad.Float, raveled_vertice_positions, face_v1[1]),
+                    dr.gather(dr.cuda.ad.Float, raveled_vertice_positions, face_v1[2])
+            )
+            v2 = dr.cuda.ad.Array3f(
+                    dr.gather(dr.cuda.ad.Float, raveled_vertice_positions, face_v2[0]),
+                    dr.gather(dr.cuda.ad.Float, raveled_vertice_positions, face_v2[1]),
+                    dr.gather(dr.cuda.ad.Float, raveled_vertice_positions, face_v2[2])
+            )
+            v3_face1 = dr.cuda.ad.Array3f(
+                    dr.gather(dr.cuda.ad.Float, raveled_vertice_positions, face_v3_face1[0]),
+                    dr.gather(dr.cuda.ad.Float, raveled_vertice_positions, face_v3_face1[1]),
+                    dr.gather(dr.cuda.ad.Float, raveled_vertice_positions, face_v3_face1[2])
+            )
+            v3_face2 = dr.cuda.ad.Array3f(
+                    dr.gather(dr.cuda.ad.Float, raveled_vertice_positions, face_v3_face2[0]),
+                    dr.gather(dr.cuda.ad.Float, raveled_vertice_positions, face_v3_face2[1]),
+                    dr.gather(dr.cuda.ad.Float, raveled_vertice_positions, face_v3_face2[2])
+            )
+            cb_1, l1_cb_1 = self.smoothness_helper(v1, v2, v3_face1)
+            cb_2, l1_cb_2 = self.smoothness_helper(v1, v2, v3_face2)
+            cos = dr.sum(cb_1 * cb_2) / (l1_cb_1 * l1_cb_2)
+            smoothness_loss = dr.sum(dr.sqr(cos+1))
+
+            loss_laplacian = mesh_laplacian_smoothing(new_src_mesh, method="uniform")
+            print(smoothness_loss)
+            print(loss_laplacian)
 
             loss = depth_loss * self.weight_depth + normal_loss * self.weight_normal + edge_loss * self.weight_edge + smoothness_loss * self.weight_smoothness
             dr.backward(loss)

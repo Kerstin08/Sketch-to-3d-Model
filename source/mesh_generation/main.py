@@ -2,6 +2,7 @@ import argparse
 import deform_mesh
 import os
 import source.util.OpenEXR_utils as OpenEXR_utils
+from source.util import data_type
 
 
 def create_logdir(log_dir):
@@ -14,7 +15,7 @@ def create_logdir(log_dir):
             for dir in dirs:
                 n = int(dir.split("_", 1)[1])
                 if n >= version:
-                    version+=1
+                    version=n+1
     curr_version = "version_{}".format(version)
     curr_path = os.path.join(log_dir, curr_version)
     os.mkdir(curr_path)
@@ -39,8 +40,8 @@ def run(normal_map_path, depth_map_path, basic_mesh, output_dir, log_dir,
                         epochs,
                         log_frequency,
                         lr)
-    normal_map = OpenEXR_utils.getRGBimageEXR(normal_map_path, 2)
-    depth_map = OpenEXR_utils.getRGBimageEXR(depth_map_path, 2)
+    normal_map = OpenEXR_utils.getRGBimageEXR(normal_map_path, data_type.Type.normal, 2)
+    depth_map = OpenEXR_utils.getRGBimageEXR(depth_map_path, data_type.Type.depth, 2)
 
     mesh_gen.deform_mesh(normal_map, depth_map, basic_mesh)
 
