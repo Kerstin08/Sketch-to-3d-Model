@@ -1,7 +1,7 @@
 import OpenEXR
 import Imath
 import numpy as np
-from source.map_generation import map_generation
+from source.util import data_type
 
 def exr2numpy(exr_path, chanel_name):
     file = OpenEXR.InputFile(exr_path)
@@ -13,9 +13,9 @@ def exr2numpy(exr_path, chanel_name):
     return (channel)
 
 
-def getRGBimageEXR(path, data_type, axis):
+def getRGBimageEXR(path, given_data_type, axis):
     # RGB, although data is technically xyz, however due to the conversion to vector this is RGB
-    if data_type.value == map_generation.Type.normal.value:
+    if given_data_type == data_type.Type.normal:
         channel_names = ['R', 'G', 'B']
     else:
         channel_names = ['R']

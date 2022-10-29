@@ -4,7 +4,7 @@ from source.util import OpenEXR_utils
 from torchvision import transforms
 from torch.utils.data import Dataset
 from PIL import Image
-from source.map_generation import map_generation
+from source.util import data_type
 
 
 class DS(Dataset):
@@ -32,7 +32,7 @@ class DS(Dataset):
     def __getitem__(self, index):
         # input is sketch, therefore png file
         input_path = self.image_paths_input[index]
-        if self.data_type.value == map_generation.Type.normal.value:
+        if self.data_type == data_type.Type.normal:
             input_image = Image.open(input_path).convert("RGB")
         else:
             input_image = Image.open(input_path).convert("L")
@@ -43,8 +43,8 @@ class DS(Dataset):
         target_path = self.image_paths_target[index]
         target_image = OpenEXR_utils.getRGBimageEXR(target_path, self.data_type, 0)
         target_image_tensor = torch.from_numpy(target_image)
-        if self.data_type.value == map_generation.Type.depth.value:
-            target_image_tensor *= 2 + 1
+        if self.data_type.value == data_type.Type.depth.value:
+            target_image_tensor *= 2 - 1
         return {'input': input_image_tensor,
                 'target': target_image_tensor,
                 'input_path': input_path,

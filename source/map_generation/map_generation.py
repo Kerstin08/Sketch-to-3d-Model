@@ -5,18 +5,13 @@ import numpy as np
 from PIL import Image
 import torchvision
 
-from enum import Enum
 from generator import Generator
 from discriminator import Discriminator
 from source.util import OpenEXR_utils
-
-
-class Type(Enum):
-    normal = 1,
-    depth = 2
+from source.util import data_type
 
 class MapGen(pl.LightningModule):
-    def __init__(self, data_type, n_critic, batch_size, weight_L1, output_dir, lr):
+    def __init__(self, data_type, n_critic, batch_size, weight_L1, gradient_penalty_coefficient, output_dir, lr):
         super(MapGen, self).__init__()
         self.save_hyperparameters()
         self.data_type = data_type
@@ -28,10 +23,11 @@ class MapGen(pl.LightningModule):
         self.output_dir = output_dir
         self.lr = lr
         self.L1 = torch.nn.L1Loss()
+        self.gradient_penalty_coefficient = gradient_penalty_coefficient
 
     @property
     def channel(self):
-        if self.data_type == Type.depth:
+        if self.data_type == data_type.Type.depth:
             return 1
         else:
             return 3
@@ -59,6 +55,39 @@ class MapGen(pl.LightningModule):
         self.log("g_Loss", float(g_loss.item()), on_epoch=True, prog_bar=True, logger=True, batch_size=self.batch_size)
         return g_loss
 
+    def gradient_penalty(self, real_images, fake_images):
+        alpha = torch.rand((real_images.size(0), 1, 1, 1)).to(real_images.device)
+        alpha = alpha.expand_as(real_images)
+        interpolation = alpha * real_images + ((1 - alpha) * fake_images).requires_grad_(True)
+        d_interpolated = self.D(interpolation)
+        gradients = torch.autograd.grad(
+            outputs=d_interpolated,
+            inputs=interpolation,
+            grad_outputs=torch.ones_like(d_interpolated),
+            create_graph=True,
+            retain_graph=True,
+        )[0]
+        gradients = gradients.view(real_images.size(0), -1)
+        grad_norm = gradients.norm(2, 1)
+        return torch.mean((grad_norm - 1) ** 2)
+    def compute_gradient_penalty(self, real_samples, fake_samples):
+        alpha = torch.Tensor(np.random.random((real_samples.size(0), 1, 1, 1))).to(self.device)
+        interpolates = (alpha * real_samples + ((1 - alpha) * fake_samples)).requires_grad_(True)
+        interpolates = interpolates.to(self.device)
+        d_interpolates = self.D(interpolates)
+        fake = torch.Tensor(real_samples.shape[0], 1).fill_(1.0).to(self.device)
+        gradients = torch.autograd.grad(
+            outputs=d_interpolates,
+            inputs=interpolates,
+            grad_outputs=fake,
+            create_graph=True,
+            retain_graph=True,
+            only_inputs=True,
+        )[0]
+        gradients = gradients.view(gradients.size(0), -1).to(self.device)
+        gradient_penalty = ((gradients.norm(2, dim=1) - 1) ** 2).mean()
+        return gradient_penalty
+
     def discriminator_step(self, sample_batched, fake_images):
         print("Discriminator")
         input_predicted = torch.cat((sample_batched['input'], fake_images), 1)
@@ -68,9 +97,10 @@ class MapGen(pl.LightningModule):
         input_target = torch.cat((sample_batched['input'], sample_batched['target']), 1)
         pred_true = self.D(input_target)
         d_loss_real = torch.mean(pred_true)
+        gradient_penalty = self.gradient_penalty(input_target, input_predicted)
 
         # loss as defined by Wasserstein paper
-        d_loss = -d_loss_real + d_loss_fake
+        d_loss = -d_loss_real + d_loss_fake + self.gradient_penalty_coefficient * gradient_penalty
         self.log("d_loss", float(d_loss.item()), on_epoch=True, prog_bar=True, logger=True, batch_size=self.batch_size)
         self.log("d_loss_real", float(d_loss_real.item()), on_epoch=True, prog_bar=True, logger=True, batch_size=self.batch_size)
         self.log("d_loss_fake", float(d_loss_fake.item()), on_epoch=True, prog_bar=True, logger=True, batch_size=self.batch_size)

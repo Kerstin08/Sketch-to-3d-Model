@@ -1,29 +1,30 @@
 import os.path
 
 import map_generation
-import warnings
 import argparse
 from pytorch_lightning.trainer import Trainer
 from pytorch_lightning.loggers import TensorBoardLogger
 import torch
 from torch.utils.data import DataLoader
-import torch.utils.data as data
-from source.mapgen_dataset import dataset
 from pytorch_lightning.callbacks import ModelCheckpoint
+from source.mapgen_dataset import dataset
+from source.util import data_type
 
 
 def run(train_b, input_dir, output_dir, logs_dir,
         type, epochs, lr, batch_size, n_critic, weight_L1,
+        gradient_penalty_coefficient,
         use_generated_model=False, generated_model_path=""):
     if train_b:
         train(input_dir, output_dir, logs_dir,
         type, epochs, lr, batch_size, n_critic, weight_L1,
-        use_generated_model, generated_model_path)
+        gradient_penalty_coefficient, use_generated_model, generated_model_path)
     else:
         test(input_dir, output_dir, type, batch_size, generated_model_path)
 
 def train(input_dir, output_dir, logs_dir,
         type, epochs, lr, batch_size, n_critic, weight_L1,
+        gradient_penalty_coefficient,
         use_generated_model=False, generated_model_path=""):
 
     sketch_dir = os.path.join(input_dir, "sketch_mapgen")
@@ -42,9 +43,9 @@ def train(input_dir, output_dir, logs_dir,
         os.mkdir(logs_dir)
 
     if type == "depth":
-        given_type = map_generation.Type.depth
+        given_type = data_type.Type.depth
     elif type == "normal":
-        given_type = map_generation.Type.normal
+        given_type = data_type.Type.normal
     else:
         raise Exception("Given type should either be \"normal\" or \"depth\"!")
 
@@ -52,6 +53,7 @@ def train(input_dir, output_dir, logs_dir,
                                   n_critic=n_critic,
                                   batch_size=batch_size,
                                   weight_L1=weight_L1,
+                                  gradient_penalty_coefficient=gradient_penalty_coefficient,
                                   output_dir=output_dir,
                                   lr=lr)
 
@@ -62,6 +64,7 @@ def train(input_dir, output_dir, logs_dir,
                                    n_critic=n_critic,
                                    batch_size=batch_size,
                                    weight_L1=weight_L1,
+                                   gradient_penalty_coefficient=gradient_penalty_coefficient,
                                    output_dir=output_dir,
                                    lr=lr)
 
@@ -124,9 +127,9 @@ def test(input_dir, output_dir,
         os.mkdir(output_dir)
 
     if type == "depth":
-        given_type = map_generation.Type.depth
+        given_type = data_type.Type.depth
     elif type == "normal":
-        given_type = map_generation.Type.normal
+        given_type = data_type.Type.normal
     else:
         raise Exception("Given type should either be \"normal\" or \"depth\"!")
 
@@ -156,6 +159,7 @@ def diff_args(args):
         args.batch_size,
         args.n_critic,
         args.weight_L1,
+        args.gradient_penalty_coefficient,
         args.use_generated_model,
         args.generated_model_path)
 
@@ -174,7 +178,8 @@ def main(args):
     parser.add_argument("--lr", type=float, default=2e-5, help="initial learning rate")
     parser.add_argument("--batch_size", type=int, default=4, help="size of batches")
     parser.add_argument("--n_critic", type=int, default=5, help="# of n_critic")
-    parser.add_argument("--weight_L1", type=int, default=50000, help="L1 weight")
+    parser.add_argument("--weight_L1", type=int, default=500, help="L1 weight")
+    parser.add_argument("--gradient_penalty_coefficient", type=int, default=10, help="gradient penalty coefficient")
     parser.add_argument("--use_generated_model", type=bool, default=False,
                         help="If models are trained from scratch or already trained models are used")
     parser.add_argument("--generated_model_path", type=str, default="..\\..\\output\\test.ckpt",
@@ -189,7 +194,7 @@ if __name__ == '__main__':
         '--type', 'normal',
         '--epochs', '300',
         '--lr', '5e-5',
-        '--output_dir', "checkpoint/176_output",
-        '--generated_model_path', "checkpoint/MapGen-epoch=176-val_loss=0.08904778212308884.ckpt"
+        #'--output_dir', "checkpoint/176_output",
+        #'--generated_model_path', "checkpoint/MapGen-epoch=176-val_loss=0.08904778212308884.ckpt"
     ]
     main(params)
