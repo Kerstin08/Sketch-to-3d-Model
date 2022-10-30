@@ -48,13 +48,12 @@ class MeshGen():
         self.writer.add_images(image_name, ref_images)
 
     def get_edge_dist(self, vertice_positions, edge_vert_indices):
-        edge_lengths = []
-        for pt1_index, pt2_index in edge_vert_indices:
-            x = vertice_positions[0][pt1_index] - vertice_positions[0][pt2_index]
-            y = vertice_positions[1][pt1_index] - vertice_positions[1][pt2_index]
-            z = vertice_positions[2][pt1_index] - vertice_positions[2][pt2_index]
-            edge_lengths.append(dr.sqrt(dr.sqr(x) + dr.sqr(y) + dr.sqr(z)))
-        return dr.cuda.ad.Float(edge_lengths)
+        x = dr.sqr(dr.gather(dr.cuda.ad.Float, vertice_positions[0], edge_vert_indices[0]) - dr.gather(dr.cuda.ad.Float, vertice_positions[0], edge_vert_indices[1]))
+        y = dr.sqr(dr.gather(dr.cuda.ad.Float, vertice_positions[1], edge_vert_indices[0]) - dr.gather(dr.cuda.ad.Float, vertice_positions[1], edge_vert_indices[1]))
+        z = dr.sqr(dr.gather(dr.cuda.ad.Float, vertice_positions[2], edge_vert_indices[0]) - dr.gather(dr.cuda.ad.Float, vertice_positions[2], edge_vert_indices[1]))
+        edge_lengths = dr.sqrt(x+y+z)
+
+        return edge_lengths
 
     def smoothness_helper(self, v1, v2, v3):
         a = v2 - v1
@@ -70,31 +69,29 @@ class MeshGen():
 
         return cb, l1_cb
 
+    def preprocess_edge_helper(self, i, x, y, edge_vert_indices, edge_vert_faces):
+        xy = (x, y) if x < y else (y, x)
+        indices_x = [j for j, a in enumerate(edge_vert_indices[0]) if a == xy[0]]
+        indices_y = [j for j, a in enumerate(edge_vert_indices[1]) if a == xy[1]]
+        if not set(indices_x) & set(indices_y):
+            edge_vert_indices[0].append(xy[0])
+            edge_vert_indices[1].append(xy[1])
+            edge_vert_faces[xy] = [i]
+        else:
+            edge_vert_faces[xy].append(i)
+            if len(edge_vert_faces[xy]) > 2:
+                print("xx")
+
     def preprocess_edge_params(self, face_indices):
-        edge_vert_indices = []
+        edge_vert_indices = [[],[]]
         edge_vert_faces = {}
         for i in range(len(face_indices[0])):
             x = face_indices[0][i]
             y = face_indices[1][i]
             z = face_indices[2][i]
-            xy = (x, y) if x < y else (y, x)
-            if xy not in edge_vert_indices:
-                edge_vert_indices.append(xy)
-                edge_vert_faces[xy] = [i]
-            else:
-                edge_vert_faces[xy].append(i)
-            yz = (y, z) if y < z else (z, y)
-            if yz not in edge_vert_indices:
-                edge_vert_indices.append(yz)
-                edge_vert_faces[yz] = [i]
-            else:
-                edge_vert_faces[yz].append(i)
-            zx = (z, x) if z < x else (x, z)
-            if zx not in edge_vert_indices:
-                edge_vert_indices.append(zx)
-                edge_vert_faces[zx] = [i]
-            else:
-                edge_vert_faces[zx].append(i)
+            self.preprocess_edge_helper(i, x, y, edge_vert_indices, edge_vert_faces)
+            self.preprocess_edge_helper(i, y, z, edge_vert_indices, edge_vert_faces)
+            self.preprocess_edge_helper(i, z, x, edge_vert_indices, edge_vert_faces)
         return edge_vert_indices, edge_vert_faces
 
     def preprocess_smoothness_params(self, edge_vert_faces, face_indices):
@@ -131,7 +128,6 @@ class MeshGen():
         v3_face1_idx = [v3_x_f1, v3_y_f1, v3_z_f1]
         v3_face2_idx = [v3_x_f2, v3_y_f2, v3_z_f2]
         return v1, v2, v3_face1_idx, v3_face2_idx
-
 
     def offset_verts(self, params, opt, initial_vertex_positions):
         opt['deform_verts'] = dr.clamp(opt['deform_verts'], -0.5, 0.5)
@@ -221,8 +217,9 @@ class MeshGen():
             current_vertex_positions = dr.unravel(mi.Point3f, params[vertex_positions_str])
 
             current_edge_lengths = self.get_edge_dist(current_vertex_positions, edge_vert_indices)
-
             edge_loss = dr.sum(dr.sqr(initial_edge_lengths - current_edge_lengths)) * 1/len(initial_edge_lengths)
+
+
 
             mesh = mi.Mesh(
                 "deformed_mesh",
@@ -241,11 +238,6 @@ class MeshGen():
 
             verts, faces = load_ply(output_path)
             new_src_mesh = Meshes(verts=[verts], faces=[faces])
-            loss_edge = mesh_edge_loss(new_src_mesh)
-
-            x = dr.sum(dr.sqr(current_edge_lengths)) * 1/len(initial_edge_lengths)
-            print(x)
-            print(loss_edge)
 
             raveled_vertice_positions = dr.ravel(current_vertex_positions)
             v1 = dr.cuda.ad.Array3f(
