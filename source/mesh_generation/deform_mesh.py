@@ -5,22 +5,9 @@ import mitsuba as mi
 import numpy as np
 import source.util.mi_create_scenedesc as create_scenedesc
 import math
-import pytorch3d
-from pytorch3d.loss import (
-    chamfer_distance,
-    mesh_edge_loss,
-    mesh_laplacian_smoothing,
-    mesh_normal_consistency,
-)
-from pytorch3d.structures import Meshes
-from pytorch3d.io import load_ply
 from mitsuba.scalar_rgb import Transform4f as T
 import normal_reparam_integrator
 import depth_reparam_integrator
-import time
-
-
-
 from torch.utils.tensorboard import SummaryWriter
 
 mi.set_variant('cuda_ad_rgb')
@@ -55,18 +42,21 @@ class MeshGen():
 
         return edge_lengths
 
-    def smoothness_helper(self, v1, v2, v3):
+    def smoothness_helper(self, v1, v2, v3, eps):
         a = v2 - v1
         b = v3 - v1
-
         sqr_magnitude_a = dr.sum(dr.sqr(a))
+        sqr_magnitude_b = dr.sum(dr.sqr(b))
+        magnitude_a = dr.sqrt(sqr_magnitude_a + eps)
+        magnitude_b = dr.sqrt(sqr_magnitude_b + eps)
         dot_ab = dr.sum(a * b)
+        cos = dot_ab / (magnitude_a * magnitude_b + eps)
+        sin = dr.sqrt(1 - dr.sqr(cos) + eps)
 
         l = dot_ab / sqr_magnitude_a
         c = a * l
         cb = b-c
-        l1_cb = dr.sqrt(dr.sum(dr.sqr(cb)))
-
+        l1_cb = magnitude_b * sin
         return cb, l1_cb
 
     def preprocess_edge_helper(self, i, x, y, edge_vert_indices, edge_vert_faces):
@@ -79,8 +69,6 @@ class MeshGen():
             edge_vert_faces[xy] = [i]
         else:
             edge_vert_faces[xy].append(i)
-            if len(edge_vert_faces[xy]) > 2:
-                print("xx")
 
     def preprocess_edge_params(self, face_indices):
         edge_vert_indices = [[],[]]
@@ -219,26 +207,6 @@ class MeshGen():
             current_edge_lengths = self.get_edge_dist(current_vertex_positions, edge_vert_indices)
             edge_loss = dr.sum(dr.sqr(initial_edge_lengths - current_edge_lengths)) * 1/len(initial_edge_lengths)
 
-
-
-            mesh = mi.Mesh(
-                "deformed_mesh",
-                vertex_count=vertex_count,
-                face_count=params[face_count_str],
-                has_vertex_normals=True,
-                has_vertex_texcoords=False,
-            )
-
-            mesh_params = mi.traverse(mesh)
-            mesh_params["vertex_positions"] = dr.ravel(params[vertex_positions_str])
-            mesh_params["faces"] = dr.ravel(params[face_str])
-            mesh_params.update()
-            output_path = os.path.join(self.output_dir, "deform_mesh.ply")
-            mesh.write_ply(output_path)
-
-            verts, faces = load_ply(output_path)
-            new_src_mesh = Meshes(verts=[verts], faces=[faces])
-
             raveled_vertice_positions = dr.ravel(current_vertex_positions)
             v1 = dr.cuda.ad.Array3f(
                     dr.gather(dr.cuda.ad.Float, raveled_vertice_positions, face_v1[0]),
@@ -260,14 +228,11 @@ class MeshGen():
                     dr.gather(dr.cuda.ad.Float, raveled_vertice_positions, face_v3_face2[1]),
                     dr.gather(dr.cuda.ad.Float, raveled_vertice_positions, face_v3_face2[2])
             )
-            cb_1, l1_cb_1 = self.smoothness_helper(v1, v2, v3_face1)
-            cb_2, l1_cb_2 = self.smoothness_helper(v1, v2, v3_face2)
-            cos = dr.sum(cb_1 * cb_2) / (l1_cb_1 * l1_cb_2)
+            eps = 1e-6
+            cb_1, l1_cb_1 = self.smoothness_helper(v1, v2, v3_face1, eps)
+            cb_2, l1_cb_2 = self.smoothness_helper(v1, v2, v3_face2, eps)
+            cos = dr.sum(cb_1 * cb_2) / (l1_cb_1 * l1_cb_2 + eps)
             smoothness_loss = dr.sum(dr.sqr(cos+1))
-
-            loss_laplacian = mesh_laplacian_smoothing(new_src_mesh, method="uniform")
-            print(smoothness_loss)
-            print(loss_laplacian)
 
             loss = depth_loss * self.weight_depth + normal_loss * self.weight_normal + edge_loss * self.weight_edge + smoothness_loss * self.weight_smoothness
             dr.backward(loss)
@@ -275,6 +240,10 @@ class MeshGen():
             opt.step()
 
             self.writer.add_scalar("loss", loss[0], epoch)
+            self.writer.add_scalar("loss_depth", depth_loss[0], epoch)
+            self.writer.add_scalar("loss_normal", normal_loss[0], epoch)
+            self.writer.add_scalar("loss_edge", edge_loss[0], epoch)
+            self.writer.add_scalar("loss_smoothness", smoothness_loss[0], epoch)
             print("Epochs {}: error={} loss_normal={} loss_depth={} loss_edge={} loss_smoothness={}".format(epoch, loss[0], normal_loss[0], depth_loss[0], edge_loss[0], smoothness_loss[0]))
 
         self.writer.close()
