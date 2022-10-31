@@ -1,6 +1,7 @@
 import math
 import os.path
 import numpy as np
+from pathlib import Path
 
 import source.util.mi_create_scenedesc as create_scenedesc
 import drjit as dr
@@ -114,7 +115,8 @@ def run(type, input_path, output_dirs, fov, aovs=[], emitter_samples=0, output_n
 
     centroid = np.array([distance, -distance, distance])
     if len(output_name) <= 0:
-        output_name = (input_path.rsplit("\\", 1)[-1]).rsplit(".", 1)[0]
+        filename = Path(input_path)
+        output_name = (filename.stem)
 
     # center is assumed to be at 0,0,0, see mesh_preprocess_operations.py translate_to_origin
     camera = create_scenedesc.create_camera(T.look_at(target=(0.0, 0.0, 0.0),

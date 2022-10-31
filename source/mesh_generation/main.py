@@ -1,25 +1,9 @@
 import argparse
 import deform_mesh
 import os
-import source.util.OpenEXR_utils as OpenEXR_utils
+from source.util import OpenEXR_utils
 from source.util import data_type
-
-
-def create_logdir(log_dir):
-    version = 0
-    if not os.path.exists(log_dir):
-        os.mkdir(log_dir)
-
-    else:
-        for root, dirs, files in os.walk(log_dir):
-            for dir in dirs:
-                n = int(dir.split("_", 1)[1])
-                if n >= version:
-                    version=n+1
-    curr_version = "version_{}".format(version)
-    curr_path = os.path.join(log_dir, curr_version)
-    os.mkdir(curr_path)
-    return curr_path
+from source.util import dir_utils
 
 def run(normal_map_path, depth_map_path, basic_mesh, output_dir, log_dir,
         epochs, log_frequency, lr, weight_depth, weight_normal, weight_smoothness, weight_edge):
@@ -30,7 +14,7 @@ def run(normal_map_path, depth_map_path, basic_mesh, output_dir, log_dir,
     if not os.path.exists(output_dir):
         os.mkdir(output_dir)
 
-    log_dir=create_logdir(log_dir)
+    log_dir = dir_utils.create_logdir(log_dir)
     mesh_gen = deform_mesh.MeshGen(output_dir,
                         log_dir,
                         weight_depth,
@@ -61,7 +45,7 @@ def diff_args(args):
         )
 
 def main(args):
-    parser = argparse.ArgumentParser(prog="mapgen_dataset")
+    parser = argparse.ArgumentParser(prog="map_generation_dataset")
     parser.add_argument("--normal_file_path", type=str, help="path to normal map")
     parser.add_argument("--depth_file_path", type=str, help="path to depth map")
     parser.add_argument("--base_mesh_path", type=str, help="path to base mesh object")
@@ -70,8 +54,8 @@ def main(args):
     parser.add_argument("--epoch", type=int, default=10, help="# of epoch for mesh generation")
     parser.add_argument("--log_frequency", type=int, default=1, help="frequency logs are written")
     parser.add_argument("--lr", type=float, default=0.001, help="initial learning rate for mesh generation")
-    parser.add_argument("--weight_depth", type=int, default=0.5, help="depth weight")
-    parser.add_argument("--weight_normal", type=int, default=0.5, help="normal weight")
+    parser.add_argument("--weight_depth", type=int, default=0.002, help="depth weight")
+    parser.add_argument("--weight_normal", type=int, default=0.002, help="normal weight")
     parser.add_argument("--weight_smoothness", type=int, default=0.01, help="smoothness weight")
     parser.add_argument("--weight_edge", type=int, default=0.9, help="edge weight")
     args = parser.parse_args(args)
@@ -79,8 +63,8 @@ def main(args):
 
 if __name__ == '__main__':
     params = [
-        '--normal_file_path', '..\\..\\resources\\mapgen_dataset\\mixed_deform_mesh_0_500\\n_mapgen\\00990003_9d220712041b52b0844b6cbd_trimesh_000_normal.exr',
-        '--depth_file_path', '..\\..\\resources\\mapgen_dataset\\mixed_deform_mesh_0_500\\d_mapgen_normalized\\00990003_9d220712041b52b0844b6cbd_trimesh_000_depth.exr',
+        '--normal_file_path', '..\\..\\resources\\mapgen_dataset\\mixed_deform_mesh_0_500\\n_mapgen\\32770_normal.exr',
+        '--depth_file_path', '..\\..\\resources\\mapgen_dataset\\mixed_deform_mesh_0_500\\d_mapgen_normalized\\32770_depth.exr',
         '--base_mesh_path', '..\\..\\resources\\topology_meshes\\genus0.ply',
         '--output_dir', '..\\..\\output\\meshdir',
         '--log_dir', '..\\..\\output\\logs'

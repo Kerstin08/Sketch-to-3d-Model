@@ -1,6 +1,7 @@
 import argparse
 import time
 
+from pathlib import Path
 import source.util.mi_render as render
 import os
 os.environ["OPENCV_IO_ENABLE_OPENEXR"] = "1"
@@ -13,7 +14,8 @@ def run(type, input_mesh, output_dirs, fov, emitter_samples, output_name=""):
             os.mkdir(value)
 
     if len(output_name) <= 0:
-        output_name = (input_mesh.rsplit("\\", 1)[-1]).rsplit(".", 1)[0]
+        filename = Path(input_mesh)
+        output_name = filename.stem
     render.run(type, input_mesh, output_dirs, fov, emitter_samples=emitter_samples, output_name=output_name, width=1024, height=1024)
     filename_temp = output_name + "_rendering.png"
     path_temp = os.path.join(output_dirs["rendering"], filename_temp)
