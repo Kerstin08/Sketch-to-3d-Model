@@ -42,21 +42,16 @@ class MeshGen():
 
         return edge_lengths
 
-    def smoothness_helper(self, v1, v2, v3, eps):
+    def smoothness_helper(self, v1, v2, v3):
         a = v2 - v1
         b = v3 - v1
         sqr_magnitude_a = dr.sum(dr.sqr(a))
-        sqr_magnitude_b = dr.sum(dr.sqr(b))
-        magnitude_a = dr.sqrt(sqr_magnitude_a + eps)
-        magnitude_b = dr.sqrt(sqr_magnitude_b + eps)
         dot_ab = dr.sum(a * b)
-        cos = dot_ab / (magnitude_a * magnitude_b + eps)
-        sin = dr.sqrt(1 - dr.sqr(cos) + eps)
 
         l = dot_ab / sqr_magnitude_a
         c = a * l
         cb = b-c
-        l1_cb = magnitude_b * sin
+        l1_cb = dr.sum(dr.sqr(cb))
         return cb, l1_cb
 
     def preprocess_edge_helper(self, i, x, y, edge_vert_indices, edge_vert_faces):
@@ -201,7 +196,6 @@ class MeshGen():
             depth_loss = dr.sum(abs(depth_tens - depth_map))
             normal_loss = dr.sum(abs(normal_img - normal_map))
 
-
             current_vertex_positions = dr.unravel(mi.Point3f, params[vertex_positions_str])
 
             current_edge_lengths = self.get_edge_dist(current_vertex_positions, edge_vert_indices)
@@ -228,10 +222,9 @@ class MeshGen():
                     dr.gather(dr.cuda.ad.Float, raveled_vertice_positions, face_v3_face2[1]),
                     dr.gather(dr.cuda.ad.Float, raveled_vertice_positions, face_v3_face2[2])
             )
-            eps = 1e-6
-            cb_1, l1_cb_1 = self.smoothness_helper(v1, v2, v3_face1, eps)
-            cb_2, l1_cb_2 = self.smoothness_helper(v1, v2, v3_face2, eps)
-            cos = dr.sum(cb_1 * cb_2) / (l1_cb_1 * l1_cb_2 + eps)
+            cb_1, l1_cb_1 = self.smoothness_helper(v1, v2, v3_face1)
+            cb_2, l1_cb_2 = self.smoothness_helper(v1, v2, v3_face2)
+            cos = dr.sum(cb_1 * cb_2) / (l1_cb_1 * l1_cb_2 + 1e-6)
             smoothness_loss = dr.sum(dr.sqr(cos+1))
 
             loss = depth_loss * self.weight_depth + normal_loss * self.weight_normal + edge_loss * self.weight_edge + smoothness_loss * self.weight_smoothness
