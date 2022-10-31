@@ -119,7 +119,7 @@ class MeshGen():
 
     def offset_verts(self, params, opt, initial_vertex_positions):
         opt['deform_verts'] = dr.clamp(opt['deform_verts'], -0.5, 0.5)
-        trafo = mi.Transform4f.translate(opt['deform_verts'].x)
+        trafo = mi.Transform4f.translate(opt['deform_verts'])
         params['shape.vertex_positions'] = dr.ravel(trafo @ initial_vertex_positions)
         params.update()
 
