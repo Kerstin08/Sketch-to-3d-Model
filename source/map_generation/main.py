@@ -1,12 +1,17 @@
 import argparse
 from source.map_generation.test import test
 from source.map_generation.train import train
+import source.util.dir_utils as dir_utils
 
 
 def run(train_b, input_dir, output_dir, logs_dir,
         type, epochs, lr, batch_size, n_critic, weight_L1,
         gradient_penalty_coefficient,
         use_generated_model=False, generated_model_path="", devices=1):
+    if len(output_dir) <= 0:
+        raise Exception("Checkpoint Path is not given!")
+    dir_utils.create_general_folder(output_dir)
+
     if train_b:
         train(input_dir, output_dir, logs_dir,
         type, epochs, lr, batch_size, n_critic, weight_L1,
@@ -33,7 +38,7 @@ def diff_args(args):
 
 def main(args):
     parser = argparse.ArgumentParser(prog="map_generation_dataset")
-    parser.add_argument("--train", type=bool, default=True, help="Train or test")
+    parser.add_argument("--train", type=bool, default=False, help="Train or test")
     parser.add_argument("--input_dir", type=str, default="..\\..\\resources\\sketch_meshes",
                         help="Directory where the input sketches for training are stored")
     parser.add_argument("--output_dir", type=str, default="checkpoints",
@@ -47,7 +52,7 @@ def main(args):
     parser.add_argument("--n_critic", type=int, default=5, help="# of n_critic")
     parser.add_argument("--weight_L1", type=int, default=500, help="L1 weight")
     parser.add_argument("--gradient_penalty_coefficient", type=int, default=10, help="gradient penalty coefficient")
-    parser.add_argument("--use_generated_model", type=bool, default=False,
+    parser.add_argument("--use_generated_model", type=bool, default=True,
                         help="If models are trained from scratch or already trained models are used")
     parser.add_argument("--generated_model_path", type=str, default="..\\..\\output\\test.ckpt",
                         help="If test is used determine if comparison images should be generated")
@@ -61,9 +66,9 @@ if __name__ == '__main__':
     params = [
         '--input_dir', 'datasets/mixed_0_2500_normal',
         '--type', 'normal',
-        '--epochs', '300',
+        '--epochs', '1',
         '--lr', '5e-5',
-        #'--output_dir', "checkpoint/176_output",
-        #'--generated_model_path', "checkpoint/MapGen-epoch=176-val_loss=0.08904778212308884.ckpt"
+        '--output_dir', "checkpoint/last_output",
+        '--generated_model_path', "checkpoints/last.ckpt"
     ]
     main(params)

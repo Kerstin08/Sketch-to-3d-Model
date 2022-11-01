@@ -17,10 +17,14 @@ def create_logdir(log_dir):
     os.mkdir(curr_path)
     return curr_path
 
-def create_folder(prefix, dir):
+def create_prefix_folder(prefix, dir):
     filename = Path(dir)
     dir_name = prefix + filename.name
     path = os.path.join(filename.parents[0], dir_name)
     if not os.path.exists(path):
         os.makedirs(path)
     return path
+
+def create_general_folder(path):
+    if not os.path.exists(path):
+        os.makedirs(path)

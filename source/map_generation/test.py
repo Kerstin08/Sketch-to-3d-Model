@@ -1,30 +1,23 @@
 import os.path
-import map_generation
+import source.map_generation.map_generation as map_generation
 import torch
 from torch.utils.data import DataLoader
 from pytorch_lightning.trainer import Trainer
-from source.map_generation_dataset import dataset
-from source.util import data_type
+import source.map_generation_dataset.dataset as dataset
+import source.util.data_type as data_type
 
 def test(input_dir, output_dir,
         type, generated_model_path=""):
 
     if len(input_dir) <= 0 or not os.path.exists(input_dir):
-        raise Exception("Input directory is not given or does not exist!")
+        raise Exception("Input directory: {} is not given or does not exist!".format(input_dir))
 
     sketch_dir = os.path.join(input_dir, "sketch_mapgen")
     target_dir = os.path.join(input_dir, "target_mapgen")
-    if not os.path.exists(sketch_dir) or not os.path.exists(target_dir):
-        raise Exception("Sketch dir: {} or target dir: {} does not exists!".format(sketch_dir, target_dir))
-
-    test_dir = os.path.join(sketch_dir, "test")
-    if not os.path.exists(test_dir):
-        raise Exception("Test dir in {} does not exist".format(sketch_dir))
-
-    if len(output_dir) <= 0:
-        raise Exception("Output Path is not given!")
-    if not os.path.exists(output_dir):
-        os.mkdir(output_dir)
+    if not os.path.exists(sketch_dir):
+        raise Exception("Sketch dir: {} does not exists!".format(sketch_dir))
+    test_dir_sketch = os.path.join(sketch_dir, "test")
+    test_dir_target = os.path.join(target_dir, "test")
 
     if type == "depth":
         given_type = data_type.Type.depth
@@ -40,8 +33,11 @@ def test(input_dir, output_dir,
                                   output_dir=output_dir)
 
 
-    dataSet = dataset.DS(False, given_type, test_dir, target_dir)
-    trainer = Trainer(accelerator='gpu' if torch.cuda.is_available() else 'cpu',
+    if os.path.exists(test_dir_target):
+        dataSet = dataset.DS(False, given_type, test_dir_sketch, test_dir_target)
+    else:
+        dataSet = dataset.DS(False, given_type, test_dir_sketch)
+    trainer = Trainer(accelerator='cpu' if torch.cuda.is_available() else 'cpu',
                       devices=1)
     dataloader = DataLoader(dataSet, batch_size=1,
                                 shuffle=False, num_workers=4)

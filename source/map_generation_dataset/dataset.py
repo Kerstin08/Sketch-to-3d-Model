@@ -8,13 +8,35 @@ from source.util import data_type
 
 
 class DS(Dataset):
-    def __init__(self, train, type, dir_input, dir_target):
+    def __init__(self, train, type, dir_input, dir_target=""):
         self.data_type = type
         self.train = train
         self.dir_input = dir_input
         self.image_paths_input = sorted(self.create_dataSet(dir_input))
-        self.dir_target = dir_target
-        self.image_paths_target = sorted(self.create_dataSet(dir_target))
+        self._dir_target = dir_target
+        self._image_paths_target = sorted(self.create_dataSet(dir_target))
+
+    @property
+    def dir_target(self):
+        return self.dir_target
+
+    @dir_target.setter
+    def dir_target(self, dir_target=""):
+        if self.train:
+            self._dir_target = dir_target
+        else:
+            self._dir_target = ""
+
+    @property
+    def image_paths_target(self):
+        return self._image_paths_target
+
+    @image_paths_target.setter
+    def image_paths_target(self, dir_target=""):
+        if self.train:
+            self._image_paths_target = sorted(self.create_dataSet(dir_target))
+        else:
+            self._image_paths_target = ""
 
     def __len__(self):
         # return only length of one of the dirs since we want to iterate over both dirs at the same time and this function is only used for batch computations
@@ -40,13 +62,17 @@ class DS(Dataset):
         input_image_tensor = transform(input_image).float() / 127.5 - 1.
 
         # target is either normal or depth file, therefore exr
-        target_path = self.image_paths_target[index]
-        target_image = OpenEXR_utils.getRGBimageEXR(target_path, self.data_type, 0)
-        target_image_tensor = torch.from_numpy(target_image)
-        torch.set_printoptions(profile="full")
-        if self.data_type.value == data_type.Type.depth.value:
-            target_image_tensor = target_image_tensor * 2 - 1
-        return {'input': input_image_tensor,
-                'target': target_image_tensor,
-                'input_path': input_path,
-                'target_path': target_path}
+        if self._image_paths_target:
+            target_path = self._image_paths_target[index]
+            target_image = OpenEXR_utils.getRGBimageEXR(target_path, self.data_type, 0)
+            target_image_tensor = torch.from_numpy(target_image)
+            if self.data_type.value == data_type.Type.depth.value:
+                target_image_tensor = target_image_tensor * 2 - 1
+            return {'input': input_image_tensor,
+                    'target': target_image_tensor,
+                    'input_path': input_path,
+                    'target_path': target_path}
+        else:
+            return {'input': input_image_tensor,
+                    'input_path': input_path}
+

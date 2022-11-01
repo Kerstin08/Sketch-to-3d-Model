@@ -1,7 +1,7 @@
 import OpenEXR
 import Imath
 import numpy as np
-from source.util import data_type
+import source.util.data_type as data_type
 
 def exr2numpy(exr_path, chanel_name):
     file = OpenEXR.InputFile(exr_path)

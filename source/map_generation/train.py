@@ -7,7 +7,7 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.trainer import Trainer
 from source.map_generation_dataset import dataset
 from source.util import data_type
-
+from source.util import dir_utils
 
 def train(input_dir, output_dir, logs_dir,
         type, epochs, lr, batch_size, n_critic, weight_L1,
@@ -19,15 +19,10 @@ def train(input_dir, output_dir, logs_dir,
     if not os.path.exists(sketch_dir) or not os.path.exists(target_dir):
         raise Exception("Sketch dir: {} or target dir: {} does not exists!".format(sketch_dir, target_dir))
 
-    if len(output_dir) <= 0:
-        raise Exception("Checkpoint Path is not given!")
-    if not os.path.exists(output_dir):
-        os.mkdir(output_dir)
-
     if len(logs_dir) <= 0:
         raise Exception("Logs Path is not given!")
-    if not os.path.exists(logs_dir):
-        os.mkdir(logs_dir)
+    # Use general folder instead of logs dir since pytorch already takes care of folder versioning.
+    dir_utils.create_general_folder(logs_dir)
 
     if type == "depth":
         given_type = data_type.Type.depth

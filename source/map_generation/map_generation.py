@@ -4,9 +4,10 @@ import pytorch_lightning as pl
 import numpy as np
 from PIL import Image
 import torchvision
+from pathlib import Path
 
-from generator import Generator
-from discriminator import Discriminator
+from source.map_generation.generator import Generator
+from source.map_generation.discriminator import Discriminator
 from source.util import OpenEXR_utils
 from source.util import data_type
 
@@ -121,12 +122,15 @@ class MapGen(pl.LightningModule):
 
     def test_step(self, sample_batched, batch_idx):
         predicted_image = self(sample_batched)
-        imagename = sample_batched['input_path'][0].rsplit("/", 1)[-1].split("_", 1)[0]
+        imagename = Path(sample_batched['input_path'][0]).stem
         predicted_image_norm = (predicted_image+1.0) * 127.5
-        target_image_norm = (sample_batched['target']+1.0) * 127.5
+        if 'target' in sample_batched:
+            target_image_norm = (sample_batched['target']+1.0) * 127.5
+            comp = torch.cat((predicted_image_norm, target_image_norm), 3)
+            temp = torch.squeeze(comp).int().cpu().numpy().astype(np.uint8)
+        else:
+            temp = torch.squeeze(predicted_image_norm).int().cpu().numpy().astype(np.uint8)
 
-        comp = torch.cat((predicted_image_norm, target_image_norm), 3)
-        temp = torch.squeeze(comp).int().cpu().numpy().astype(np.uint8)
         if self.data_type == data_type.Type.normal:
             img = Image.fromarray(temp.transpose(1, 2, 0))
         else:
