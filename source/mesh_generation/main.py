@@ -63,8 +63,8 @@ def main(args):
 
 if __name__ == '__main__':
     params = [
-        '--normal_file_path', '..\\..\\resources\\mapgen_dataset\\mixed_deform_mesh_0_500\\n_mapgen\\32770_normal.exr',
-        '--depth_file_path', '..\\..\\resources\\mapgen_dataset\\mixed_deform_mesh_0_500\\d_mapgen_normalized\\32770_depth.exr',
+        '--normal_file_path', '..\\..\\resources\\map_generation_dataset\\mixed_0_2500_normal\\target_mapgen\\train\\32770_normal.exr',
+        '--depth_file_path', '..\\..\\resources\\map_generation_dataset\\mixed_0_2500_depth\\target_mapgen\\train\\32770_depth.exr',
         '--base_mesh_path', '..\\..\\resources\\topology_meshes\\genus0.ply',
         '--output_dir', '..\\..\\output\\meshdir',
         '--log_dir', '..\\..\\output\\logs'

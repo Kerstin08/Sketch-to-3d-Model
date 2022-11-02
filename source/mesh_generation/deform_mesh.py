@@ -51,7 +51,7 @@ class MeshGen():
         l = dot_ab / sqr_magnitude_a
         c = a * l
         cb = b-c
-        l1_cb = dr.sum(dr.sqr(cb))
+        l1_cb = dr.sqrt(dr.sum(dr.sqr(cb)))
         return cb, l1_cb
 
     def preprocess_edge_helper(self, i, x, y, edge_vert_indices, edge_vert_faces):
@@ -114,7 +114,7 @@ class MeshGen():
 
     def offset_verts(self, params, opt, initial_vertex_positions):
         opt['deform_verts'] = dr.clamp(opt['deform_verts'], -0.5, 0.5)
-        trafo = mi.Transform4f.translate(opt['deform_verts'])
+        trafo = mi.Transform4f.translate(opt['deform_verts'].x)
         params['shape.vertex_positions'] = dr.ravel(trafo @ initial_vertex_positions)
         params.update()
 
@@ -195,6 +195,7 @@ class MeshGen():
 
             depth_loss = dr.sum(abs(depth_tens - depth_map))
             normal_loss = dr.sum(abs(normal_img - normal_map))
+
 
             current_vertex_positions = dr.unravel(mi.Point3f, params[vertex_positions_str])
 

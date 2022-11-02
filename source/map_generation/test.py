@@ -37,7 +37,7 @@ def test(input_dir, output_dir,
         dataSet = dataset.DS(False, given_type, test_dir_sketch, test_dir_target)
     else:
         dataSet = dataset.DS(False, given_type, test_dir_sketch)
-    trainer = Trainer(accelerator='cpu' if torch.cuda.is_available() else 'cpu',
+    trainer = Trainer(accelerator='gpu' if torch.cuda.is_available() else 'cpu',
                       devices=1)
     dataloader = DataLoader(dataSet, batch_size=1,
                                 shuffle=False, num_workers=4)
