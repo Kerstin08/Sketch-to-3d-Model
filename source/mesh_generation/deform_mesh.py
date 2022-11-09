@@ -2,7 +2,10 @@ import os.path
 
 import drjit as dr
 import mitsuba as mi
+import time
 import numpy as np
+import torch
+
 import source.util.mi_create_scenedesc as create_scenedesc
 import math
 from mitsuba.scalar_rgb import Transform4f as T
@@ -13,12 +16,13 @@ from torch.utils.tensorboard import SummaryWriter
 mi.set_variant('cuda_ad_rgb')
 
 class MeshGen():
-    def __init__(self, output_dir, logs, weight_depth, weight_normal, weight_smoothness, weight_edge, epochs, log_frequency, lr):
+    def __init__(self, output_dir, logs, weight_depth, weight_normal, weight_smoothness, weight_edge, weight_silhouette, epochs, log_frequency, lr):
         super(MeshGen, self).__init__()
         self.weight_depth = weight_depth
         self.weight_normal = weight_normal
         self.weight_smoothness = weight_smoothness
         self.weight_edge = weight_edge
+        self.weight_silhouette = weight_silhouette
         self.output_dir = output_dir
         self.lr = lr
         self.logs = logs
@@ -26,13 +30,15 @@ class MeshGen():
         self.epochs = epochs
         self.fov = 60
         self.log_frequency = log_frequency
-    def write_output_renders(self, render_normal, render_depth, image_name):
-        ref_bpm_normal = mi.util.convert_to_bitmap(render_normal)
-        ref_np_normal = np.transpose(np.array(ref_bpm_normal), (2, 0, 1))
-        ref_bpm_depth = mi.util.convert_to_bitmap(render_depth)
-        ref_np_depth = np.transpose(np.array(ref_bpm_depth), (2, 0, 1))
-        ref_images = np.stack([ref_np_normal, ref_np_depth])
-        self.writer.add_images(image_name, ref_images)
+    def write_output_renders(self, render_normal, render_depth, silhouette, image_name):
+        bpm_normal = mi.util.convert_to_bitmap(render_normal)
+        np_normal = np.transpose(np.array(bpm_normal), (2, 0, 1))
+        bpm_depth = mi.util.convert_to_bitmap(render_depth)
+        np_depth = np.transpose(np.array(bpm_depth), (2, 0, 1))
+        bpm_silhouette = mi.util.convert_to_bitmap(silhouette)
+        np_silhouette = np.transpose(np.array(bpm_silhouette), (2, 0, 1))
+        images = np.stack([np_normal, np_depth, np_silhouette])
+        self.writer.add_images(image_name, images)
 
     def get_edge_dist(self, vertice_positions, edge_vert_indices):
         x = dr.sqr(dr.gather(dr.cuda.ad.Float, vertice_positions[0], edge_vert_indices[0]) - dr.gather(dr.cuda.ad.Float, vertice_positions[0], edge_vert_indices[1]))
@@ -77,11 +83,18 @@ class MeshGen():
             self.preprocess_edge_helper(i, z, x, edge_vert_indices, edge_vert_faces)
         return edge_vert_indices, edge_vert_faces
 
+
     def preprocess_smoothness_params(self, edge_vert_faces, face_indices):
+        def generate_vertex_list(vertex_list_x, vertex_list_y, vertex_list_z, vertex_index):
+            vertex_list_x.append(3 * vertex_index)
+            vertex_list_y.append(3 * vertex_index + 1)
+            vertex_list_z.append(3 * vertex_index + 2)
+
         v1_x, v1_y, v1_z = [], [], []
         v2_x, v2_y, v2_z = [], [], []
         v3_x_f1, v3_y_f1, v3_z_f1 = [], [], []
         v3_x_f2, v3_y_f2, v3_z_f2 = [], [], []
+
         for key in edge_vert_faces:
             curr_faces = edge_vert_faces[key]
             vert_idx_face1 = [face_indices[0][curr_faces[0]],
@@ -92,20 +105,13 @@ class MeshGen():
                                 face_indices[2][curr_faces[1]]]
             joined_verts = list(set(vert_idx_face1).intersection(verts_idx_face2))
 
-            v1_x.append(3 * joined_verts[0])
-            v1_y.append(3 * joined_verts[0] + 1)
-            v1_z.append(3 * joined_verts[0] + 2)
-            v2_x.append(3 * joined_verts[1])
-            v2_y.append(3 * joined_verts[1] + 1)
-            v2_z.append(3 * joined_verts[1] + 2)
+            generate_vertex_list(v1_x, v1_y, v1_z, joined_verts[0])
+            generate_vertex_list(v2_x, v2_y, v2_z, joined_verts[1])
             v3_face1 = (set(vert_idx_face1).difference(joined_verts).pop())
-            v3_x_f1.append(3 * v3_face1)
-            v3_y_f1.append(3 * v3_face1 + 1)
-            v3_z_f1.append(3 * v3_face1 + 2)
+            generate_vertex_list(v3_x_f1, v3_y_f1, v3_z_f1, v3_face1)
             v3_face2 = (set(verts_idx_face2).difference(joined_verts).pop())
-            v3_x_f2.append(3 * v3_face2)
-            v3_y_f2.append(3 * v3_face2 + 1)
-            v3_z_f2.append(3 * v3_face2 + 2)
+            generate_vertex_list(v3_x_f2, v3_y_f2, v3_z_f2, v3_face2)
+
         v1 = [v1_x, v1_y, v1_z]
         v2 = [v2_x, v2_y, v2_z]
         v3_face1_idx = [v3_x_f1, v3_y_f1, v3_z_f1]
@@ -113,13 +119,46 @@ class MeshGen():
         return v1, v2, v3_face1_idx, v3_face2_idx
 
     def offset_verts(self, params, opt, initial_vertex_positions):
-        opt['deform_verts'] = dr.clamp(opt['deform_verts'], -0.5, 0.5)
-        trafo = mi.Transform4f.translate(opt['deform_verts'].x)
+        #opt['deform_verts'] = dr.clamp(opt['deform_verts'], -0.5, 0.5)
+        trafo = mi.Transform4f.translate(opt['deform_verts'])
         params['shape.vertex_positions'] = dr.ravel(trafo @ initial_vertex_positions)
         params.update()
 
-    def deform_mesh(self, normal_map, depth_map, basic_mesh):
-        self.write_output_renders(normal_map, depth_map, "ref_images")
+    def write_output_mesh(self, vertex_count, vertex_positions, face_count, faces):
+        mesh = mi.Mesh(
+            "deformed_mesh",
+            vertex_count=vertex_count,
+            face_count=face_count,
+            has_vertex_normals=True,
+            has_vertex_texcoords=False,
+        )
+
+        mesh_params = mi.traverse(mesh)
+        mesh_params["vertex_positions"] = dr.ravel(vertex_positions)
+        mesh_params["faces"] = dr.ravel(faces)
+        mesh_params.update()
+        output_path = os.path.join(self.output_dir, "deform_mesh.ply")
+        mesh.write_ply(output_path)
+
+    # Use torch arithmetic function since dr.sum reduces tensors always over dim 0
+    @dr.wrap_ad(source='drjit', target='torch')
+    def torch_add(self, x):
+        dims = tuple(range(x.ndimension())[1:])
+        return torch.sum(x, dim=dims)
+
+    def iou(self, predict, target):
+        intersect = self.torch_add(predict * target)
+        union = self.torch_add(predict + target - predict * target)
+        intersect_shape_x = intersect.shape
+        x = 1.0 - dr.sum(intersect / (union + 1e-6)) / intersect_shape_x[0]
+        return x
+
+    def deform_mesh(self, normal_map_target, depth_map_target, basic_mesh):
+        mask = mi.TensorXf(depth_map_target[:,:,0]) < 0.99
+        silhouette_target = dr.select(mask, 0.2, 1.0)
+        dr.enable_grad(silhouette_target)
+        self.write_output_renders(normal_map_target, depth_map_target, np.array(silhouette_target), "target_images")
+
         depth_integrator = {
                 'type': 'depth_reparam'
         }
@@ -149,7 +188,9 @@ class MeshGen():
         scene = mi.load_dict(scene_desc)
         normal_img_init = mi.render(scene, seed=0, spp=1024, integrator=normal_integrator_lodaded)
         depth_img_init = mi.render(scene, seed=0, spp=1024, integrator=depth_integrator_lodaded)
-        self.write_output_renders(normal_img_init, depth_img_init, "init_images")
+        mask = depth_img_init < 1.5
+        silhouette_init = dr.select(mask, 0.2, 1)
+        self.write_output_renders(normal_img_init, depth_img_init, np.array(silhouette_init), "init_images")
 
         params = mi.traverse(scene)
         print(params)
@@ -166,15 +207,38 @@ class MeshGen():
 
         face_v1, face_v2, face_v3_face1, face_v3_face2 = self.preprocess_smoothness_params(edge_vert_faces, face_indices)
 
-        opt = mi.ad.Adam(lr=self.lr)
+        opt = mi.ad.Adam(lr=self.lr, beta_1=0.9, beta_2=0.999)
         vertex_count = params[vertex_count_str]
         opt['deform_verts'] = dr.full(mi.Point3f, 0, vertex_count)
 
         for epoch in range(self.epochs):
             self.offset_verts(params, opt, initial_vertex_positions)
-
             normal_img = mi.render(scene, params, seed=epoch, spp=256, integrator=normal_integrator_lodaded)
             depth_img = mi.render(scene, params, seed=epoch, spp=256, integrator=depth_integrator_lodaded)
+
+            # Not the prettiest, but need to use depth_img data in order to get gradient
+            # What if that is the same gradient used for the depth image?
+            # Todo: more investigation is needed
+            mask = mi.TensorXf(depth_img[:,:,0]) < 0.99
+            silhouette = dr.select(mask, 0.2, 1.0)
+            #silhouette = dr.select(mask, silhouette, 1.0)
+
+            # Test if renderings contain invalid values due to corrupt mesh
+            # Write failure images and mesh for debug purposes
+            test_sum_normal = dr.sum(normal_img)
+            test_sum_depth = dr.sum(depth_img)
+
+            if dr.any(dr.isnan(test_sum_normal)):
+                self.write_output_renders(normal_img, depth_img, np.array(silhouette), "failure_mesh")
+                self.write_output_mesh(vertex_count, params[vertex_positions_str], params[face_count_str],
+                                       params[face_str])
+                raise Exception("Normal rendering contains nan!")
+            if dr.any(dr.isnan(test_sum_depth)):
+                self.write_output_renders(normal_img, depth_img, np.array(silhouette), "failure_mesh")
+                self.write_output_mesh(vertex_count, params[vertex_positions_str], params[face_count_str],
+                                       params[face_str])
+                raise Exception("Depth rendering contains nan!")
+
             mask = depth_img.array < 1.5
             curr_min_val = dr.min(depth_img)
             masked_img = dr.select(mask,
@@ -191,11 +255,11 @@ class MeshGen():
 
             if epoch % self.log_frequency == 0 or epoch==epoch-1:
                 image_name = "deformed_images" + str(epoch)
-                self.write_output_renders(normal_img, depth_img, image_name)
+                self.write_output_renders(normal_img, depth_img, np.array(silhouette), image_name)
 
-            depth_loss = dr.sum(abs(depth_tens - depth_map))
-            normal_loss = dr.sum(abs(normal_img - normal_map))
-
+            depth_loss = dr.mean(abs((depth_tens - depth_map_target)))
+            normal_loss = dr.mean(abs((normal_img * 0.5 + 0.5) - (normal_map_target * 0.5 + 0.5)))
+            silhouette_loss = self.iou(silhouette, silhouette_target)
 
             current_vertex_positions = dr.unravel(mi.Point3f, params[vertex_positions_str])
 
@@ -225,10 +289,10 @@ class MeshGen():
             )
             cb_1, l1_cb_1 = self.smoothness_helper(v1, v2, v3_face1)
             cb_2, l1_cb_2 = self.smoothness_helper(v1, v2, v3_face2)
-            cos = dr.sum(cb_1 * cb_2) / (l1_cb_1 * l1_cb_2 + 1e-6)
+            cos = dr.sum(cb_1 * cb_2) / (l1_cb_1 * l1_cb_2)
             smoothness_loss = dr.sum(dr.sqr(cos+1))
 
-            loss = depth_loss * self.weight_depth + normal_loss * self.weight_normal + edge_loss * self.weight_edge + smoothness_loss * self.weight_smoothness
+            loss = silhouette_loss * self.weight_silhouette + edge_loss * self.weight_edge + smoothness_loss * self.weight_smoothness + normal_loss * self.weight_normal + depth_loss * self.weight_depth
             dr.backward(loss)
 
             opt.step()
@@ -238,20 +302,8 @@ class MeshGen():
             self.writer.add_scalar("loss_normal", normal_loss[0], epoch)
             self.writer.add_scalar("loss_edge", edge_loss[0], epoch)
             self.writer.add_scalar("loss_smoothness", smoothness_loss[0], epoch)
-            print("Epochs {}: error={} loss_normal={} loss_depth={} loss_edge={} loss_smoothness={}".format(epoch, loss[0], normal_loss[0], depth_loss[0], edge_loss[0], smoothness_loss[0]))
+            self.writer.add_scalar("loss_silhouette", silhouette_loss[0], epoch)
+            print("Epochs {}: error={} loss_normal={} loss_depth={} loss_edge={} loss_smoothness={} loss_silhouette={}".format(epoch, loss[0], normal_loss[0], depth_loss[0], edge_loss[0], smoothness_loss[0], silhouette_loss[0]))
 
         self.writer.close()
-        mesh = mi.Mesh(
-            "deformed_mesh",
-            vertex_count=vertex_count,
-            face_count=params[face_count_str],
-            has_vertex_normals=True,
-            has_vertex_texcoords=False,
-        )
-
-        mesh_params = mi.traverse(mesh)
-        mesh_params["vertex_positions"] = dr.ravel(params[vertex_positions_str])
-        mesh_params["faces"] = dr.ravel(params[face_str])
-        mesh_params.update()
-        output_path = os.path.join(self.output_dir, "deform_mesh.ply")
-        mesh.write_ply(output_path)
+        self.write_output_mesh(vertex_count, params[vertex_positions_str], params[face_count_str], params[face_str])

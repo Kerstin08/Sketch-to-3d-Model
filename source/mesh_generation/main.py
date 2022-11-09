@@ -1,4 +1,7 @@
 import argparse
+
+import numpy as np
+
 import deform_mesh
 import os
 from source.util import OpenEXR_utils
@@ -6,7 +9,7 @@ from source.util import data_type
 from source.util import dir_utils
 
 def run(normal_map_path, depth_map_path, basic_mesh, output_dir, log_dir,
-        epochs, log_frequency, lr, weight_depth, weight_normal, weight_smoothness, weight_edge):
+        epochs, log_frequency, lr, weight_depth, weight_normal, weight_smoothness, weight_edge, weight_silhouette):
 
     if not os.path.exists(normal_map_path) or not os.path.exists(depth_map_path) or not os.path.exists(basic_mesh):
         raise Exception("Normal map {}, depth map {} or base mesh {} does not exist!".format(normal_map_path, depth_map_path, basic_mesh))
@@ -21,11 +24,13 @@ def run(normal_map_path, depth_map_path, basic_mesh, output_dir, log_dir,
                         weight_normal,
                         weight_smoothness,
                         weight_edge,
+                        weight_silhouette,
                         epochs,
                         log_frequency,
                         lr)
     normal_map = OpenEXR_utils.getRGBimageEXR(normal_map_path, data_type.Type.normal, 2)
     depth_map = OpenEXR_utils.getRGBimageEXR(depth_map_path, data_type.Type.depth, 2)
+    depth_map = np.stack([depth_map, depth_map, depth_map], 2).squeeze()
 
     mesh_gen.deform_mesh(normal_map, depth_map, basic_mesh)
 
@@ -41,7 +46,8 @@ def diff_args(args):
         args.weight_depth,
         args.weight_normal,
         args.weight_smoothness,
-        args.weight_edge
+        args.weight_edge,
+        args.weight_silhouette,
         )
 
 def main(args):
@@ -53,11 +59,12 @@ def main(args):
     parser.add_argument("--log_dir", type=str, default="logs", help="path to logs dir")
     parser.add_argument("--epoch", type=int, default=10, help="# of epoch for mesh generation")
     parser.add_argument("--log_frequency", type=int, default=1, help="frequency logs are written")
-    parser.add_argument("--lr", type=float, default=0.001, help="initial learning rate for mesh generation")
-    parser.add_argument("--weight_depth", type=int, default=0.002, help="depth weight")
-    parser.add_argument("--weight_normal", type=int, default=0.002, help="normal weight")
-    parser.add_argument("--weight_smoothness", type=int, default=0.01, help="smoothness weight")
-    parser.add_argument("--weight_edge", type=int, default=0.9, help="edge weight")
+    parser.add_argument("--lr", type=float, default=0.0001, help="initial learning rate for mesh generation")
+    parser.add_argument("--weight_depth", type=float, default=0.05, help="depth weight")
+    parser.add_argument("--weight_normal", type=float, default=0.02, help="normal weight")
+    parser.add_argument("--weight_smoothness", type=float, default=0.01, help="smoothness weight")
+    parser.add_argument("--weight_edge", type=float, default=0.9, help="edge weight")
+    parser.add_argument("--weight_silhouette", type=float, default=0.9, help="silhouette weight")
     args = parser.parse_args(args)
     diff_args(args)
 

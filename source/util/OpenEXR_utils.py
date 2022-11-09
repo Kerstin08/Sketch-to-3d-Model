@@ -24,6 +24,11 @@ def getRGBimageEXR(path, given_data_type, axis):
         channel = exr2numpy(path, channel_name)
         channels.append(channel)
     RGB = np.stack(channels, axis=axis)
+    array_sum = np.sum(RGB)
+    if np.isnan(array_sum):
+        raise Exception("{} contains nan!".format(path))
+    if np.isinf(array_sum):
+        raise Exception("{} contains inf!".format(path))
     return RGB
 
 def writeRGBImage(image, given_data_type, path):

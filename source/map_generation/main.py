@@ -38,7 +38,7 @@ def diff_args(args):
 
 def main(args):
     parser = argparse.ArgumentParser(prog="map_generation_dataset")
-    parser.add_argument("--train", type=bool, default=False, help="Train or test")
+    parser.add_argument("--train", type=bool, default=True, help="Train or test")
     parser.add_argument("--input_dir", type=str, default="..\\..\\resources\\sketch_meshes",
                         help="Directory where the input sketches for training are stored")
     parser.add_argument("--output_dir", type=str, default="checkpoints",
@@ -52,11 +52,11 @@ def main(args):
     parser.add_argument("--n_critic", type=int, default=5, help="# of n_critic")
     parser.add_argument("--weight_L1", type=int, default=500, help="L1 weight")
     parser.add_argument("--gradient_penalty_coefficient", type=int, default=10, help="gradient penalty coefficient")
-    parser.add_argument("--use_generated_model", type=bool, default=True,
+    parser.add_argument("--use_generated_model", type=bool, default=False,
                         help="If models are trained from scratch or already trained models are used")
     parser.add_argument("--generated_model_path", type=str, default="..\\..\\output\\test.ckpt",
                         help="If test is used determine if comparison images should be generated")
-    parser.add_argument("--devices", type=int, default=1,
+    parser.add_argument("--devices", type=int, default=4,
                         help="Define the number of cpu or gpu devices used")
     args = parser.parse_args(args)
     diff_args(args)
@@ -66,9 +66,9 @@ if __name__ == '__main__':
     params = [
         '--input_dir', 'datasets/mixed_0_2500_normal',
         '--type', 'normal',
-        '--epochs', '1',
+        '--epochs', '300',
         '--lr', '5e-5',
-        '--output_dir', "checkpoint/last_output",
-        '--generated_model_path', "checkpoints/last.ckpt"
+#        '--output_dir', "checkpoint/last_output",
+#        '--generated_model_path', "checkpoints/last.ckpt"
     ]
     main(params)

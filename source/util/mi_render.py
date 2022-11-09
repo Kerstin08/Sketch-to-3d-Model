@@ -58,9 +58,9 @@ def avo(scene, input_path, aovs, output_name, output_dirs, create_debug_pngs=Tru
             mi.util.write_bitmap(path, depth_tens)
 
     if "sh_normal" in aovs.values():
-        depth_integrator = source.util.mi_create_scenedesc.create_integrator_normal()
-        depth_integrator_lodaded = mi.load_dict(depth_integrator)
-        img = mi.render(scene, seed=0, spp=256, integrator=depth_integrator_lodaded)
+        normal_integrator = source.util.mi_create_scenedesc.create_integrator_normal()
+        normal_integrator_lodaded = mi.load_dict(normal_integrator)
+        img = mi.render(scene, seed=0, spp=256, integrator=normal_integrator_lodaded)
         # If mesh has invalid mesh vertices, rendering contains nan.
         if dr.any(dr.isnan(img)):
             print(
@@ -158,6 +158,6 @@ if __name__ == '__main__':
     output_dirs = {'nn': '..\\..\\output', 'dd.y': '..\\..\\output', "dd_png": '..\\..\\output', "nn_png": '..\\..\\output', 'rendering': '..\\..\\output'}
     params = [
         '--type', 'aov',
-        '--input_path', '..\\..\\resources\\ABC\\abc_0099_stl2_v00\\0_499\\00990027\\00990027_523151fa223eff350f891bee_trimesh_000.ply',
+        '--input_path', '..\\..\\resources\\thingi10k\\2500_2999\\229606.ply',
         ]
     main(params)

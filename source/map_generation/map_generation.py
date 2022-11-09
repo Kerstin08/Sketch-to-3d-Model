@@ -70,7 +70,7 @@ class MapGen(pl.LightningModule):
         )[0]
         gradients = gradients.view(real_images.size(0), -1)
         grad_norm = gradients.norm(2, 1)
-        return torch.mean((grad_norm - 1) ** 2)
+        return torch.mean(torch.square(grad_norm - 1))
 
     def discriminator_step(self, sample_batched, fake_images):
         print("Discriminator")
@@ -119,7 +119,6 @@ class MapGen(pl.LightningModule):
         logger = self.logger.experiment
         image_name_pred = str(self.global_step) + "generated_and_target_images"
         logger.add_image(image_name_pred, grid, 0)
-
     def test_step(self, sample_batched, batch_idx):
         predicted_image = self(sample_batched)
         imagename = Path(sample_batched['input_path'][0]).stem
