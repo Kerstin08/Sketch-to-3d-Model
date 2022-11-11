@@ -2,6 +2,7 @@ import OpenEXR
 import Imath
 import numpy as np
 import source.util.data_type as data_type
+import torch
 
 def exr2numpy(exr_path, chanel_name):
     file = OpenEXR.InputFile(exr_path)
@@ -32,7 +33,13 @@ def getRGBimageEXR(path, given_data_type, axis):
     return RGB
 
 def writeRGBImage(image, given_data_type, path):
-    img = image.detach().cpu().numpy().squeeze()
+    if torch.is_tensor(image):
+        img = image.detach().cpu().numpy().squeeze()
+    elif type(image).__module__ == np.__name__:
+        img = image
+    else:
+        raise Exception("Image to write is neither torch tensor nor numpy array.")
+
     size = img.shape
     if given_data_type == data_type.Type.normal:
         header = OpenEXR.Header(size[1], size[2])
