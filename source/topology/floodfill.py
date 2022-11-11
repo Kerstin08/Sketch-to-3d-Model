@@ -1,17 +1,31 @@
+import os.path
 from PIL import Image
 from collections import deque
+from source.util import OpenEXR_utils
+from source.util import data_type
+from pathlib import Path
 
-background = 255
+background = 1
 bounds = 0
 fill = 0
 
-def startFill(image):
+def startFill(image, image_path, output_dir, write_debug_png=True):
+    image = image / 255
     start_points = find_start_points(image)
     for i in start_points:
         flood_fill_BFS(image, i)
 
-    filled_image = Image.fromarray(image)
-    filled_image.save(r"C:\Users\Kerstin\Documents\MasterThesis\thesis_images\filled_image.png")
+    # Todo: eval if this is needed
+    filename = Path(image_path)
+    exr_path = os.path.join(output_dir, filename.stem + "_filled.exr")
+    OpenEXR_utils.writeRGBImage(image, data_type.Type.depth, exr_path)
+
+    if write_debug_png:
+        image_png = image * 255
+        filled_image = Image.fromarray(image_png).convert("RGB")
+        png_path = os.path.join(output_dir, filename.stem + "_filled.png")
+        filled_image.save(png_path)
+
     return image
 
 def flood_fill_BFS(image, seed):

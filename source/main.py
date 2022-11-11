@@ -17,9 +17,9 @@ from source.map_generation.test import test
 ## 2. euler
 ## (2.a. get connectivity between the holes in order to obtain better mesh)
 ## 3. obtain mesh based on euler result (and connectivity result)
-def topology(sketch, genus_dir):
-    image = preprocess_sketch.load_image(sketch, True)
-    filled_image = floodfill.startFill(image)
+def topology(sketch_path, genus_dir, output_dir):
+    image = preprocess_sketch.load_image(sketch_path, True)
+    filled_image = floodfill.startFill(image, sketch_path, output_dir, False)
     holes = euler.get_number_holes(filled_image)
     basic_mesh_path = basic_mesh.get_basic_mesh_path(holes, genus_dir)
     return basic_mesh_path

@@ -17,12 +17,12 @@ def comupute_matches_Q(image):
                 neighbor_sum += image[i[0], i[1]]
             sum = neighbor_sum + current_pixel
 
-            if sum == 255:
+            if sum == 1:
                 Q1 += 1
-            elif sum == 765:
+            elif sum == 3:
                 Q3 += 1
-            elif sum == 510:
-                if current_pixel == 255 and image[neighbors[2][0], neighbors[2][1]] == 255:
+            elif sum == 2:
+                if current_pixel == 1 and image[neighbors[2][0], neighbors[2][1]] == 1:
                     QD += 1
                 if current_pixel == 0 and image[neighbors[2][0], neighbors[2][1]] == 0:
                     QD += 1

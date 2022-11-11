@@ -2,6 +2,9 @@ import os
 import json
 
 def get_basic_mesh_path(number_holes, path=""):
+    if not os.path.exists(path):
+        raise Exception("Given genus dir path {} does not exits.".format(path))
+
     for root, dirs, files in os.walk(path):
         for file in files:
             if file == "basic_meshes.json":
