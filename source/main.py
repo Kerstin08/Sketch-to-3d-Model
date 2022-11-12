@@ -1,11 +1,11 @@
 import argparse
 import os
-import source.mesh_generation.deform_mesh as deform_mesh
-import source.util.sketch_preprocess_operations as preprocess_sketch
-import source.topology.floodfill as floodfill
-import source.topology.euler as euler
-import source.topology.basic_mesh as basic_mesh
-import source.util.dir_utils as dir_utils
+from source.mesh_generation import deform_mesh
+from source.util import sketch_utils
+from source.topology import floodfill
+from source.topology import euler
+from source.topology import basic_mesh
+from source.util import dir_utils
 from source.map_generation.test import test
 
 
@@ -18,7 +18,7 @@ from source.map_generation.test import test
 ## (2.a. get connectivity between the holes in order to obtain better mesh)
 ## 3. obtain mesh based on euler result (and connectivity result)
 def topology(sketch_path, genus_dir, output_dir):
-    image = preprocess_sketch.load_image(sketch_path, True)
+    image = sketch_utils.load_image(sketch_path, True)
     filled_image = floodfill.startFill(image, sketch_path, output_dir, False)
     holes = euler.get_number_holes(filled_image)
     basic_mesh_path = basic_mesh.get_basic_mesh_path(holes, genus_dir)
@@ -32,7 +32,7 @@ def map_generation(input_sketch, output_dir, normal_map_gen_model, depth_map_gen
     sketch_filepath_test = os.path.join(sketch_filepath, "test")
     if not os.path.exists(sketch_filepath_test):
         dir_utils.create_general_folder(sketch_filepath_test)
-    preprocess_sketch.clean_userinput(input_sketch, sketch_filepath_test)
+    sketch_utils.clean_userinput(input_sketch, sketch_filepath_test)
     normal_output_path = os.path.join(output_dir, "normal")
     if not os.path.exists(normal_output_path):
         dir_utils.create_general_folder(normal_output_path)
@@ -62,7 +62,7 @@ def run(input_sketch,
     if not os.path.exists(output_dir):
         dir_utils.create_general_folder(output_dir)
 
-    basic_mesh = topology(input_sketch, genus_dir)
+    #basic_mesh = topology(input_sketch, genus_dir)
     map_generation(input_sketch, output_dir, normal_map_gen_model, depth_map_gen_model)
 
 

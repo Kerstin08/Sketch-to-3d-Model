@@ -15,6 +15,11 @@ def load_image(path, pad_image):
         image_arr = np.pad(image_arr, 1, mode='constant', constant_values=255)
     return image_arr
 
+def unpad(x, pad_width):
+    shape_x, shape_y = x.shape
+    n_shape_r, n_shape_l = 0 + pad_width, shape_x - pad_width
+    return x[n_shape_r:n_shape_l, n_shape_r:n_shape_l]
+
 def clean_userinput(image_path, output_path):
     image = load_image(image_path, False)
     filename = Path(image_path)

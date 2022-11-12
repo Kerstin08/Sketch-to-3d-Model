@@ -3,6 +3,7 @@ from PIL import Image
 from collections import deque
 from source.util import OpenEXR_utils
 from source.util import data_type
+from source.util import sketch_utils
 from pathlib import Path
 
 background = 1
@@ -16,6 +17,7 @@ def startFill(image, image_path, output_dir, write_debug_png=True):
         flood_fill_BFS(image, i)
 
     # Todo: eval if this is needed
+    image = sketch_utils.unpad(image, 1)
     filename = Path(image_path)
     exr_path = os.path.join(output_dir, filename.stem + "_filled.exr")
     OpenEXR_utils.writeRGBImage(image, data_type.Type.depth, exr_path)
