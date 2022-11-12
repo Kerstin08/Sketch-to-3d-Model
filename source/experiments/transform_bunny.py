@@ -2,6 +2,7 @@
 # used to get familiar with mitsuba3 and test integrators
 import drjit as dr
 import mitsuba as mi
+import torch
 import source.mesh_generation.normal_reparam_integrator
 import source.mesh_generation.depth_reparam_integrator
 
@@ -9,6 +10,8 @@ mi.set_variant('cuda_ad_rgb')
 
 from mitsuba.scalar_rgb import Transform4f as T
 from matplotlib import pyplot as plt
+import os
+os.environ['KMP_DUPLICATE_LIB_OK']='True'
 
 def apply_transformation(params, opt):
     opt['trans'] = dr.clamp(opt['trans'], -0.5, 0.5)
@@ -18,6 +21,12 @@ def apply_transformation(params, opt):
 
     params['bunny.vertex_positions'] = dr.ravel(trafo @ initial_vertex_positions)
     params.update()
+
+@dr.wrap_ad(source='drjit', target='torch')
+def torch_add(fake, real):
+    loss = torch.nn.L1Loss()
+    l = loss(fake, real)
+    return l
 
 def plot_figures(img_init, img_ref, img_curr, name, it):
     fig, axs = plt.subplots(2, 2, figsize=(10, 10))
@@ -120,12 +129,9 @@ for it in range(20):
                               curr_max_val - curr_min_val)) + wanted_range_min,
                       1.0)
     depth_tens = mi.TensorXf(depth, shape=(64, 64, 3))
-    print(dr.grad_enabled(depth_img))
-    print(dr.grad_enabled(depth))
-    print(dr.grad_enabled(depth_tens))
 
-    depth_loss = dr.sum(dr.sqr(depth_img - depth_img_ref)) / len(depth_img)
-    normal_loss = dr.sum(dr.sqr(normal_img - normal_img_ref)) / len(normal_img)
+    depth_loss = torch_add(depth_img, depth_img_ref)
+    normal_loss = torch_add(normal_img, normal_img_ref)
     loss = depth_loss*0.5 + normal_loss*0.5
 
     dr.backward(loss)
@@ -133,7 +139,7 @@ for it in range(20):
     opt.step()
 
     loss_hist.append(loss)
-    print(f"Iteration {it:02d}: error={loss[0]:6f}, angle={opt['angle'][0]:.4f}, trans=[{opt['trans'].x[0]:.4f}, {opt['trans'].y[0]:.4f}]",
+    print(f"Iteration {it:02d}: error={loss}, angle={opt['angle'][0]:.4f}, trans=[{opt['trans'].x[0]:.4f}, {opt['trans'].y[0]:.4f}]",
         end='\r')
 
     plot_figures(depth_img_init, depth_img_ref, depth_img, 'depth', it)

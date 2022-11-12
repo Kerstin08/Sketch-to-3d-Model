@@ -11,6 +11,7 @@ import math
 from mitsuba.scalar_rgb import Transform4f as T
 import source.mesh_generation.normal_reparam_integrator as normal_reparam_integrator
 import source.mesh_generation.depth_reparam_integrator as depth_reparam_integrator
+import source.mesh_generation.silhouette_reparam_integrator as silhouette_reparam_integrator
 from torch.utils.tensorboard import SummaryWriter
 
 mi.set_variant('cuda_ad_rgb')
@@ -153,11 +154,8 @@ class MeshGen():
         x = 1.0 - dr.sum(intersect / (union + 1e-6)) / intersect_shape_x[0]
         return x
 
-    def deform_mesh(self, normal_map_target, depth_map_target, basic_mesh):
-        mask = mi.TensorXf(depth_map_target[:,:,0]) < 0.99
-        silhouette_target = dr.select(mask, 0.2, 1.0)
-        dr.enable_grad(silhouette_target)
-        self.write_output_renders(normal_map_target, depth_map_target, np.array(silhouette_target), "target_images")
+    def deform_mesh(self, normal_map_target, depth_map_target, silhouette_target, basic_mesh):
+        self.write_output_renders(normal_map_target, depth_map_target, silhouette_target, "target_images")
 
         depth_integrator = {
                 'type': 'depth_reparam'
@@ -165,8 +163,12 @@ class MeshGen():
         normal_integrator = {
                 'type': 'normal_reparam'
         }
+        silhouette_integrator = {
+                'type': 'silhouette_reparam'
+        }
         depth_integrator_lodaded = mi.load_dict(depth_integrator)
         normal_integrator_lodaded = mi.load_dict(normal_integrator)
+        silhouette_integrator_lodaded = mi.load_dict(silhouette_integrator)
 
         datatype = basic_mesh.rsplit(".", 1)[1]
         if datatype != "obj" and datatype != "ply":
@@ -186,11 +188,23 @@ class MeshGen():
                                                 256, 256)
         scene_desc = {"type": "scene", "shape": shape, "camera": camera}
         scene = mi.load_dict(scene_desc)
-        normal_img_init = mi.render(scene, seed=0, spp=1024, integrator=normal_integrator_lodaded)
-        depth_img_init = mi.render(scene, seed=0, spp=1024, integrator=depth_integrator_lodaded)
-        mask = depth_img_init < 1.5
-        silhouette_init = dr.select(mask, 0.2, 1)
-        self.write_output_renders(normal_img_init, depth_img_init, np.array(silhouette_init), "init_images")
+        normal_img_init = mi.render(scene, seed=0, spp=256, integrator=normal_integrator_lodaded)
+        depth_img_init = mi.render(scene, seed=0, spp=256, integrator=depth_integrator_lodaded)
+        mask = depth_img_init.array < 1.5
+        curr_min_val = dr.min(depth_img_init)
+        masked_img = dr.select(mask,
+                               depth_img_init.array,
+                               0.0)
+        curr_max_val = dr.max(masked_img)
+        wanted_range_min, wanted_range_max = 0.0, 0.75
+        depth = dr.select(mask,
+                          (depth_img_init.array - curr_min_val) * (
+                                  (wanted_range_max - wanted_range_min) / (
+                                  curr_max_val - curr_min_val)) + wanted_range_min,
+                          1.0)
+        depth_init_tens = mi.TensorXf(depth, shape=(256, 256, 3))
+        silhouette_img_init = mi.render(scene, seed=0, spp=256, integrator=silhouette_integrator_lodaded)
+        self.write_output_renders(normal_img_init, depth_init_tens, silhouette_img_init, "init_images")
 
         params = mi.traverse(scene)
         print(params)
@@ -203,6 +217,7 @@ class MeshGen():
 
         edge_vert_indices, edge_vert_faces = self.preprocess_edge_params(face_indices)
         initial_edge_lengths = self.get_edge_dist(initial_vertex_positions, edge_vert_indices)
+        # Todo: test if this changes anything, because technically the input normal map, etc. also do not have a gradient enabled
         dr.enable_grad(initial_edge_lengths)
 
         face_v1, face_v2, face_v3_face1, face_v3_face2 = self.preprocess_smoothness_params(edge_vert_faces, face_indices)
@@ -215,13 +230,7 @@ class MeshGen():
             self.offset_verts(params, opt, initial_vertex_positions)
             normal_img = mi.render(scene, params, seed=epoch, spp=256, integrator=normal_integrator_lodaded)
             depth_img = mi.render(scene, params, seed=epoch, spp=256, integrator=depth_integrator_lodaded)
-
-            # Not the prettiest, but need to use depth_img data in order to get gradient
-            # What if that is the same gradient used for the depth image?
-            # Todo: more investigation is needed
-            mask = mi.TensorXf(depth_img[:,:,0]) < 0.99
-            silhouette = dr.select(mask, 0.2, 1.0)
-            #silhouette = dr.select(mask, silhouette, 1.0)
+            silhouette_img = mi.render(scene, params, seed=epoch, spp=256, integrator=silhouette_integrator_lodaded)
 
             # Test if renderings contain invalid values due to corrupt mesh
             # Write failure images and mesh for debug purposes
@@ -229,23 +238,25 @@ class MeshGen():
             test_sum_depth = dr.sum(depth_img)
 
             if dr.any(dr.isnan(test_sum_normal)):
-                self.write_output_renders(normal_img, depth_img, np.array(silhouette), "failure_mesh")
+                self.write_output_renders(normal_img, depth_img, silhouette_img, "failure_mesh")
                 self.write_output_mesh(vertex_count, params[vertex_positions_str], params[face_count_str],
                                        params[face_str])
                 raise Exception("Normal rendering contains nan!")
             if dr.any(dr.isnan(test_sum_depth)):
-                self.write_output_renders(normal_img, depth_img, np.array(silhouette), "failure_mesh")
+                self.write_output_renders(normal_img, depth_img, silhouette_img, "failure_mesh")
                 self.write_output_mesh(vertex_count, params[vertex_positions_str], params[face_count_str],
                                        params[face_str])
                 raise Exception("Depth rendering contains nan!")
 
-            mask = depth_img.array < 1.5
-            curr_min_val = dr.min(depth_img)
-            masked_img = dr.select(mask,
+            # Todo: invesigate this more -> even if works, check w.o. suspend grad to make sure this acutally is the problem and not the range thingy
+            with dr.suspend_grad():
+                mask = depth_img.array < 1.5
+                curr_min_val = dr.min(depth_img)
+                masked_img = dr.select(mask,
                                    depth_img.array,
                                    0.0)
-            curr_max_val = dr.max(masked_img)
-            wanted_range_min, wanted_range_max = 0.0, 0.5
+                curr_max_val = dr.max(masked_img)
+                wanted_range_min, wanted_range_max = 0.0,  0.75
             depth = dr.select(mask,
                               (depth_img.array - curr_min_val) * (
                                       (wanted_range_max - wanted_range_min) / (
@@ -255,11 +266,11 @@ class MeshGen():
 
             if epoch % self.log_frequency == 0 or epoch==epoch-1:
                 image_name = "deformed_images" + str(epoch)
-                self.write_output_renders(normal_img, depth_img, np.array(silhouette), image_name)
+                self.write_output_renders(normal_img, depth_tens, silhouette_img, image_name)
 
             depth_loss = dr.mean(abs((depth_tens - depth_map_target)))
             normal_loss = dr.mean(abs((normal_img * 0.5 + 0.5) - (normal_map_target * 0.5 + 0.5)))
-            silhouette_loss = self.iou(silhouette, silhouette_target)
+            silhouette_loss = self.iou(silhouette_img, silhouette_target)
 
             current_vertex_positions = dr.unravel(mi.Point3f, params[vertex_positions_str])
 
@@ -292,7 +303,7 @@ class MeshGen():
             cos = dr.sum(cb_1 * cb_2) / (l1_cb_1 * l1_cb_2)
             smoothness_loss = dr.sum(dr.sqr(cos+1))
 
-            loss = silhouette_loss * self.weight_silhouette + edge_loss * self.weight_edge + smoothness_loss * self.weight_smoothness + normal_loss * self.weight_normal + depth_loss * self.weight_depth
+            loss = silhouette_loss #* self.weight_silhouette + edge_loss * self.weight_edge + smoothness_loss * self.weight_smoothness + normal_loss * self.weight_normal + depth_loss * self.weight_depth
             dr.backward(loss)
 
             opt.step()
