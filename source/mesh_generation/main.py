@@ -14,9 +14,8 @@ def run(normal_map_path, depth_map_path, silhouette_map_path, basic_mesh, output
     if not os.path.exists(normal_map_path) or not os.path.exists(depth_map_path) or not os.path.exists(silhouette_map_path) or not os.path.exists(basic_mesh):
         raise Exception("Normal map {}, depth map {}, silhouette map {} or base mesh {} does not exist!".format(normal_map_path, depth_map_path, silhouette_map_path, basic_mesh))
 
-    if not os.path.exists(output_dir):
-        os.mkdir(output_dir)
-
+    # use logdir creation for outputdir creation to get different deformed meshes when running parallel
+    output_dir = dir_utils.create_logdir(output_dir)
     log_dir = dir_utils.create_logdir(log_dir)
     mesh_gen = deform_mesh.MeshGen(output_dir,
                         log_dir,

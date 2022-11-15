@@ -12,6 +12,8 @@ def create_logdir(log_dir):
                 n = int(dir.split("_", 1)[1])
                 if n >= version:
                     version=n+1
+            #Todo: need to find solution for that
+            break
     curr_version = "version_{}".format(version)
     curr_path = os.path.join(log_dir, curr_version)
     os.mkdir(curr_path)

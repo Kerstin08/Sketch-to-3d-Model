@@ -84,6 +84,14 @@ class MeshGen():
             self.preprocess_edge_helper(i, z, x, edge_vert_indices, edge_vert_faces)
         return edge_vert_indices, edge_vert_faces
 
+    def log_hparams(self):
+        self_vars = {'weight_depth': self.weight_depth,
+                     'weight_normal': self.weight_normal,
+                     'weight_smoothness': self.weight_smoothness,
+                     'weight_edge': self.weight_edge,
+                     'weight_silhouette': self.weight_silhouette,
+                     'lr': self.lr}
+        self.writer.add_hparams(self_vars, {'hparam_metric': -1})
 
     def preprocess_smoothness_params(self, edge_vert_faces, face_indices):
         def generate_vertex_list(vertex_list_x, vertex_list_y, vertex_list_z, vertex_index):
@@ -156,6 +164,7 @@ class MeshGen():
 
     def deform_mesh(self, normal_map_target, depth_map_target, silhouette_target, basic_mesh):
         self.write_output_renders(normal_map_target, depth_map_target, silhouette_target, "target_images")
+        self.log_hparams()
 
         depth_integrator = {
                 'type': 'depth_reparam'
@@ -235,18 +244,12 @@ class MeshGen():
             # Test if renderings contain invalid values due to corrupt mesh
             # Write failure images and mesh for debug purposes
             test_sum_normal = dr.sum(normal_img)
-            test_sum_depth = dr.sum(depth_img)
 
             if dr.any(dr.isnan(test_sum_normal)):
                 self.write_output_renders(normal_img, depth_img, silhouette_img, "failure_mesh")
                 self.write_output_mesh(vertex_count, params[vertex_positions_str], params[face_count_str],
                                        params[face_str])
                 raise Exception("Normal rendering contains nan!")
-            if dr.any(dr.isnan(test_sum_depth)):
-                self.write_output_renders(normal_img, depth_img, silhouette_img, "failure_mesh")
-                self.write_output_mesh(vertex_count, params[vertex_positions_str], params[face_count_str],
-                                       params[face_str])
-                raise Exception("Depth rendering contains nan!")
 
             # Todo: invesigate this more -> even if works, check w.o. suspend grad to make sure this acutally is the problem and not the range thingy
             with dr.suspend_grad():
