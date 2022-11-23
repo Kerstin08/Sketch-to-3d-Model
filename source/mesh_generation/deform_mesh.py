@@ -31,6 +31,7 @@ class MeshGen():
         self.epochs = epochs
         self.fov = 60
         self.log_frequency = log_frequency
+
     def write_output_renders(self, render_normal, render_depth, silhouette, image_name):
         bpm_normal = mi.util.convert_to_bitmap(render_normal)
         np_normal = np.transpose(np.array(bpm_normal), (2, 0, 1))
@@ -59,6 +60,23 @@ class MeshGen():
         c = a * l
         cb = b-c
         l1_cb = dr.sqrt(dr.sum(dr.sqr(cb)))
+        return cb, l1_cb
+
+    def smoothness_helper_kato(self, v1, v2, v3, eps):
+        a = v2 - v1
+        b = v3 - v1
+        sqr_magnitude_a = dr.sum(dr.sqr(a))
+        sqr_magnitude_b = dr.sum(dr.sqr(b))
+        magnitude_a = dr.sqrt(sqr_magnitude_a + eps)
+        magnitude_b = dr.sqrt(sqr_magnitude_b + eps)
+        dot_ab = dr.sum(a * b)
+        cos = dot_ab / (magnitude_a * magnitude_b + eps)
+        sin = dr.sqrt(1 - dr.sqr(cos) + eps)
+
+        l = dot_ab / sqr_magnitude_a
+        c = a * l
+        cb = b - c
+        l1_cb = magnitude_b * sin
         return cb, l1_cb
 
     def preprocess_edge_helper(self, i, x, y, edge_vert_indices, edge_vert_faces):
@@ -226,8 +244,6 @@ class MeshGen():
 
         edge_vert_indices, edge_vert_faces = self.preprocess_edge_params(face_indices)
         initial_edge_lengths = self.get_edge_dist(initial_vertex_positions, edge_vert_indices)
-        # Todo: test if this changes anything, because technically the input normal map, etc. also do not have a gradient enabled
-        dr.enable_grad(initial_edge_lengths)
 
         face_v1, face_v2, face_v3_face1, face_v3_face2 = self.preprocess_smoothness_params(edge_vert_faces, face_indices)
 
@@ -271,8 +287,8 @@ class MeshGen():
                 image_name = "deformed_images" + str(epoch)
                 self.write_output_renders(normal_img, depth_tens, silhouette_img, image_name)
 
-            depth_loss = dr.mean(abs((depth_tens - depth_map_target)))
-            normal_loss = dr.mean(abs((normal_img * 0.5 + 0.5) - (normal_map_target * 0.5 + 0.5)))
+            depth_loss = dr.sum(abs((depth_tens - depth_map_target)))
+            normal_loss = dr.sum(abs((normal_img * 0.5 + 0.5) - (normal_map_target * 0.5 + 0.5)))
             silhouette_loss = self.iou(silhouette_img, silhouette_target)
 
             current_vertex_positions = dr.unravel(mi.Point3f, params[vertex_positions_str])
@@ -280,7 +296,7 @@ class MeshGen():
             current_edge_lengths = self.get_edge_dist(current_vertex_positions, edge_vert_indices)
             edge_loss = dr.sum(dr.sqr(initial_edge_lengths - current_edge_lengths)) * 1/len(initial_edge_lengths)
 
-            raveled_vertice_positions = dr.ravel(current_vertex_positions)
+            raveled_vertice_positions = params[vertex_positions_str]
             v1 = dr.cuda.ad.Array3f(
                     dr.gather(dr.cuda.ad.Float, raveled_vertice_positions, face_v1[0]),
                     dr.gather(dr.cuda.ad.Float, raveled_vertice_positions, face_v1[1]),
@@ -303,10 +319,13 @@ class MeshGen():
             )
             cb_1, l1_cb_1 = self.smoothness_helper(v1, v2, v3_face1)
             cb_2, l1_cb_2 = self.smoothness_helper(v1, v2, v3_face2)
+
+
             cos = dr.sum(cb_1 * cb_2) / (l1_cb_1 * l1_cb_2)
             smoothness_loss = dr.sum(dr.sqr(cos+1))
 
-            loss = silhouette_loss #* self.weight_silhouette + edge_loss * self.weight_edge + smoothness_loss * self.weight_smoothness + normal_loss * self.weight_normal + depth_loss * self.weight_depth
+            opt.zero_grad()
+            loss = silhouette_loss * self.weight_silhouette + edge_loss * self.weight_edge + smoothness_loss * self.weight_smoothness + normal_loss * self.weight_normal + depth_loss * self.weight_depth
             dr.backward(loss)
 
             opt.step()
@@ -317,6 +336,12 @@ class MeshGen():
             self.writer.add_scalar("loss_edge", edge_loss[0], epoch)
             self.writer.add_scalar("loss_smoothness", smoothness_loss[0], epoch)
             self.writer.add_scalar("loss_silhouette", silhouette_loss[0], epoch)
+
+            self.writer.add_scalar("loss_depth_weighted", depth_loss[0] * self.weight_depth, epoch)
+            self.writer.add_scalar("loss_normal_weighted", normal_loss[0] * self.weight_normal, epoch)
+            self.writer.add_scalar("loss_edge_weighted", edge_loss[0] * self.weight_edge, epoch)
+            self.writer.add_scalar("loss_smoothness_weighted", smoothness_loss[0] * self.weight_smoothness, epoch)
+            self.writer.add_scalar("loss_silhouette_weighted", silhouette_loss[0] * self.weight_silhouette, epoch)
             print("Epochs {}: error={} loss_normal={} loss_depth={} loss_edge={} loss_smoothness={} loss_silhouette={}".format(epoch, loss[0], normal_loss[0], depth_loss[0], edge_loss[0], smoothness_loss[0], silhouette_loss[0]))
 
         self.writer.close()
