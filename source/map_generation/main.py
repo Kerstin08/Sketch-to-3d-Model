@@ -6,7 +6,7 @@ import source.util.dir_utils as dir_utils
 
 def run(train_b, input_dir, output_dir, logs_dir,
         type, epochs, lr, batch_size, n_critic, weight_L1,
-        gradient_penalty_coefficient,
+        gradient_penalty_coefficient, log_frequency,
         use_generated_model=False, generated_model_path="", devices=1):
     if len(output_dir) <= 0:
         raise Exception("Checkpoint Path is not given!")
@@ -15,7 +15,7 @@ def run(train_b, input_dir, output_dir, logs_dir,
     if train_b:
         train(input_dir, output_dir, logs_dir,
         type, epochs, lr, batch_size, n_critic, weight_L1,
-        gradient_penalty_coefficient, use_generated_model, generated_model_path, devices)
+        gradient_penalty_coefficient, log_frequency, use_generated_model, generated_model_path, devices)
     else:
         test(input_dir, output_dir, type, generated_model_path)
 
@@ -31,6 +31,7 @@ def diff_args(args):
         args.n_critic,
         args.weight_L1,
         args.gradient_penalty_coefficient,
+        args.log_frequency,
         args.use_generated_model,
         args.generated_model_path,
         args.devices)
@@ -52,6 +53,7 @@ def main(args):
     parser.add_argument("--n_critic", type=int, default=5, help="# of n_critic")
     parser.add_argument("--weight_L1", type=int, default=500, help="L1 weight")
     parser.add_argument("--gradient_penalty_coefficient", type=int, default=10, help="gradient penalty coefficient")
+    parser.add_argument("--log_frequency", type=int, default=15, help="log frequency for training")
     parser.add_argument("--use_generated_model", type=bool, default=False,
                         help="If models are trained from scratch or already trained models are used")
     parser.add_argument("--generated_model_path", type=str, default="..\\..\\output\\test.ckpt",
@@ -66,8 +68,8 @@ if __name__ == '__main__':
     params = [
         '--input_dir', 'datasets/mixed_0_2500_normal',
         '--type', 'normal',
-        '--epochs', '300',
-        '--lr', '5e-5',
+        '--epochs', '2000',
+        '--lr', '9e-5',
 #        '--output_dir', "checkpoint/last_output",
 #        '--generated_model_path', "checkpoints/last.ckpt"
     ]

@@ -11,7 +11,7 @@ from source.util import dir_utils
 
 def train(input_dir, output_dir, logs_dir,
         type, epochs, lr, batch_size, n_critic, weight_L1,
-        gradient_penalty_coefficient,
+        gradient_penalty_coefficient, log_frequency,
         use_generated_model=False, generated_model_path="", devices=1):
 
     sketch_dir = os.path.join(input_dir, "sketch_mapgen")
@@ -19,10 +19,11 @@ def train(input_dir, output_dir, logs_dir,
     if not os.path.exists(sketch_dir) or not os.path.exists(target_dir):
         raise Exception("Sketch dir: {} or target dir: {} does not exists!".format(sketch_dir, target_dir))
 
+    logs_dir_name = "trainModel"
     if len(logs_dir) <= 0:
         raise Exception("Logs Path is not given!")
     # Use general folder instead of logs dir since pytorch already takes care of folder versioning.
-    dir_utils.create_general_folder(logs_dir)
+    dir_utils.create_general_folder(os.path.join(logs_dir, logs_dir_name))
 
     if type == "depth":
         given_type = data_type.Type.depth
@@ -58,7 +59,7 @@ def train(input_dir, output_dir, logs_dir,
         dirpath=output_dir,
         filename="MapGen-{epoch:02d}-{val_loss}",
     )
-    logger = TensorBoardLogger(logs_dir, name="trainModel")
+    logger = TensorBoardLogger(logs_dir, name=logs_dir_name)
 
     sketch_train_dir = os.path.join(sketch_dir, "train")
     if not os.path.exists(sketch_train_dir):
@@ -89,7 +90,8 @@ def train(input_dir, output_dir, logs_dir,
                       callbacks=[checkpoint_callback],
                       logger=logger,
                       precision=16,
-                      strategy=strategy)
+                      strategy=strategy,
+                      log_every_n_steps=log_frequency)
     dataloader_train = DataLoader(dataSet_train, batch_size=batch_size,
                                   shuffle=True, num_workers=4)
     dataloader_vaild = DataLoader(dataSet_val, batch_size=batch_size,
