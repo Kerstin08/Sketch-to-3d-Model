@@ -42,6 +42,15 @@ class MeshGen():
         images = np.stack([np_normal, np_depth, np_silhouette])
         self.writer.add_images(image_name, images)
 
+    def log_hparams(self):
+        self_vars = {'weight_depth': self.weight_depth,
+                     'weight_normal': self.weight_normal,
+                     'weight_smoothness': self.weight_smoothness,
+                     'weight_edge': self.weight_edge,
+                     'weight_silhouette': self.weight_silhouette,
+                     'lr': self.lr}
+        self.writer.add_hparams(self_vars, {'hparam_metric': -1}, run_name='.')
+
     def get_edge_dist(self, vertice_positions, edge_vert_indices):
         x = dr.sqr(dr.gather(dr.cuda.ad.Float, vertice_positions[0], edge_vert_indices[0]) - dr.gather(dr.cuda.ad.Float, vertice_positions[0], edge_vert_indices[1]))
         y = dr.sqr(dr.gather(dr.cuda.ad.Float, vertice_positions[1], edge_vert_indices[0]) - dr.gather(dr.cuda.ad.Float, vertice_positions[1], edge_vert_indices[1]))
@@ -101,15 +110,6 @@ class MeshGen():
             self.preprocess_edge_helper(i, y, z, edge_vert_indices, edge_vert_faces)
             self.preprocess_edge_helper(i, z, x, edge_vert_indices, edge_vert_faces)
         return edge_vert_indices, edge_vert_faces
-
-    def log_hparams(self):
-        self_vars = {'weight_depth': self.weight_depth,
-                     'weight_normal': self.weight_normal,
-                     'weight_smoothness': self.weight_smoothness,
-                     'weight_edge': self.weight_edge,
-                     'weight_silhouette': self.weight_silhouette,
-                     'lr': self.lr}
-        self.writer.add_hparams(self_vars, {'hparam_metric': -1})
 
     def preprocess_smoothness_params(self, edge_vert_faces, face_indices):
         def generate_vertex_list(vertex_list_x, vertex_list_y, vertex_list_z, vertex_index):
