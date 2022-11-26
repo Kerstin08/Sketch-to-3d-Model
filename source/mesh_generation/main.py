@@ -31,6 +31,7 @@ def run(normal_map_path, depth_map_path, silhouette_map_path, basic_mesh, output
     depth_map = OpenEXR_utils.getRGBimageEXR(depth_map_path, data_type.Type.depth, 2)
     depth_map = np.stack([depth_map, depth_map, depth_map], 2).squeeze()
     silhouette_map = OpenEXR_utils.getRGBimageEXR(silhouette_map_path, data_type.Type.depth, 2)
+    silhouette_map = np.stack([silhouette_map, silhouette_map, silhouette_map], 2).squeeze()
 
     mesh_gen.deform_mesh(normal_map, depth_map, silhouette_map, basic_mesh)
 
@@ -72,11 +73,11 @@ def main(args):
 
 if __name__ == '__main__':
     params = [
-        '--normal_file_path', 'datasets/mixed_0_2500_normal/target_mapgen/train/32770_normal.exr',
-        '--depth_file_path', 'datasets/mixed_0_2500_depth/target_mapgen/train/32770_depth.exr',
-        '--silhouette_file_path', 'datasets/filled/32770_sketch_filled.exr',
-        '--base_mesh_path', 'datasets/topology_meshes/genus0.ply',
+        '--normal_file_path', '..\\..\\resources\\map_generation_dataset\\mixed_0_2500_normal\\target_mapgen\\train\\32770_normal.exr',
+        '--depth_file_path', '..\\..\\resources\\map_generation_dataset\\mixed_0_2500_depth\\target_mapgen\\train\\32770_depth.exr',
+        '--silhouette_file_path', '..\\..\\resources\\filled\\32770_sketch_filled.exr',
+        '--base_mesh_path', '..\\..\\resources\\topology_meshes\\genus0.ply',
         '--output_dir', 'output_dir',
-        '--log_dir', 'logs/mesh_gen'
+        '--log_dir', 'logs'
     ]
     main(params)

@@ -75,9 +75,8 @@ class SilhouetteReparamIntegrator(ADIntegrator):
             # Camera ray reparameterization determinant multiplied in ADIntegrator.sample_rays()
             ray_reparam.d, _ = reparam(ray, depth=0, active=active)
 
-        pi = scene.ray_intersect_preliminary(ray_reparam, active)
-        si = pi.compute_surface_interaction(ray_reparam)
-        L += dr.select(si.is_valid(), 0, 1)
+        pi = scene.ray_intersect_preliminary(ray_reparam, True, active)
+        L += dr.select(pi.is_valid(), 0, 1)
 
         return L, active, None
 

@@ -288,8 +288,6 @@ class MeshGen():
 
             depth_loss = dr.sum(abs((depth_tens - depth_map_target)))
             normal_loss = dr.sum(abs((normal_img * 0.5 + 0.5) - (normal_map_target * 0.5 + 0.5)))
-            print(dr.grad_enabled(silhouette_img))
-            print(dr.grad_enabled(silhouette_target))
             silhouette_loss = self.iou(silhouette_img, silhouette_target)
 
             current_vertex_positions = dr.unravel(mi.Point3f, params[vertex_positions_str])
