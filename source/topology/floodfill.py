@@ -28,7 +28,7 @@ def startFill(image, image_path, output_dir, write_debug_png=True):
         png_path = os.path.join(output_dir, filename.stem + "_filled.png")
         filled_image.save(png_path)
 
-    return image
+    return image, exr_path
 
 def flood_fill_BFS(image, seed):
     stack = deque()

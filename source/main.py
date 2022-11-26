@@ -21,10 +21,10 @@ import numpy as np
 ## 3. obtain mesh based on euler result (and connectivity result)
 def topology(sketch_path, genus_dir, output_dir):
     image = sketch_utils.load_image(sketch_path, True)
-    filled_image = floodfill.startFill(image, sketch_path, output_dir, False)
+    filled_image, exr_path = floodfill.startFill(image, sketch_path, output_dir, False)
     holes = euler.get_number_holes(filled_image)
     basic_mesh_path = basic_mesh.get_basic_mesh_path(holes, genus_dir)
-    return filled_image, basic_mesh_path
+    return basic_mesh_path, exr_path
 
 # Map Generation
 ## 2. put cleaned input sketch into trained neural network normal
@@ -47,7 +47,7 @@ def map_generation(input_sketch, output_dir, normal_map_gen_model, depth_map_gen
 
 # Mesh deformation
 ## 1. put input mesh and normal and depth map into mesh deformation
-def mesh_deformation(normal_map_path, depth_map_path, silhouette_map, basic_mesh, output_dir, logs,
+def mesh_deformation(normal_map_path, depth_map_path, silhouette_map_path, basic_mesh, output_dir, logs,
                      weight_depth, weight_normal, weight_smoothness, weight_edge, weight_silhouette,
                      epochs, log_frequency, lr):
     mesh_gen = deform_mesh.MeshGen(output_dir, logs,
@@ -56,6 +56,7 @@ def mesh_deformation(normal_map_path, depth_map_path, silhouette_map, basic_mesh
     normal_map = OpenEXR_utils.getRGBimageEXR(normal_map_path, data_type.Type.normal, 2)
     depth_map = OpenEXR_utils.getRGBimageEXR(depth_map_path, data_type.Type.depth, 2)
     depth_map = np.stack([depth_map, depth_map, depth_map], 2).squeeze()
+    silhouette_map = OpenEXR_utils.getRGBimageEXR(silhouette_map_path, data_type.Type.depth, 2)
     silhouette_map = np.stack([silhouette_map, silhouette_map, silhouette_map], 2).squeeze()
     mesh_gen.deform_mesh(normal_map, depth_map, silhouette_map, basic_mesh)
 
@@ -71,7 +72,7 @@ def run(input_sketch,
     if not os.path.exists(output_dir):
         dir_utils.create_general_folder(output_dir)
 
-    filled_image, basic_mesh = topology(input_sketch, genus_dir, output_dir)
+    basic_mesh, silhouette_map_path = topology(input_sketch, genus_dir, output_dir)
     normal_output_path, depth_output_path = map_generation(input_sketch, output_dir, normal_map_gen_model, depth_map_gen_model)
 
     logs_meshGen = os.path.join(logs_dir, "mesh_generation")
@@ -80,7 +81,7 @@ def run(input_sketch,
     filename = Path(input_sketch)
     normal_map = os.path.join(normal_output_path, "{}_normal.exr".format(filename.stem))
     depth_map = os.path.join(depth_output_path, "{}_depth.exr".format(filename.stem))
-    mesh_deformation(normal_map, depth_map, filled_image, basic_mesh, output_dir, logs_meshGen,
+    mesh_deformation(normal_map, depth_map, silhouette_map_path, basic_mesh, output_dir, logs_meshGen,
                      weight_depth, weight_normal, weight_smoothness, weight_silhouette, weight_edge,
                      epochs_mesh_gen, log_frequency_mesh_gen, lr_mesh_gen)
 
