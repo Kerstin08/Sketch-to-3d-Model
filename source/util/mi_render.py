@@ -2,8 +2,11 @@ import math
 import os.path
 import numpy as np
 from pathlib import Path
+from PIL import Image
 
 import source.util.mi_create_scenedesc as create_scenedesc
+from source.util import OpenEXR_utils
+from source.util import data_type
 import drjit as dr
 import argparse
 import mitsuba as mi
@@ -32,6 +35,7 @@ def avo(scene, input_path, aovs, output_name, output_dirs, create_debug_pngs=Tru
                 "Rendered image " + output_name + " includes invalid data! Vertex normals in input model " + input_path + " might be corrupt.")
             return
 
+        img = img[:,:,0]
         mask = img.array < 1.5
         curr_min_val = dr.min(img)
         masked_img = dr.select(mask,
@@ -44,18 +48,20 @@ def avo(scene, input_path, aovs, output_name, output_dirs, create_debug_pngs=Tru
                                   (wanted_range_max - wanted_range_min) / (
                                       curr_max_val - curr_min_val)) + wanted_range_min,
                           1.0)
-        depth_tens = mi.TensorXf(depth, shape=(256, 256, 3))
+        np_depth = np.array(depth).reshape((256, 256))
 
         filename = output_name + "_depth.exr"
         output_dir = output_dirs['dd.y']
         path = os.path.join(output_dir, filename)
-        mi.util.write_bitmap(path, depth_tens)
+        OpenEXR_utils.writeImage(np_depth, data_type.Type.depth, path)
 
         if create_debug_pngs:
             output_dir_png = output_dirs['dd_png']
             png_filename = output_name + "_depth.png"
             path = os.path.join(output_dir_png, png_filename)
-            mi.util.write_bitmap(path, depth_tens)
+            # Use pil instead of standard mi.util.write_bitmap for png since mi automatically applies gamma correction when
+            # writing png files
+            Image.fromarray((np_depth * 255).astype('uint8'), mode='L').save(path)
 
     if "sh_normal" in aovs.values():
         normal_integrator = source.util.mi_create_scenedesc.create_integrator_normal()
@@ -66,16 +72,20 @@ def avo(scene, input_path, aovs, output_name, output_dirs, create_debug_pngs=Tru
             print(
                 "Rendered image " + output_name + " includes invalid data! Vertex normals in input model " + input_path + " might be corrupt.")
             return
+        np_img = np.array(img)
         filename = output_name + "_normal.exr"
         output_dir = output_dirs['nn']
         path = os.path.join(output_dir, filename)
+        OpenEXR_utils.writeImage(np_img, data_type.Type.normal, path)
         mi.util.write_bitmap(path, img)
 
         if create_debug_pngs:
             output_dir_png = output_dirs['nn_png']
             png_filename = output_name + "_normal.png"
             path = os.path.join(output_dir_png, png_filename)
-            mi.util.write_bitmap(path, img)
+            # Use pil instead of standard mi.util.write_bitmap for png since mi automatically applies gamma correction when
+            # writing png files
+            Image.fromarray(((np_img+1.0)*127).astype('uint8'), mode='RGB').save(path)
 #
 def create_aov(aovs, shape, camera, input_path, output_name, output_dirs, create_debug_pngs):
     scene_desc = {"type": "scene", "shape": shape, "camera": camera}
@@ -149,7 +159,7 @@ def main(args):
     parser.add_argument("--input_path", type=str)
     parser.add_argument("--output_dirs", type=dict, default={'nn': '..\\..\\output', 'dd.y': '..\\..\\output', "dd_png": '..\\..\\output', "nn_png": '..\\..\\output', 'rendering': '..\\..\\output'})
     parser.add_argument("--fov", type=int, default=50)
-    parser.add_argument("--aovs", type=dir, default={"nn": "sh_normal"})
+    parser.add_argument("--aovs", type=dir, default={"nn": "sh_normal", "dd.y": "depth"})
     parser.add_argument("--emitter_samples", type=int, default=4)
     args = parser.parse_args(args)
     diff_ars(args)
@@ -158,6 +168,6 @@ if __name__ == '__main__':
     output_dirs = {'nn': '..\\..\\output', 'dd.y': '..\\..\\output', "dd_png": '..\\..\\output', "nn_png": '..\\..\\output', 'rendering': '..\\..\\output'}
     params = [
         '--type', 'aov',
-        '--input_path', '..\\..\\resources\\thingi10k\\2500_2999\\229606.ply',
+        '--input_path', '..\\..\\resources\\thingi10k\\0_499\\32770.ply',
         ]
     main(params)

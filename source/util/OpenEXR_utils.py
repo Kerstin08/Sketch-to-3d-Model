@@ -1,5 +1,6 @@
 import OpenEXR
 import Imath
+import mitsuba
 import numpy as np
 import source.util.data_type as data_type
 import torch
@@ -18,7 +19,7 @@ def getImageEXR(path, given_data_type, axis):
     if given_data_type == data_type.Type.normal:
         channel_names = ['R', 'G', 'B']
     else:
-        channel_names = ['R']
+        channel_names = ['Y']
     channels = []
     for channel_name in channel_names:
         channel = exr2numpy(path, channel_name)
@@ -44,15 +45,19 @@ def writeImage(image, given_data_type, path):
         header = OpenEXR.Header(size[1], size[2])
     else:
         header = OpenEXR.Header(size[0], size[1])
-    half_chan = Imath.Channel(Imath.PixelType(Imath.PixelType.HALF))
-    header['channels'] = dict([(c, half_chan) for c in "RGB"])
-    out = OpenEXR.OutputFile(path, header)
+
     if given_data_type == data_type.Type.normal:
+        half_chan = Imath.Channel(Imath.PixelType(Imath.PixelType.HALF))
+        header['channels'] = dict([(c, half_chan) for c in "RGB"])
+        out = OpenEXR.OutputFile(path, header)
         R = (img[0, :, :]).astype(np.float16).tostring()
         G = (img[1, :, :]).astype(np.float16).tostring()
         B = (img[2, :, :]).astype(np.float16).tostring()
         out.writePixels({'R': R, 'G': G, 'B': B})
     else:
+        half_chan = Imath.Channel(Imath.PixelType(Imath.PixelType.HALF))
+        header['channels'] = dict([(c, half_chan) for c in "Y"])
+        out = OpenEXR.OutputFile(path, header)
         R = (img[:, :]).astype(np.float16).tostring()
-        out.writePixels({'R': R})
-    out.close()
+        out.writePixels({'Y': R})
+        out.close()
