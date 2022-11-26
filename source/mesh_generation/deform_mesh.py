@@ -14,6 +14,8 @@ import source.mesh_generation.depth_reparam_integrator as depth_reparam_integrat
 import source.mesh_generation.silhouette_reparam_integrator as silhouette_reparam_integrator
 from torch.utils.tensorboard import SummaryWriter
 
+import time
+
 mi.set_variant('cuda_ad_rgb')
 
 class MeshGen():
@@ -268,19 +270,20 @@ class MeshGen():
                 raise Exception("Normal rendering contains nan!")
 
             with dr.suspend_grad():
-                mask = depth_img.array < 1.5
-                curr_min_val = dr.min(depth_img)
+                single_channel_depth = depth_img[:, :, 0]
+                mask = single_channel_depth.array < 1.5
+                curr_min_val = dr.min(single_channel_depth)
                 masked_img = dr.select(mask,
-                                   depth_img.array,
+                                   single_channel_depth.array,
                                    0.0)
                 curr_max_val = dr.max(masked_img)
                 wanted_range_min, wanted_range_max = 0.0,  0.75
             depth = dr.select(mask,
-                              (depth_img.array - curr_min_val) * (
+                              (single_channel_depth.array - curr_min_val) * (
                                       (wanted_range_max - wanted_range_min) / (
                                       curr_max_val - curr_min_val)) + wanted_range_min,
                               1.0)
-            depth_tens = mi.TensorXf(depth, shape=(256, 256, 3))
+            depth_tens = mi.TensorXf(depth, shape=(256, 256))
 
             if epoch % self.log_frequency == 0 or epoch==epoch-1:
                 image_name = "deformed_images" + str(epoch)
@@ -288,8 +291,7 @@ class MeshGen():
 
             depth_loss = dr.sum(abs((depth_tens - depth_map_target)))
             normal_loss = dr.sum(abs((normal_img * 0.5 + 0.5) - (normal_map_target * 0.5 + 0.5)))
-            silhouette_loss = self.iou(silhouette_img, silhouette_target)
-
+            silhouette_loss = self.iou(silhouette_img[:, :, 0], silhouette_target)
             current_vertex_positions = dr.unravel(mi.Point3f, params[vertex_positions_str])
 
             current_edge_lengths = self.get_edge_dist(current_vertex_positions, edge_vert_indices)

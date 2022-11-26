@@ -14,8 +14,7 @@ def exr2numpy(exr_path, chanel_name):
     return (channel)
 
 
-def getRGBimageEXR(path, given_data_type, axis):
-    # RGB, although data is technically xyz, however due to the conversion to vector this is RGB
+def getImageEXR(path, given_data_type, axis):
     if given_data_type == data_type.Type.normal:
         channel_names = ['R', 'G', 'B']
     else:
@@ -24,15 +23,15 @@ def getRGBimageEXR(path, given_data_type, axis):
     for channel_name in channel_names:
         channel = exr2numpy(path, channel_name)
         channels.append(channel)
-    RGB = np.stack(channels, axis=axis)
-    array_sum = np.sum(RGB)
+    image = np.stack(channels, axis=axis)
+    array_sum = np.sum(image)
     if np.isnan(array_sum):
         raise Exception("{} contains nan!".format(path))
     if np.isinf(array_sum):
         raise Exception("{} contains inf!".format(path))
-    return RGB
+    return image
 
-def writeRGBImage(image, given_data_type, path):
+def writeImage(image, given_data_type, path):
     if torch.is_tensor(image):
         img = image.detach().cpu().numpy().squeeze()
     elif type(image).__module__ == np.__name__:
@@ -52,9 +51,8 @@ def writeRGBImage(image, given_data_type, path):
         R = (img[0, :, :]).astype(np.float16).tostring()
         G = (img[1, :, :]).astype(np.float16).tostring()
         B = (img[2, :, :]).astype(np.float16).tostring()
+        out.writePixels({'R': R, 'G': G, 'B': B})
     else:
         R = (img[:, :]).astype(np.float16).tostring()
-        G = (img[:, :]).astype(np.float16).tostring()
-        B = (img[:, :]).astype(np.float16).tostring()
-    out.writePixels({'R': R, 'G': G, 'B': B})
+        out.writePixels({'R': R})
     out.close()

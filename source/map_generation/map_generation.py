@@ -138,9 +138,9 @@ class MapGen(pl.LightningModule):
         img.save(image_path)
 
         if self.data_type == data_type.Type.normal:
-            OpenEXR_utils.writeRGBImage(predicted_image, self.data_type, os.path.join(self.output_dir, imagename + "_normal.exr"))
+            OpenEXR_utils.writeImage(predicted_image, self.data_type, os.path.join(self.output_dir, imagename + "_normal.exr"))
         else:
             predicted_image = (predicted_image + 1) / 2
-            OpenEXR_utils.writeRGBImage(predicted_image, self.data_type, os.path.join(self.output_dir, imagename + "_depth.exr"))
+            OpenEXR_utils.writeImage(predicted_image, self.data_type, os.path.join(self.output_dir, imagename + "_depth.exr"))
 
 

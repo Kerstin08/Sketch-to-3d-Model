@@ -64,7 +64,7 @@ class DS(Dataset):
         # target is either normal or depth file, therefore exr
         if self._image_paths_target:
             target_path = self._image_paths_target[index]
-            target_image = OpenEXR_utils.getRGBimageEXR(target_path, self.data_type, 0)
+            target_image = OpenEXR_utils.getImageEXR(target_path, self.data_type, 0)
             target_image_tensor = torch.from_numpy(target_image)
             if self.data_type.value == data_type.Type.depth.value:
                 target_image_tensor = target_image_tensor * 2 - 1
