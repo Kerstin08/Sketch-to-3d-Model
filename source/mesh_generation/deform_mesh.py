@@ -42,15 +42,6 @@ class MeshGen():
         images = np.stack([np_normal, np_depth, np_silhouette])
         self.writer.add_images(image_name, images)
 
-    def log_hparams(self):
-        self_vars = {'weight_depth': self.weight_depth,
-                     'weight_normal': self.weight_normal,
-                     'weight_smoothness': self.weight_smoothness,
-                     'weight_edge': self.weight_edge,
-                     'weight_silhouette': self.weight_silhouette,
-                     'lr': self.lr}
-        self.writer.add_hparams(self_vars, {'hparam_metric': -1}, run_name='.')
-
     def get_edge_dist(self, vertice_positions, edge_vert_indices):
         x = dr.sqr(dr.gather(dr.cuda.ad.Float, vertice_positions[0], edge_vert_indices[0]) - dr.gather(dr.cuda.ad.Float, vertice_positions[0], edge_vert_indices[1]))
         y = dr.sqr(dr.gather(dr.cuda.ad.Float, vertice_positions[1], edge_vert_indices[0]) - dr.gather(dr.cuda.ad.Float, vertice_positions[1], edge_vert_indices[1]))
@@ -110,6 +101,15 @@ class MeshGen():
             self.preprocess_edge_helper(i, y, z, edge_vert_indices, edge_vert_faces)
             self.preprocess_edge_helper(i, z, x, edge_vert_indices, edge_vert_faces)
         return edge_vert_indices, edge_vert_faces
+
+    def log_hparams(self):
+        self_vars = {'weight_depth': self.weight_depth,
+                     'weight_normal': self.weight_normal,
+                     'weight_smoothness': self.weight_smoothness,
+                     'weight_edge': self.weight_edge,
+                     'weight_silhouette': self.weight_silhouette,
+                     'lr': self.lr}
+        self.writer.add_hparams(self_vars, {'hparam_metric': -1}, run_name='.')
 
     def preprocess_smoothness_params(self, edge_vert_faces, face_indices):
         def generate_vertex_list(vertex_list_x, vertex_list_y, vertex_list_z, vertex_index):
@@ -267,7 +267,6 @@ class MeshGen():
                                        params[face_str])
                 raise Exception("Normal rendering contains nan!")
 
-            # Todo: invesigate this more -> even if works, check w.o. suspend grad to make sure this acutally is the problem and not the range thingy
             with dr.suspend_grad():
                 mask = depth_img.array < 1.5
                 curr_min_val = dr.min(depth_img)
@@ -289,6 +288,8 @@ class MeshGen():
 
             depth_loss = dr.sum(abs((depth_tens - depth_map_target)))
             normal_loss = dr.sum(abs((normal_img * 0.5 + 0.5) - (normal_map_target * 0.5 + 0.5)))
+            print(dr.grad_enabled(silhouette_img))
+            print(dr.grad_enabled(silhouette_target))
             silhouette_loss = self.iou(silhouette_img, silhouette_target)
 
             current_vertex_positions = dr.unravel(mi.Point3f, params[vertex_positions_str])
@@ -296,7 +297,7 @@ class MeshGen():
             current_edge_lengths = self.get_edge_dist(current_vertex_positions, edge_vert_indices)
             edge_loss = dr.sum(dr.sqr(initial_edge_lengths - current_edge_lengths)) * 1/len(initial_edge_lengths)
 
-            raveled_vertice_positions = params[vertex_positions_str]
+            raveled_vertice_positions = dr.ravel(current_vertex_positions)
             v1 = dr.cuda.ad.Array3f(
                     dr.gather(dr.cuda.ad.Float, raveled_vertice_positions, face_v1[0]),
                     dr.gather(dr.cuda.ad.Float, raveled_vertice_positions, face_v1[1]),
@@ -317,26 +318,23 @@ class MeshGen():
                     dr.gather(dr.cuda.ad.Float, raveled_vertice_positions, face_v3_face2[1]),
                     dr.gather(dr.cuda.ad.Float, raveled_vertice_positions, face_v3_face2[2])
             )
-            cb_1, l1_cb_1 = self.smoothness_helper(v1, v2, v3_face1)
-            cb_2, l1_cb_2 = self.smoothness_helper(v1, v2, v3_face2)
-
-
+            cb_1, l1_cb_1 = self.smoothness_helper_kato(v1, v2, v3_face1, 1e-6)
+            cb_2, l1_cb_2 = self.smoothness_helper_kato(v1, v2, v3_face2, 1e-6)
             cos = dr.sum(cb_1 * cb_2) / (l1_cb_1 * l1_cb_2)
             smoothness_loss = dr.sum(dr.sqr(cos+1))
 
-            opt.zero_grad()
-            loss = silhouette_loss * self.weight_silhouette + edge_loss * self.weight_edge + smoothness_loss * self.weight_smoothness + normal_loss * self.weight_normal + depth_loss * self.weight_depth
+            loss = silhouette_loss * self.weight_silhouette + edge_loss * self.weight_edge + smoothness_loss * self.weight_smoothness + normal_loss * self.weight_normal + depth_loss + self.weight_depth
+
             dr.backward(loss)
 
             opt.step()
-
             self.writer.add_scalar("loss", loss[0], epoch)
             self.writer.add_scalar("loss_depth", depth_loss[0], epoch)
             self.writer.add_scalar("loss_normal", normal_loss[0], epoch)
             self.writer.add_scalar("loss_edge", edge_loss[0], epoch)
             self.writer.add_scalar("loss_smoothness", smoothness_loss[0], epoch)
             self.writer.add_scalar("loss_silhouette", silhouette_loss[0], epoch)
-
+            
             self.writer.add_scalar("loss_depth_weighted", depth_loss[0] * self.weight_depth, epoch)
             self.writer.add_scalar("loss_normal_weighted", normal_loss[0] * self.weight_normal, epoch)
             self.writer.add_scalar("loss_edge_weighted", edge_loss[0] * self.weight_edge, epoch)

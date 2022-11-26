@@ -81,8 +81,8 @@ def train(input_dir, output_dir, logs_dir,
     accelerator = 'gpu' if torch.cuda.is_available() else 'cpu'
     if accelerator == 'gpu' and (devices > 1 or (devices == -1 and torch.cuda.device_count() > 1)):
         strategy = 'ddp'
-    elif accelerator == 'cpu' and (devices != 1):
-        raise Exception("Training with multiple cpus not permitted!")
+    elif accelerator == 'cpu':
+        raise Exception("Training with cpus not permitted!")
 
     trainer = Trainer(accelerator=accelerator,
                       devices=devices,

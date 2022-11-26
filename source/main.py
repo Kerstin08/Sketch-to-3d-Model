@@ -1,5 +1,6 @@
 import argparse
 import os
+from pathlib import Path
 from source.mesh_generation import deform_mesh
 from source.util import sketch_utils
 from source.topology import floodfill
@@ -7,8 +8,9 @@ from source.topology import euler
 from source.topology import basic_mesh
 from source.util import dir_utils
 from source.map_generation.test import test
-
-
+from source.util import OpenEXR_utils
+from source.util import data_type
+import numpy as np
 
 # Topology
 ## (1.a. split input points into different input sketches based on different "classes", which are signaled by different colors)
@@ -22,7 +24,7 @@ def topology(sketch_path, genus_dir, output_dir):
     filled_image = floodfill.startFill(image, sketch_path, output_dir, False)
     holes = euler.get_number_holes(filled_image)
     basic_mesh_path = basic_mesh.get_basic_mesh_path(holes, genus_dir)
-    return basic_mesh_path
+    return filled_image, basic_mesh_path
 
 # Map Generation
 ## 2. put cleaned input sketch into trained neural network normal
@@ -41,19 +43,26 @@ def map_generation(input_sketch, output_dir, normal_map_gen_model, depth_map_gen
         dir_utils.create_general_folder(depth_output_path)
     test(output_dir, normal_output_path, "normal", normal_map_gen_model)
     test(output_dir, depth_output_path, "depth", depth_map_gen_model)
-
-
+    return normal_output_path, depth_output_path
 
 # Mesh deformation
 ## 1. put input mesh and normal and depth map into mesh deformation
-def mesh_deformation(normal_map, depth_map, basic_mesh, output_dir, logs, weight_depth, weight_normal, weight_smoothness, weight_edge, epochs, lr):
-    mesh_gen = deform_mesh.MeshGen(output_dir, logs, weight_depth, weight_normal, weight_smoothness, weight_edge, epochs, lr)
-    mesh_gen.deform_mesh(normal_map, depth_map, basic_mesh)
+def mesh_deformation(normal_map_path, depth_map_path, silhouette_map, basic_mesh, output_dir, logs,
+                     weight_depth, weight_normal, weight_smoothness, weight_edge, weight_silhouette,
+                     epochs, log_frequency, lr):
+    mesh_gen = deform_mesh.MeshGen(output_dir, logs,
+                                   weight_depth, weight_normal, weight_smoothness, weight_silhouette, weight_edge,
+                                   epochs, log_frequency, lr)
+    normal_map = OpenEXR_utils.getRGBimageEXR(normal_map_path, data_type.Type.normal, 2)
+    depth_map = OpenEXR_utils.getRGBimageEXR(depth_map_path, data_type.Type.depth, 2)
+    depth_map = np.stack([depth_map, depth_map, depth_map], 2).squeeze()
+    silhouette_map = np.stack([silhouette_map, silhouette_map, silhouette_map], 2).squeeze()
+    mesh_gen.deform_mesh(normal_map, depth_map, silhouette_map, basic_mesh)
 
 def run(input_sketch,
         output_dir, logs_dir, genus_dir,
         depth_map_gen_model, normal_map_gen_model,
-        epochs_mesh_gen, lr_mesh_gen, weight_depth, weight_normal, weight_smoothness, weight_edge
+        epochs_mesh_gen, log_frequency_mesh_gen, lr_mesh_gen, weight_depth, weight_normal, weight_smoothness, weight_edge, weight_silhouette
         ):
     for x in (input_sketch, depth_map_gen_model, normal_map_gen_model):
         if not os.path.exists(x):
@@ -62,17 +71,18 @@ def run(input_sketch,
     if not os.path.exists(output_dir):
         dir_utils.create_general_folder(output_dir)
 
-    #basic_mesh = topology(input_sketch, genus_dir)
-    map_generation(input_sketch, output_dir, normal_map_gen_model, depth_map_gen_model)
-
+    filled_image, basic_mesh = topology(input_sketch, genus_dir, output_dir)
+    normal_output_path, depth_output_path = map_generation(input_sketch, output_dir, normal_map_gen_model, depth_map_gen_model)
 
     logs_meshGen = os.path.join(logs_dir, "mesh_generation")
     if not os.path.exists(logs_meshGen):
         dir_utils.create_logdir(logs_meshGen)
-    #normal_map = os.path.join(normal_output_path, "map.exr")
-    #depth_map = os.path.join(depth_output_path, "map.exr")
-    #mesh_deformation(normal_map, depth_map, basic_mesh, output_dir, logs_meshGen, weight_depth, weight_normal, weight_smoothness, weight_edge, epochs_mesh_gen, lr_mesh_gen)
-
+    filename = Path(input_sketch)
+    normal_map = os.path.join(normal_output_path, "{}_normal.exr".format(filename.stem))
+    depth_map = os.path.join(depth_output_path, "{}_depth.exr".format(filename.stem))
+    mesh_deformation(normal_map, depth_map, filled_image, basic_mesh, output_dir, logs_meshGen,
+                     weight_depth, weight_normal, weight_smoothness, weight_silhouette, weight_edge,
+                     epochs_mesh_gen, log_frequency_mesh_gen, lr_mesh_gen)
 
 def diff_ars(args):
     run(args.input_sketch,
@@ -82,11 +92,13 @@ def diff_ars(args):
         args.depth_map_gen_model,
         args.normal_map_gen_model,
         args.epochs_mesh_gen,
+        args.log_frequency_mesh_gen,
         args.lr_mesh_gen,
         args.weight_depth,
         args.weight_normal,
         args.weight_smoothness,
-        args.weight_edge
+        args.weight_edge,
+        args.weight_silhouette
         )
 
 def main(args):
@@ -98,17 +110,19 @@ def main(args):
     parser.add_argument("--depth_map_gen_model", type=str, help="Path to model, which is used to determine depth map.")
     parser.add_argument("--normal_map_gen_model", type=str, help="Path to model, which is used to determine normal map.")
     parser.add_argument("--epochs_mesh_gen", type=int, default=200, help="# of epoch for mesh generation")
+    parser.add_argument("--log_frequency_mesh_gen", type=int, default=100, help="frequency logs of the mesh generation are written")
     parser.add_argument("--lr_mesh_gen", type=float, default=0.001, help="initial learning rate for mesh generation")
-    parser.add_argument("--weight_depth", type=float, default=0.9, help="depth weight")
+    parser.add_argument("--weight_depth", type=float, default=0.02, help="depth weight")
     parser.add_argument("--weight_normal", type=float, default=0.02, help="normal weight")
     parser.add_argument("--weight_smoothness", type=float, default=0.01, help="smoothness weight")
-    parser.add_argument("--weight_edge", type=float, default=0.09, help="edge weight")
+    parser.add_argument("--weight_edge", type=float, default=0.9, help="edge weight")
+    parser.add_argument("--weight_silhouette", type=float, default=0.9, help="silhouette weight")
     args = parser.parse_args(args)
     diff_ars(args)
 
 if __name__ == '__main__':
     params = [
-        '--input_sketch', '..\\resources\\topology_tests_images\\test_pipeline.png',
+        '--input_sketch', '..\\resources\\deform_test\\32770_sketch_genus0.png',
         '--genus_dir', '..\\resources\\topology_meshes',
         '--depth_map_gen_model', '..\\resources\\mapgen_test_models\\depth.ckpt',
         '--normal_map_gen_model', '..\\resources\\mapgen_test_models\\normal.ckpt'

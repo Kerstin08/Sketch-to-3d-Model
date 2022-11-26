@@ -66,11 +66,11 @@ def main(args):
 
 if __name__ == '__main__':
     params = [
-        '--input_dir', 'datasets/mixed_0_2500_normal',
-        '--type', 'normal',
+        '--input_dir', 'datasets/mixed_0_2500_depth',
+        '--type', 'depth',
         '--epochs', '2000',
         '--lr', '9e-5',
-#        '--output_dir', "checkpoint/last_output",
+        '--output_dir', "checkpoints_depth",
 #        '--generated_model_path', "checkpoints/last.ckpt"
     ]
     main(params)

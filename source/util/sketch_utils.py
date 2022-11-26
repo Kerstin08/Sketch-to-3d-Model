@@ -28,6 +28,6 @@ def clean_userinput(image_path, output_path):
             if image[i, j] > bounds and image[i, j]<background:
                 image[i, j] = background
 
-    cleaned_image_path = os.path.join(output_path, "{}_cleaned.png".format(filename.stem))
+    cleaned_image_path = os.path.join(output_path, filename.name)
     cleaned_image = Image.fromarray(image)
     cleaned_image.save(cleaned_image_path)

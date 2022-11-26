@@ -59,24 +59,24 @@ def main(args):
     parser.add_argument("--base_mesh_path", type=str, help="path to base mesh object")
     parser.add_argument("--output_dir", type=str, default="output dir", help="path to output dir")
     parser.add_argument("--log_dir", type=str, default="logs", help="path to logs dir")
-    parser.add_argument("--epoch", type=int, default=10000, help="# of epoch for mesh generation")
+    parser.add_argument("--epoch", type=int, default=20000, help="# of epoch for mesh generation")
     parser.add_argument("--log_frequency", type=int, default=100, help="frequency logs are written")
-    parser.add_argument("--lr", type=float, default=0.0001, help="initial learning rate for mesh generation")
-    parser.add_argument("--weight_depth", type=float, default=0.05, help="depth weight")
-    parser.add_argument("--weight_normal", type=float, default=0.02, help="normal weight")
+    parser.add_argument("--lr", type=float, default=0.0002, help="initial learning rate for mesh generation")
+    parser.add_argument("--weight_depth", type=float, default=0.0002, help="depth weight")
+    parser.add_argument("--weight_normal", type=float, default=0.002, help="normal weight")
     parser.add_argument("--weight_smoothness", type=float, default=0.01, help="smoothness weight")
     parser.add_argument("--weight_edge", type=float, default=0.9, help="edge weight")
-    parser.add_argument("--weight_silhouette", type=float, default=0.9, help="silhouette weight")
+    parser.add_argument("--weight_silhouette", type=float, default=9, help="silhouette weight")
     args = parser.parse_args(args)
     diff_args(args)
 
 if __name__ == '__main__':
     params = [
-        '--normal_file_path', '..\\..\\resources\\map_generation_dataset\\mixed_0_2500_normal\\target_mapgen\\train\\32770_normal.exr',
-        '--depth_file_path', '..\\..\\resources\\map_generation_dataset\\mixed_0_2500_depth\\target_mapgen\\train\\32770_depth.exr',
-        '--silhouette_file_path', '..\\..\\resources\\filled\\32770_sketch_filled.exr',
-        '--base_mesh_path', '..\\..\\resources\\topology_meshes\\genus0.ply',
-        '--output_dir', '..\\..\\output\\meshdir',
-        '--log_dir', '..\\..\\output\\logs'
+        '--normal_file_path', 'datasets/mixed_0_2500_normal/target_mapgen/train/32770_normal.exr',
+        '--depth_file_path', 'datasets/mixed_0_2500_depth/target_mapgen/train/32770_depth.exr',
+        '--silhouette_file_path', 'datasets/filled/32770_sketch_filled.exr',
+        '--base_mesh_path', 'datasets/topology_meshes/genus0.ply',
+        '--output_dir', 'output_dir',
+        '--log_dir', 'logs/mesh_gen'
     ]
     main(params)
