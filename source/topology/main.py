@@ -10,7 +10,7 @@ def run(image_path, genus_dir, output_dir):
     if not os.path.exists(output_dir):
         dir_utils.create_general_folder(output_dir)
     image = sketch_utils.load_image(image_path, True)
-    filled_image = floodfill.startFill(image, image_path, output_dir, True)
+    filled_image, _ = floodfill.startFill(image, image_path, output_dir, True)
     holes = euler.get_number_holes(filled_image)
     basic_mesh_path = basic_mesh.get_basic_mesh_path(holes, genus_dir)
 

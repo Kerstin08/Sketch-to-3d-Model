@@ -38,11 +38,11 @@ def test(input_dir, output_dir,
         dataSet = dataset.DS(False, given_type, test_dir_sketch)
 
     strategy = None
-    accelerator = 'cpu' if torch.cuda.is_available() else 'cpu'
-    #if accelerator == 'gpu' and (devices > 1 or (devices == -1 and torch.cuda.device_count() > 1)):
-    #    strategy = 'ddp'
-    #elif accelerator == 'cpu':
-    #    raise Exception("Training with cpus not permitted!")
+    accelerator = 'gpu' if torch.cuda.is_available() else 'cpu'
+    if accelerator == 'gpu' and (devices > 1 or (devices == -1 and torch.cuda.device_count() > 1)):
+        strategy = 'ddp'
+    elif accelerator == 'cpu':
+        raise Exception("Training with cpus not permitted!")
     trainer = Trainer(accelerator='gpu' if torch.cuda.is_available() else 'cpu',
                       precision=16,
                       devices=devices,

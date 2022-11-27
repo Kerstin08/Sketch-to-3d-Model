@@ -50,6 +50,8 @@ def map_generation(input_sketch, output_dir, normal_map_gen_model, depth_map_gen
 def mesh_deformation(normal_map_path, depth_map_path, silhouette_map_path, basic_mesh, output_dir, logs,
                      weight_depth, weight_normal, weight_smoothness, weight_edge, weight_silhouette,
                      epochs, log_frequency, lr):
+    if not os.path.exists(logs):
+        dir_utils.create_logdir(logs)
     mesh_gen = deform_mesh.MeshGen(output_dir, logs,
                                    weight_depth, weight_normal, weight_smoothness, weight_silhouette, weight_edge,
                                    epochs, log_frequency, lr)
@@ -103,9 +105,9 @@ def diff_ars(args):
 def main(args):
     parser = argparse.ArgumentParser(prog="sketch_to_mesh")
     parser.add_argument("--input_sketch", type=str, help="Path to sketch.")
-    parser.add_argument("--output_dir", type=str, default="..\\test", help="Directory where the test output is stored")
-    parser.add_argument("--logs_dir", type=str, default="..\\logs", help="Directory where the logs are stored")
-    parser.add_argument("--genus_dir", type=str, default="..\\genus", help="Path to the directory where the genus templates are stored")
+    parser.add_argument("--output_dir", type=str, default="test", help="Directory where the test output is stored")
+    parser.add_argument("--logs_dir", type=str, default="logs/pipeline", help="Directory where the logs are stored")
+    parser.add_argument("--genus_dir", type=str, default="genus", help="Path to the directory where the genus templates are stored")
     parser.add_argument("--depth_map_gen_model", type=str, help="Path to model, which is used to determine depth map.")
     parser.add_argument("--normal_map_gen_model", type=str, help="Path to model, which is used to determine normal map.")
     parser.add_argument("--epochs_mesh_gen", type=int, default=200, help="# of epoch for mesh generation")
@@ -121,9 +123,9 @@ def main(args):
 
 if __name__ == '__main__':
     params = [
-        '--input_sketch', '..\\resources\\deform_test\\32770_sketch_genus0.png',
-        '--genus_dir', '..\\resources\\topology_meshes',
-        '--depth_map_gen_model', '..\\resources\\mapgen_test_models\\depth.ckpt',
-        '--normal_map_gen_model', '..\\resources\\mapgen_test_models\\normal.ckpt'
+        '--input_sketch', 'datasets/deform_test/32770_sketch_genus0.png',
+        '--genus_dir', 'datasets/topology_meshes',
+        '--depth_map_gen_model', 'datasets/mapgen_test_models/depth.ckpt',
+        '--normal_map_gen_model', 'datasets/mapgen_test_models/normal.ckpt'
         ]
     main(params)

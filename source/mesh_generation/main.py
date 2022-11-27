@@ -71,11 +71,11 @@ def main(args):
 
 if __name__ == '__main__':
     params = [
-        '--normal_file_path', '..\\..\\resources\\map_generation_dataset\\mixed_0_2500_normal\\target_mapgen\\train\\32770_normal.exr',
-        '--depth_file_path', '..\\..\\resources\\map_generation_dataset\\mixed_0_2500_depth\\target_mapgen\\train\\32770_depth.exr',
-        '--silhouette_file_path', '..\\..\\resources\\filled\\32770_sketch_filled.exr',
-        '--base_mesh_path', '..\\..\\resources\\topology_meshes\\genus0.ply',
+        '--normal_file_path', 'temp/32770_normal.exr',
+        '--depth_file_path', 'temp/32770_depth.exr',
+        '--silhouette_file_path', 'temp/32770_sketch_filled.exr',
+        '--base_mesh_path', 'datasets/topology_meshes/genus0.ply',
         '--output_dir', 'output_dir',
-        '--log_dir', 'logs'
+        '--log_dir', 'logs/mesh_gen'
     ]
     main(params)
