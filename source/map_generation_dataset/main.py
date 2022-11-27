@@ -5,6 +5,7 @@ from source.util import dir_utils
 import argparse
 import os
 from pathlib import Path
+os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 
 def gen_images(path, datatype, sketch_output_dirs, aov_output_dirs,
                fov, create_debug_png):

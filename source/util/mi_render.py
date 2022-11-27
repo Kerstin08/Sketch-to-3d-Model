@@ -15,6 +15,10 @@ import source.mesh_generation.depth_reparam_integrator
 import source.mesh_generation.normal_reparam_integrator
 mi.set_variant('cuda_ad_rgb')
 
+depth_integrator = source.util.mi_create_scenedesc.create_integrator_depth()
+depth_integrator_lodaded = mi.load_dict(depth_integrator)
+normal_integrator = source.util.mi_create_scenedesc.create_integrator_normal()
+normal_integrator_lodaded = mi.load_dict(normal_integrator)
 
 def rendering(scene, output_name, output_dirs):
     img = mi.render(scene, seed=0, spp=256)
@@ -23,11 +27,8 @@ def rendering(scene, output_name, output_dirs):
     output_dir = output_dirs["rendering"]
     path = os.path.join(output_dir, filename)
     mi.util.write_bitmap(path, bitmap)
-
 def avo(scene, input_path, aovs, output_name, output_dirs, create_debug_pngs=True):
     if "depth" in aovs.values():
-        depth_integrator = source.util.mi_create_scenedesc.create_integrator_depth()
-        depth_integrator_lodaded = mi.load_dict(depth_integrator)
         img = mi.render(scene, seed=0, spp=256, integrator=depth_integrator_lodaded)
         # If mesh has invalid mesh vertices, rendering contains nan.
         if dr.any(dr.isnan(img)):
@@ -35,7 +36,7 @@ def avo(scene, input_path, aovs, output_name, output_dirs, create_debug_pngs=Tru
                 "Rendered image " + output_name + " includes invalid data! Vertex normals in input model " + input_path + " might be corrupt.")
             return
 
-        img = img[:,:,0]
+        img = img[:, :, 0]
         mask = img.array < 1.5
         curr_min_val = dr.min(img)
         masked_img = dr.select(mask,
@@ -64,8 +65,6 @@ def avo(scene, input_path, aovs, output_name, output_dirs, create_debug_pngs=Tru
             Image.fromarray((np_depth * 255).astype('uint8'), mode='L').save(path)
 
     if "sh_normal" in aovs.values():
-        normal_integrator = source.util.mi_create_scenedesc.create_integrator_normal()
-        normal_integrator_lodaded = mi.load_dict(normal_integrator)
         img = mi.render(scene, seed=0, spp=256, integrator=normal_integrator_lodaded)
         # If mesh has invalid mesh vertices, rendering contains nan.
         if dr.any(dr.isnan(img)):
@@ -77,7 +76,6 @@ def avo(scene, input_path, aovs, output_name, output_dirs, create_debug_pngs=Tru
         output_dir = output_dirs['nn']
         path = os.path.join(output_dir, filename)
         OpenEXR_utils.writeImage(np_img, data_type.Type.normal, path)
-        mi.util.write_bitmap(path, img)
 
         if create_debug_pngs:
             output_dir_png = output_dirs['nn_png']
@@ -86,7 +84,7 @@ def avo(scene, input_path, aovs, output_name, output_dirs, create_debug_pngs=Tru
             # Use pil instead of standard mi.util.write_bitmap for png since mi automatically applies gamma correction when
             # writing png files
             Image.fromarray(((np_img+1.0)*127).astype('uint8'), mode='RGB').save(path)
-#
+
 def create_aov(aovs, shape, camera, input_path, output_name, output_dirs, create_debug_pngs):
     scene_desc = {"type": "scene", "shape": shape, "camera": camera}
     # Sometimes mesh data is not incorrect and could not be loaded

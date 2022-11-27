@@ -46,6 +46,7 @@ class NormalReparamIntegrator(ADIntegrator):
 
         active = active & (depth < self.reparam_max_depth)
 
+
         return mi.ad.reparameterize_ray(scene, rng, params, ray,
                                         num_rays=self.reparam_rays,
                                         kappa=self.reparam_kappa,
@@ -75,7 +76,7 @@ class NormalReparamIntegrator(ADIntegrator):
             # Camera ray reparameterization determinant multiplied in ADIntegrator.sample_rays()
             ray_reparam.d, _ = reparam(ray, depth=0, active=active)
 
-        pi = scene.ray_intersect_preliminary(ray_reparam, True, active)
+        pi = scene.ray_intersect_preliminary(ray_reparam, active=active)
         si = pi.compute_surface_interaction(ray_reparam)
         L += si.sh_frame.n
 

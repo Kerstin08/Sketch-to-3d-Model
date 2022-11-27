@@ -74,7 +74,7 @@ class DepthReparamIntegrator(ADIntegrator):
             # Camera ray reparameterization determinant multiplied in ADIntegrator.sample_rays()
             ray_reparam.d, _ = reparam(ray, depth=0, active=active)
 
-        pi = scene.ray_intersect_preliminary(ray_reparam, True, active)
+        pi = scene.ray_intersect_preliminary(ray_reparam, active=active)
         si = pi.compute_surface_interaction(ray_reparam)
         L += dr.select(pi.is_valid(), si.t, 2)
 
