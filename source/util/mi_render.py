@@ -15,6 +15,7 @@ import source.mesh_generation.depth_reparam_integrator
 import source.mesh_generation.normal_reparam_integrator
 mi.set_variant('cuda_ad_rgb')
 
+# Todo: make this better
 depth_integrator = source.util.mi_create_scenedesc.create_integrator_depth()
 depth_integrator_lodaded = mi.load_dict(depth_integrator)
 normal_integrator = source.util.mi_create_scenedesc.create_integrator_normal()

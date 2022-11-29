@@ -15,8 +15,8 @@ def run(normal_map_path, depth_map_path, silhouette_map_path, basic_mesh, output
         raise Exception("Normal map {}, depth map {}, silhouette map {} or base mesh {} does not exist!".format(normal_map_path, depth_map_path, silhouette_map_path, basic_mesh))
 
     # use logdir creation for outputdir creation to get different deformed meshes when running parallel
-    output_dir = dir_utils.create_logdir(output_dir)
-    log_dir = dir_utils.create_logdir(log_dir)
+    output_dir = dir_utils.create_version_folder(output_dir)
+    log_dir = dir_utils.create_version_folder(log_dir)
     mesh_gen = deform_mesh.MeshGen(output_dir,
                         log_dir,
                         weight_depth,
@@ -61,11 +61,11 @@ def main(args):
     parser.add_argument("--epoch", type=int, default=20000, help="# of epoch for mesh generation")
     parser.add_argument("--log_frequency", type=int, default=100, help="frequency logs are written")
     parser.add_argument("--lr", type=float, default=0.0002, help="initial learning rate for mesh generation")
-    parser.add_argument("--weight_depth", type=float, default=0.0002, help="depth weight")
+    parser.add_argument("--weight_depth", type=float, default=0.002, help="depth weight")
     parser.add_argument("--weight_normal", type=float, default=0.002, help="normal weight")
     parser.add_argument("--weight_smoothness", type=float, default=0.01, help="smoothness weight")
     parser.add_argument("--weight_edge", type=float, default=0.9, help="edge weight")
-    parser.add_argument("--weight_silhouette", type=float, default=9, help="silhouette weight")
+    parser.add_argument("--weight_silhouette", type=float, default=0.9, help="silhouette weight")
     args = parser.parse_args(args)
     diff_args(args)
 

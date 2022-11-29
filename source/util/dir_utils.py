@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 
-def create_logdir(log_dir):
+def create_version_folder(log_dir):
     version = 0
     if not os.path.exists(log_dir):
         os.mkdir(log_dir)

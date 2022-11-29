@@ -2,16 +2,23 @@ import os.path
 import source.map_generation.map_generation as map_generation
 import torch
 from torch.utils.data import DataLoader
+from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.trainer import Trainer
 import source.map_generation_dataset.dataset as dataset
 import source.util.data_type as data_type
+from source.util import dir_utils
 
-def test(input_dir, output_dir,
+def test(input_dir, output_dir, logs_dir,
         type, generated_model_path, batch_size=1, devices=1):
 
     if len(input_dir) <= 0 or not os.path.exists(input_dir):
         raise Exception("Input directory: {} is not given or does not exist!".format(input_dir))
+    if len(logs_dir) <= 0:
+        raise Exception("Logs Path is not given!")
 
+    logs_dir_name = "testModel"
+    # Use general folder instead of logs dir since pytorch already takes care of folder versioning.
+    dir_utils.create_general_folder(os.path.join(logs_dir, logs_dir_name))
     sketch_dir = os.path.join(input_dir, "sketch_mapgen")
     target_dir = os.path.join(input_dir, "target_mapgen")
     if not os.path.exists(sketch_dir):
@@ -43,10 +50,17 @@ def test(input_dir, output_dir,
         strategy = 'ddp'
     elif accelerator == 'cpu':
         raise Exception("Training with cpus not permitted!")
+
+    # Logging creates a lot of unnecessary folders like version, which in pipeline is handled differently in order
+    # to compile the logs of a version in one version folder. However,
+    # for solely testing those folders are useful to distinct from training logs and
+    # to get current version.
+    logger = TensorBoardLogger(logs_dir, name=logs_dir_name)
     trainer = Trainer(accelerator='gpu' if torch.cuda.is_available() else 'cpu',
                       precision=16,
                       devices=devices,
-                      strategy=strategy)
+                      strategy=strategy,
+                      logger=logger)
     dataloader = DataLoader(dataSet, batch_size=batch_size,
                                 shuffle=False, num_workers=4)
     trainer.test(model, dataloaders=dataloader)
