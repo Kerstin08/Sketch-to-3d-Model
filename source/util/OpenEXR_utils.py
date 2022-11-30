@@ -1,6 +1,5 @@
 import OpenEXR
 import Imath
-import mitsuba
 import numpy as np
 import source.util.data_type as data_type
 import torch
