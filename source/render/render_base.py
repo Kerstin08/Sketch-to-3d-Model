@@ -12,9 +12,9 @@ mi.set_variant('cuda_ad_rgb')
 
 class Render:
     # Load integrators provided by renderer at the beginning of the
-    def __init__(self, output_dirs, fov, width=256, height=256):
+    def __init__(self, output_dirs, fov=50, dim=256):
         self.output_dirs = output_dirs
-        self.camera = self.__load_camera(fov, width, height)
+        self.camera = self.__load_camera(fov, dim)
         self.emitter = self.__load_emitter()
         self.output_name=""
 
@@ -23,18 +23,19 @@ class Render:
 
     # center is assumed to be at 0,0,0, see mesh_preprocess_operations.py translate_to_origin
     # bounding box diagonal is assumed to be 1, see mesh_preprocess_operations.py normalize_mesh
-    def __load_camera(self, fov, width, height):
+    def __load_camera(self, fov, dim):
         distance = math.tan(math.radians(fov)) / 1.75
         near_distance = distance
         far_distance = distance * 4
 
         centroid = np.array([distance, -distance, distance])
+        # use only quadratic images
         return create_scenedesc.create_camera(T.look_at(target=(0.0, 0.0, 0.0),
                                                       origin=tuple(centroid),
                                                       up=(0, 0, 1),
                                                       ),
                                                     fov, near_distance, far_distance,
-                                                    width, height)
+                                                    dim, dim)
 
     @abstractmethod
     def render(self, scene, input_path):

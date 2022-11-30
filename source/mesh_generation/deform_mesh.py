@@ -2,19 +2,16 @@ import os.path
 
 import drjit as dr
 import mitsuba as mi
-import time
 import numpy as np
 import torch
 
-import source.util.mi_create_scenedesc as create_scenedesc
+import source.render.mi_create_scenedesc as create_scenedesc
 import math
 from mitsuba.scalar_rgb import Transform4f as T
-import source.mesh_generation.normal_reparam_integrator as normal_reparam_integrator
-import source.mesh_generation.depth_reparam_integrator as depth_reparam_integrator
-import source.mesh_generation.silhouette_reparam_integrator as silhouette_reparam_integrator
+import source.render.normal_reparam_integrator
+import source.render.depth_reparam_integrator
+import source.render.silhouette_reparam_integrator
 from torch.utils.tensorboard import SummaryWriter
-
-import time
 
 mi.set_variant('cuda_ad_rgb')
 

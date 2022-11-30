@@ -10,9 +10,10 @@ import numpy as np
 from source.render.render_direct import Direct
 
 class LineGen():
-    def __init__(self, output_dirs, fov, width=1024, height=1024, emitter_samples=4):
+    def __init__(self, output_dirs, fov=50, dim_int_width=1024, dim_final=256, emitter_samples=4):
         self.output_dirs = output_dirs
-        self.renderer = Direct(output_dirs, fov, width, height, emitter_samples)
+        self.renderer = Direct(output_dirs, fov, dim_int_width, emitter_samples)
+        self.dim_final = dim_final
 
     def create_lines(self, input_path, output_name=""):
         for key, value in self.output_dirs.items():
@@ -41,7 +42,7 @@ class LineGen():
         edges = cv.Canny(gaussian, 10, 130)
         kernel = np.ones((3, 3), np.uint8)
         img_dilation = cv.dilate(edges, kernel)
-        dsize = (256, 256)
+        dsize = (self.dim_final, self.dim_final)
         output = cv.resize(cv.bitwise_not(img_dilation), dsize)
         img_binary = cv.threshold(output, 250, 255, cv.THRESH_BINARY)[1]
 

@@ -8,8 +8,8 @@ import drjit as dr
 mi.set_variant('cuda_ad_rgb')
 
 class Direct(Render):
-    def __init__(self, output_dirs, fov, width=256, height=256, emitter_samples=4):
-        Render.__init__(self, output_dirs, fov, width, height)
+    def __init__(self, output_dirs, fov=50, dim=256, emitter_samples=4):
+        Render.__init__(self, output_dirs, fov, dim)
         self._integrator_lodaded = self.__load_integrator(emitter_samples)
 
     def __load_integrator(self, emiiter_samples):

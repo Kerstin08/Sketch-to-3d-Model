@@ -3,16 +3,15 @@ from pathlib import Path
 
 def create_version_folder(log_dir):
     version = 0
-    if not os.path.exists(log_dir):
-        os.mkdir(log_dir)
-
+    path = Path(log_dir)
+    if not path.exists():
+        path.mkdir(parents=True)
     else:
         for root, dirs, files in os.walk(log_dir):
             for dir in dirs:
                 n = int(dir.split("_", 1)[1])
                 if n >= version:
                     version=n+1
-            #Todo: need to find solution for that
             break
     curr_version = "version_{}".format(version)
     curr_path = os.path.join(log_dir, curr_version)
@@ -28,5 +27,6 @@ def create_prefix_folder(prefix, dir):
     return path
 
 def create_general_folder(path):
-    if not os.path.exists(path):
-        os.makedirs(path)
+    path = Path(path)
+    if not path.exists():
+        path.mkdir(parents=True)

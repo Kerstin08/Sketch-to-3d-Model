@@ -14,8 +14,8 @@ import drjit as dr
 mi.set_variant('cuda_ad_rgb')
 
 class AOV(Render):
-    def __init__(self, output_dirs, fov, aovs, width=256, height=256, create_debug_pngs=True):
-        Render.__init__(self, output_dirs, fov, width, height)
+    def __init__(self, output_dirs, aovs, fov=50, dim=256, create_debug_pngs=True):
+        Render.__init__(self, output_dirs, fov, dim)
         self._depth_integrator = self.__load_depth_integrator()
         self._normal_integrator = self.__load_normal_integrator()
         self.create_debug_pngs = create_debug_pngs

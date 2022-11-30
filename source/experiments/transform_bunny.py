@@ -3,8 +3,8 @@
 import drjit as dr
 import mitsuba as mi
 import torch
-import source.mesh_generation.normal_reparam_integrator
-import source.mesh_generation.depth_reparam_integrator
+from source.render import depth_reparam_integrator
+from source.render import normal_reparam_integrator
 
 mi.set_variant('cuda_ad_rgb')
 
@@ -77,7 +77,7 @@ scene = mi.load_dict({
     'bunny': {
         'type': 'ply',
         'filename': '../../resources/meshes/bunny.ply',
-        'to_world': T.scale(6.5),
+        'to_world': T.scale(10),
         'bsdf': {
             'type': 'diffuse',
             'reflectance': { 'type': 'rgb', 'value': (0.3, 0.3, 0.75) },
@@ -115,20 +115,20 @@ for it in range(20):
     apply_transformation(params, opt)
 
     depth_img = mi.render(scene, params, seed=it, spp=16, integrator=depth_integrator_lodaded)
-    normal_img = mi.render(scene, seed=it, spp=16, integrator=normal_integrator_lodaded)
-    mask = depth_img.array < 1.5
-    curr_min_val = dr.min(depth_img)
-    masked_img = dr.select(mask,
-                           depth_img.array,
-                           0.0)
-    curr_max_val = dr.max(masked_img)
-    wanted_range_min, wanted_range_max = 0.0, 0.5
-    depth = dr.select(mask,
-                      (depth_img.array - curr_min_val) * (
-                              (wanted_range_max - wanted_range_min) / (
-                              curr_max_val - curr_min_val)) + wanted_range_min,
-                      1.0)
-    depth_tens = mi.TensorXf(depth, shape=(64, 64, 3))
+    normal_img = mi.render(scene,  params, seed=it, spp=16, integrator=normal_integrator_lodaded)
+    #mask = depth_img.array < 1.5
+    #curr_min_val = dr.min(depth_img)
+    #masked_img = dr.select(mask,
+    #                       depth_img.array,
+    #                       0.0)
+    #curr_max_val = dr.max(masked_img)
+    #wanted_range_min, wanted_range_max = 0.0, 0.75
+    #depth = dr.select(mask,
+    #                  (depth_img.array - curr_min_val) * (
+    #                          (wanted_range_max - wanted_range_min) / (
+    #                          curr_max_val - curr_min_val)) + wanted_range_min,
+    #                  1.0)
+    #depth_tens = mi.TensorXf(depth, shape=(64, 64, 3))
 
     depth_loss = torch_add(depth_img, depth_img_ref)
     normal_loss = torch_add(normal_img, normal_img_ref)
