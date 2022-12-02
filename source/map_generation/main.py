@@ -2,7 +2,8 @@ import argparse
 from source.map_generation.test import test
 from source.map_generation.train import train
 import source.util.dir_utils as dir_utils
-
+import os
+import torch
 
 def run(train_b, input_dir, output_dir, logs_dir,
         type, epochs, lr, batch_size, n_critic, weight_L1,
@@ -16,8 +17,21 @@ def run(train_b, input_dir, output_dir, logs_dir,
         train(input_dir, output_dir, logs_dir,
         type, epochs, lr, batch_size, n_critic, weight_L1,
         gradient_penalty_coefficient, log_frequency, use_generated_model, generated_model_path, devices)
+
+        # Add teststep with model that had the smallest validation loss
+        loss = float("inf")
+        for root, _, files in os.walk(output_dir):
+            for file in files:
+                if "val_loss" in file:
+                    val = file.rsplit("val_loss=")[1].rsplit(".ckpt")[0]
+                    if float(val) and loss > float(val):
+                        loss = float(val)
+                        generated_model_path = os.path.join(root, file)
+        output_dir_test = os.path.join(output_dir, "test")
+        dir_utils.create_general_folder(output_dir_test)
+        test(input_dir, output_dir_test, logs_dir, type, generated_model_path)
     else:
-        test(input_dir, output_dir, type, generated_model_path)
+        test(input_dir, output_dir, logs_dir, type, generated_model_path)
 
 def diff_args(args):
     run(args.train,
@@ -68,7 +82,7 @@ if __name__ == '__main__':
     params = [
         '--input_dir', 'datasets/mixed_0_2500_depth',
         '--type', 'depth',
-        '--epochs', '2000',
+        '--epochs', '5',
         '--lr', '9e-5',
         '--output_dir', "checkpoints_depth",
 #        '--generated_model_path', "checkpoints/last.ckpt"

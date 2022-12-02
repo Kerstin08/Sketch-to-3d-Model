@@ -8,6 +8,7 @@ from pytorch_lightning.trainer import Trainer
 from source.map_generation_dataset import dataset
 from source.util import data_type
 from source.util import dir_utils
+from source.map_generation.test import test
 
 def train(input_dir, output_dir, logs_dir,
         type, epochs, lr, batch_size, n_critic, weight_L1,

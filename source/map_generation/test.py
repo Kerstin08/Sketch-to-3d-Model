@@ -15,7 +15,6 @@ def test(input_dir, output_dir, logs_dir,
         raise Exception("Input directory: {} is not given or does not exist!".format(input_dir))
     if len(logs_dir) <= 0:
         raise Exception("Logs Path is not given!")
-
     logs_dir_name = "testModel"
     # Use general folder instead of logs dir since pytorch already takes care of folder versioning.
     dir_utils.create_general_folder(os.path.join(logs_dir, logs_dir_name))
@@ -48,18 +47,19 @@ def test(input_dir, output_dir, logs_dir,
     if accelerator == 'gpu' and (devices > 1 or (devices == -1 and torch.cuda.device_count() > 1)):
         strategy = 'ddp'
     elif accelerator == 'cpu':
-        raise Exception("Training with cpus not permitted!")
+        raise Exception("Testing with cpus not permitted!")
 
     # Logging creates a lot of unnecessary folders like version, which in pipeline is handled differently in order
     # to compile the logs of a version in one version folder. However,
     # for solely testing those folders are useful to distinct from training logs and
     # to get current version.
     logger = TensorBoardLogger(logs_dir, name=logs_dir_name)
-    trainer = Trainer(accelerator='gpu' if torch.cuda.is_available() else 'cpu',
+    trainer = Trainer(accelerator=accelerator,
                       precision=16,
                       devices=devices,
                       strategy=strategy,
-                      logger=logger)
+                      logger=logger,
+                      num_nodes=1)
     dataloader = DataLoader(dataSet, batch_size=batch_size,
-                                shuffle=False, num_workers=4)
+                                shuffle=False, num_workers=1)
     trainer.test(model, dataloaders=dataloader)

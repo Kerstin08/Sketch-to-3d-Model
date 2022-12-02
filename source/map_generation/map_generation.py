@@ -118,6 +118,7 @@ class MapGen(pl.LightningModule):
         logger = self.logger.experiment
         image_name_pred = str(self.global_step) + "generated_and_target_images"
         logger.add_image(image_name_pred, grid, 0)
+
     def test_step(self, sample_batched, batch_idx):
         predicted_image = self(sample_batched)
         imagename = Path(sample_batched['input_path'][0]).stem
