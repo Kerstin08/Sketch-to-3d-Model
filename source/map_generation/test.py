@@ -36,7 +36,6 @@ def test(input_dir, output_dir, logs_dir,
     if not os.path.exists(generated_model_path):
         raise Exception("Generated model paths are not given!")
     model = map_generation.MapGen.load_from_checkpoint(generated_model_path,
-                                  batch_size=batch_size,
                                   output_dir=output_dir)
 
     if os.path.exists(test_dir_target):

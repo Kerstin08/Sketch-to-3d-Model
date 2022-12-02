@@ -12,14 +12,13 @@ from source.util import OpenEXR_utils
 from source.util import data_type
 
 class MapGen(pl.LightningModule):
-    def __init__(self, data_type, n_critic, batch_size, weight_L1, gradient_penalty_coefficient, output_dir, lr):
+    def __init__(self, data_type, n_critic, weight_L1, gradient_penalty_coefficient, output_dir, lr):
         super(MapGen, self).__init__()
         self.save_hyperparameters()
         self.data_type = data_type
         self.G = Generator(self.channel)
         self.D = Discriminator(self.channel)
         self.n_critic = n_critic
-        self.batch_size = batch_size
         self.weight_L1 = weight_L1
         self.output_dir = output_dir
         self.lr = lr
@@ -53,7 +52,7 @@ class MapGen(pl.LightningModule):
         d_loss_fake = torch.mean(pred_false)
         pixelwise_loss = self.L1(fake_images, sample_batched['target'])
         g_loss = -d_loss_fake + pixelwise_loss * self.weight_L1
-        self.log("g_Loss", float(g_loss.item()), on_epoch=True, prog_bar=True, logger=True, batch_size=self.batch_size)
+        self.log("g_Loss", float(g_loss.item()), prog_bar=True, logger=True)
         return g_loss
 
     def gradient_penalty(self, real_images, fake_images):
@@ -85,9 +84,9 @@ class MapGen(pl.LightningModule):
 
         # loss as defined by Wasserstein paper
         d_loss = -d_loss_real + d_loss_fake + self.gradient_penalty_coefficient * gradient_penalty
-        self.log("d_loss", float(d_loss.item()), on_epoch=True, prog_bar=True, logger=True, batch_size=self.batch_size)
-        self.log("d_loss_real", float(d_loss_real.item()), on_epoch=True, prog_bar=True, logger=True, batch_size=self.batch_size)
-        self.log("d_loss_fake", float(d_loss_fake.item()), on_epoch=True, prog_bar=True, logger=True, batch_size=self.batch_size)
+        self.log("d_loss", float(d_loss.item()), prog_bar=True, logger=True)
+        self.log("d_loss_real", float(d_loss_real.item()), prog_bar=True, logger=True)
+        self.log("d_loss_fake", float(d_loss_fake.item()), prog_bar=True, logger=True)
 
         return d_loss
 
@@ -103,7 +102,7 @@ class MapGen(pl.LightningModule):
     def validation_step(self, sample_batched, batch_idx):
         predicted_image = self(sample_batched)
         pixelwise_loss = self.L1(predicted_image, sample_batched['target'])
-        self.log("val_loss", pixelwise_loss.item(), batch_size=self.batch_size)
+        self.log("val_loss", pixelwise_loss.item())
         target_norm = (sample_batched['target'] + 1) / 2
         predicted_list = predicted_image[:6]
         transformed_images = []
