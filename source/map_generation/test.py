@@ -9,7 +9,7 @@ import source.util.data_type as data_type
 from source.util import dir_utils
 
 def test(input_dir, output_dir, logs_dir,
-        type, generated_model_path, batch_size=1, devices=1):
+        type, generated_model_path, devices=1):
 
     if len(input_dir) <= 0 or not os.path.exists(input_dir):
         raise Exception("Input directory: {} is not given or does not exist!".format(input_dir))
@@ -60,6 +60,6 @@ def test(input_dir, output_dir, logs_dir,
                       strategy=strategy,
                       logger=logger,
                       num_nodes=1)
-    dataloader = DataLoader(dataSet, batch_size=batch_size,
+    dataloader = DataLoader(dataSet, batch_size=1,
                                 shuffle=False, num_workers=1)
     trainer.test(model, dataloaders=dataloader)

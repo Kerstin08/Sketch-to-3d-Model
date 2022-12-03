@@ -8,9 +8,9 @@ from pytorch_lightning.trainer import Trainer
 from source.map_generation_dataset import dataset
 from source.util import data_type
 from source.util import dir_utils
-from source.map_generation.test import test
+from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 
-def train(input_dir, output_dir, logs_dir,
+def train(input_dir, output_dir, logs_dir, checkpoint_dir,
         type, epochs, lr, batch_size, n_critic, weight_L1,
         gradient_penalty_coefficient, log_frequency,
         use_generated_model=False, generated_model_path="", devices=1):
@@ -38,7 +38,8 @@ def train(input_dir, output_dir, logs_dir,
                                   weight_L1=weight_L1,
                                   gradient_penalty_coefficient=gradient_penalty_coefficient,
                                   output_dir=output_dir,
-                                  lr=lr)
+                                  lr=lr,
+                                  batch_size=batch_size)
 
     if use_generated_model:
         if not os.path.exists(generated_model_path):
@@ -48,16 +49,22 @@ def train(input_dir, output_dir, logs_dir,
                                    weight_L1=weight_L1,
                                    gradient_penalty_coefficient=gradient_penalty_coefficient,
                                    output_dir=output_dir,
-                                   lr=lr)
+                                   lr=lr,
+                                   batch_size=batch_size)
 
     checkpoint_callback = ModelCheckpoint(
         save_top_k=5,
         save_last=True,
         monitor="val_loss",
         mode="min",
-        dirpath=output_dir,
+        dirpath=checkpoint_dir,
         filename="MapGen-{epoch:02d}-{val_loss}",
     )
+    early_stop_callback = EarlyStopping(monitor="val_loss",
+                                        patience=3,
+                                        verbose=False,
+                                        mode="min",
+                                        check_finite=True)
     logger = TensorBoardLogger(logs_dir, name=logs_dir_name)
 
     sketch_train_dir = os.path.join(sketch_dir, "train")
@@ -66,15 +73,22 @@ def train(input_dir, output_dir, logs_dir,
     sketch_val_dir = os.path.join(sketch_dir, "val")
     if not os.path.exists(sketch_val_dir):
         raise Exception("Val dir in {} does not exist".format(sketch_dir))
+    sketch_test_dir = os.path.join(sketch_dir, "test")
+    if not os.path.exists(sketch_test_dir):
+        raise Exception("Test dir in {} does not exist".format(sketch_dir))
     target_train_dir = os.path.join(target_dir, "train")
     if not os.path.exists(target_train_dir):
         raise Exception("Train dir in {} does not exist".format(target_dir))
     target_val_dir = os.path.join(target_dir, "val")
     if not os.path.exists(target_val_dir):
         raise Exception("Val dir in {} does not exist".format(target_dir))
+    target_test_dir = os.path.join(target_dir, "test")
+    if not os.path.exists(target_test_dir):
+        raise Exception("Test dir in {} does not exist".format(target_dir))
 
     dataSet_train = dataset.DS(True, given_type, sketch_train_dir, target_train_dir)
     dataSet_val = dataset.DS(True, given_type, sketch_val_dir, target_val_dir)
+    dataSet_test = dataset.DS(True, given_type, sketch_test_dir, target_test_dir)
 
     strategy = None
     accelerator = 'gpu' if torch.cuda.is_available() else 'cpu'
@@ -86,7 +100,7 @@ def train(input_dir, output_dir, logs_dir,
     trainer = Trainer(accelerator=accelerator,
                       devices=devices,
                       max_epochs=epochs,
-                      callbacks=[checkpoint_callback],
+                      callbacks=[checkpoint_callback, early_stop_callback],
                       logger=logger,
                       precision=16,
                       strategy=strategy,
@@ -94,5 +108,9 @@ def train(input_dir, output_dir, logs_dir,
     dataloader_train = DataLoader(dataSet_train, batch_size=batch_size,
                                   shuffle=True, num_workers=4)
     dataloader_vaild = DataLoader(dataSet_val, batch_size=batch_size,
-                                  shuffle=False, num_workers=4)
+                                  shuffle=False, num_workers=48)
     trainer.fit(model, dataloader_train, dataloader_vaild)
+
+    dataloader_test = DataLoader(dataSet_test, batch_size=1,
+                                  shuffle=False, num_workers=48)
+    trainer.test(model, dataloader_test)
