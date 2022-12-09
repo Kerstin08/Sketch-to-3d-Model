@@ -53,7 +53,7 @@ class MapGen(pl.LightningModule):
         d_loss_fake = torch.mean(pred_false)
         pixelwise_loss = self.L1(fake_images, sample_batched['target'])
         g_loss = -d_loss_fake + pixelwise_loss * self.weight_L1
-        self.log("g_Loss", float(g_loss.item()), on_epoch=False, prog_bar=True)
+        self.log("g_loss", float(g_loss.item()), on_epoch=False, prog_bar=True)
         return g_loss
 
     def gradient_penalty(self, real_images, fake_images):
@@ -104,7 +104,7 @@ class MapGen(pl.LightningModule):
         predicted_image = self(sample_batched)
         pixelwise_loss = self.L1(predicted_image, sample_batched['target'])
         # Otherwise pytorch throws warning
-        self.log("val_loss", pixelwise_loss.item(), batch_size=self.batch_size)
+        self.log("val_loss", pixelwise_loss.item(), batch_size=self.batch_size, sync_dist=True)
         target_norm = (sample_batched['target'] + 1) / 2
         predicted_list = predicted_image[:6]
         transformed_images = []

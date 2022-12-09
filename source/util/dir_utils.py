@@ -30,3 +30,4 @@ def create_general_folder(path):
     path = Path(path)
     if not path.exists():
         path.mkdir(parents=True)
+    return path
