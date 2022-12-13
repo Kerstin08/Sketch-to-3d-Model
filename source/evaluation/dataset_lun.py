@@ -1,7 +1,6 @@
 import argparse
 import math
 import sys
-import time
 from pathlib import Path
 import os
 import numpy as np
@@ -52,6 +51,31 @@ def write_view_file(view_path, fov, views):
             y = round(math.sin(long) * math.cos(lat) * radius, 5)
             z = round(math.sin(lat) * radius, 5)
             f.write(str(x) + " " + str(y) + " " + str(z) + "\n")
+        # Use same groups as Lun
+        f.write("3 0 2 6\n \
+3 0 6 3 \n \
+3 0 3 8 \n \
+3 0 8 2 \n \
+3 5 7 4 \n \
+3 4 9 5 \n \
+3 7 12 1 \n \
+3 1 12 6 \n \
+3 6 10 1 \n \
+3 1 10 7 \n \
+3 9 11 8 \n \
+3 8 13 9 \n \
+3 4 10 11 \n \
+3 2 11 10 \n \
+3 13 3 12 \n \
+3 12 5 13 \n \
+3 10 6 2 \n \
+3 8 11 2 \n \
+3 6 12 3 \n \
+3 13 8 3 \n \
+3 7 10 4 \n \
+3 11 9 4 \n \
+3 12 7 5 \n \
+3 9 13 5")
 
 
 def gen_images(path, datatype, renderer_aov, line_gen, rendering_dirs, sketch_dirs, create_debug_png):
@@ -72,10 +96,6 @@ def gen_images(path, datatype, renderer_aov, line_gen, rendering_dirs, sketch_di
         count = 0
         for i in range(len(line_scenes)):
             counted_out_name = str(count) + "_" + output_name
-            # line_scene = line_scenes[i]
-            # lines = line_gen.create_line_images(line_scene, path)
-            # stack_lines = np.stack([lines, lines, lines], axis=-1, out=None)
-            # save_renderings.save_png(stack_lines, sketch_dirs, counted_out_name, dir_key='sketch', mode='RGB')
 
             aov_scene = aov_scenes[i]
             # generate depth and normal
@@ -88,9 +108,24 @@ def gen_images(path, datatype, renderer_aov, line_gen, rendering_dirs, sketch_di
                 normal = np.where(depth > 240, 255, normal)
                 # save_renderings.save_exr(depth, rendering_dirs,  output_name, data_type.Type.depth)
                 # save_renderings.save_exr(normal, rendering_dirs, output_name, data_type.Type.normal)
-                # stack = np.concatenate([normal, depth], axis=2)
+                stack = np.concatenate([normal, depth], axis=2)
+                dn_name = "dn_"+counted_out_name
+                save_renderings.save_png(stack, rendering_dirs, dn_name, dir_key='dn', mode='RGBA')
+                # Todo: dnfs and sketch need front view
+                # save first two views as dnfs and sketch
+                if count < 2:
+                    dn_name = "dnfs_" + counted_out_name
+                    save_renderings.save_png(stack, rendering_dirs, dn_name, dir_key='dnfs', mode='RGBA')
 
-                save_renderings.save_png(normal, rendering_dirs, counted_out_name, dir_key='dn', mode='RGB')
+                    line_scene = line_scenes[i]
+                    lines = line_gen.create_line_images(line_scene, path)
+                    stack_lines = np.stack([lines, lines, lines], axis=-1, out=None)
+                    if count < 1:
+                        outname = "sketch_T_" +counted_out_name
+                    else:
+                        outname = "sketch_S_" + counted_out_name
+                    save_renderings.save_png(stack_lines, sketch_dirs, outname, dir_key='sketch', mode='RGB')
+                    save_renderings.save_png(stack_lines, sketch_dirs, outname, dir_key='hires', mode='RGB')
                 count = count + 1
         return
     for path, _, files in os.walk(path):
@@ -114,7 +149,6 @@ def run(input_dir, output_dir, datatype, fov, dim_render, dim_line_gen_intermedi
 
     rendering_dirs = {"dn": dn, "dnfs": dnfs_path}
     sketch_dirs = {"sketch": sketch_path, "hires": hires_path}
-    # Todo: refine angles, still not quite there yet
     # Angles used by Lun et. al
     views = [(90, 90),
             (0, 0),
@@ -137,8 +171,6 @@ def run(input_dir, output_dir, datatype, fov, dim_render, dim_line_gen_intermedi
     renderer_aov = AOV(views, {"dd.y": "depth", "nn": "sh_normal"}, fov, dim_render)
     line_gen = LineGen(views, fov, dim_line_gen_intermediate, dim_render, emitter_samples)
     gen_images(input_dir, datatype, renderer_aov, line_gen, rendering_dirs, sketch_dirs, create_debug_png)
-
-
 
 def diff_args(args):
     run(args.input_dir,
