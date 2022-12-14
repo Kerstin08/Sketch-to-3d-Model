@@ -3,8 +3,9 @@ import os
 import floodfill
 import euler
 import basic_mesh
-from source.util import dir_utils
+
 import source.util.sketch_utils as sketch_utils
+from source.util import dir_utils
 
 def run(image_path, genus_dir, output_dir):
     if not os.path.exists(output_dir):

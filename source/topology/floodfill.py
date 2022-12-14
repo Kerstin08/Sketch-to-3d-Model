@@ -1,10 +1,11 @@
 import os.path
 from PIL import Image
 from collections import deque
+from pathlib import Path
+
 from source.util import OpenEXR_utils
 from source.util import data_type
 from source.util import sketch_utils
-from pathlib import Path
 
 background = 1
 bounds = 0

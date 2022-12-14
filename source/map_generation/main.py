@@ -2,8 +2,6 @@ import argparse
 from source.map_generation.test import test
 from source.map_generation.train import train
 import source.util.dir_utils as dir_utils
-import os
-import torch
 
 def run(train_b, input_dir, output_dir, logs_dir, checkpoint_dir,
         type, epochs, lr, batch_size, n_critic, weight_L1,

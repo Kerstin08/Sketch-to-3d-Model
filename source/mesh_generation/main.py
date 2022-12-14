@@ -1,9 +1,7 @@
 import argparse
-
-import numpy as np
-
 import deform_mesh
 import os
+
 from source.util import OpenEXR_utils
 from source.util import data_type
 from source.util import dir_utils

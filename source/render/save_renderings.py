@@ -1,8 +1,9 @@
-from source.util import OpenEXR_utils
 from PIL import Image
 from pathlib import Path
 import os
+
 from source.util import data_type
+from source.util import OpenEXR_utils
 
 def save_exr(img, output_dirs, output_name, given_data_type=None):
     if given_data_type == data_type.Type.depth:

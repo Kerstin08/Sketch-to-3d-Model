@@ -1,6 +1,7 @@
 import argparse
 import os
 from pathlib import Path
+
 from source.mesh_generation import deform_mesh
 from source.util import sketch_utils
 from source.topology import floodfill
@@ -10,7 +11,6 @@ from source.util import dir_utils
 from source.map_generation.test import test
 from source.util import OpenEXR_utils
 from source.util import data_type
-import numpy as np
 
 # Topology
 ## (1.a. split input points into different input sketches based on different "classes", which are signaled by different colors)

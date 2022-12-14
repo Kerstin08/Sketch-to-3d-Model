@@ -4,15 +4,14 @@ import drjit as dr
 import mitsuba as mi
 import numpy as np
 import torch
+import math
+from torch.utils.tensorboard import SummaryWriter
 
 import source.render.mi_create_scenedesc as create_scenedesc
-import math
 from mitsuba.scalar_rgb import Transform4f as T
 import source.render.normal_reparam_integrator
 import source.render.depth_reparam_integrator
 import source.render.silhouette_reparam_integrator
-from torch.utils.tensorboard import SummaryWriter
-
 mi.set_variant('cuda_ad_rgb')
 
 class MeshGen():

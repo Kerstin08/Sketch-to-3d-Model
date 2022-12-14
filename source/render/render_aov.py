@@ -1,16 +1,12 @@
-import os
 import numpy as np
-from PIL import Image
+import mitsuba as mi
+import drjit as dr
 
 from source.render.render_base import Render
-from source.util import data_type
-from source.util import OpenEXR_utils
 import source.render.normal_reparam_integrator
 import source.render.depth_reparam_integrator
 import source.render.mi_create_scenedesc as create_scenedesc
 
-import mitsuba as mi
-import drjit as dr
 mi.set_variant('cuda_ad_rgb')
 
 class AOV(Render):
