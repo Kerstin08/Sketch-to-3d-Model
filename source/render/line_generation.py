@@ -1,12 +1,3 @@
-import argparse
-import time
-
-from pathlib import Path
-import os
-
-from source.render import save_renderings
-
-os.environ["OPENCV_IO_ENABLE_OPENEXR"] = "1"
 import cv2 as cv
 import numpy as np
 

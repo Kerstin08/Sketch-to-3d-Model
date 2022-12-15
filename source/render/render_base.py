@@ -1,13 +1,10 @@
 import math
-import os.path
 import numpy as np
-from pathlib import Path
-from abc import abstractmethod
+import mitsuba as mi
+from mitsuba.scalar_rgb import Transform4f as T
 
 import source.render.mi_create_scenedesc as create_scenedesc
 
-import mitsuba as mi
-from mitsuba.scalar_rgb import Transform4f as T
 mi.set_variant('cuda_ad_rgb')
 
 class Render:

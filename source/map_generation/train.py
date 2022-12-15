@@ -60,11 +60,6 @@ def train(input_dir, output_dir, logs_dir, checkpoint_dir,
         dirpath=checkpoint_dir,
         filename="MapGen-{epoch:02d}-{val_loss}",
     )
-    early_stop_callback = EarlyStopping(monitor="val_loss",
-                                        patience=3,
-                                        verbose=False,
-                                        mode="min",
-                                        check_finite=True)
     logger = TensorBoardLogger(logs_dir, name=logs_dir_name)
 
     sketch_train_dir = os.path.join(sketch_dir, "train")
@@ -100,13 +95,13 @@ def train(input_dir, output_dir, logs_dir, checkpoint_dir,
     trainer = Trainer(accelerator=accelerator,
                       devices=devices,
                       max_epochs=epochs,
-                      callbacks=[checkpoint_callback, early_stop_callback],
+                      callbacks=[checkpoint_callback],
                       logger=logger,
                       precision=16,
                       strategy=strategy,
                       log_every_n_steps=log_frequency)
     dataloader_train = DataLoader(dataSet_train, batch_size=batch_size,
-                                  shuffle=True, num_workers=4)
+                                  shuffle=True, num_workers=48)
     dataloader_vaild = DataLoader(dataSet_val, batch_size=batch_size,
                                   shuffle=False, num_workers=48)
     trainer.fit(model, dataloader_train, dataloader_vaild)

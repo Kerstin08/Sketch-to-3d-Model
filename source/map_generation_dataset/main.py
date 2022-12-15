@@ -28,6 +28,10 @@ if sys.platform == 'win32':
         return 0  # chain to the next handler
     win32api.SetConsoleCtrlHandler(handler, 1)
 
+
+# Manually delete returned variables in order to get memory problem (leak or fragmentation)
+# somewhat under control which seems to can occur if code is run on linux OS
+# Seems to stabilize memory consumption, however there may be better solutions for that problem
 def gen_images(path, datatype, renderer_aov, line_gen, output_dirs, create_debug_png):
     filename = Path(path)
     if os.path.isfile(path) and filename.suffix == datatype:
@@ -43,13 +47,16 @@ def gen_images(path, datatype, renderer_aov, line_gen, output_dirs, create_debug
         # generate sketches
         line_scene = line_gen.create_scenes(path)[0]
         lines = line_gen.create_line_images(line_scene, path)
+        del line_scene
         if lines is None:
             return
         save_renderings.save_png(lines, output_dirs, output_name, data_type.Type.sketch)
+        del lines
         # generate depth and normal
         scene_aov = renderer_aov.create_scene(path)[0]
         normal = renderer_aov.render_normal(scene_aov, path)
         depth = renderer_aov.render_depth(scene_aov, path)
+        del scene_aov
         if normal is None or depth is None:
             return
         save_renderings.save_exr(depth, output_dirs,  output_name, data_type.Type.depth)
@@ -57,6 +64,8 @@ def gen_images(path, datatype, renderer_aov, line_gen, output_dirs, create_debug
         if create_debug_png:
             save_renderings.save_png(depth, output_dirs, output_name, data_type.Type.depth)
             save_renderings.save_png(normal, output_dirs, output_name, data_type.Type.normal)
+        del normal
+        del depth
         return
     for path, _, files in os.walk(path):
         for file in files:
@@ -100,7 +109,7 @@ def main(args):
     parser.add_argument("--output_dir", type=str, help="path to output objects")
     parser.add_argument("--datatype", type=str, default=".stl", help="Object datatype")
     parser.add_argument("--fov", type=int, default=50, help="define rendering fov")
-    parser.add_argument("--view", type=list, default=[(225, 35)], help="define rendering view angles")
+    parser.add_argument("--view", type=list, default=[(225, 30)], help="define rendering view angles")
     parser.add_argument("--dim_render", type=int, default=256, help="final output format for images")
     parser.add_argument("--dim_line_gen_intermediate", type=int, default=1024, help="intermediate output format for rendered images to perform line detection on")
     parser.add_argument("--emitter_samples", type=int, default=4, help="# of emitter samples for direct rendering")
@@ -110,7 +119,7 @@ def main(args):
 
 if __name__ == '__main__':
     params = [
-        '--input_dir', '..\\..\\resources\\thingi10k\\0_499\\36082.stl',
-        '--output_dir', '..\\..\\output\\map_generation'
+        '--input_dir', 'datasets/thingy',
+        '--output_dir', 'map_generation'
     ]
     main(params)

@@ -68,10 +68,10 @@ def main(args):
 
 if __name__ == '__main__':
     params = [
-        '--input_dir', 'datasets/mixed_0_2500_normal',
+        '--input_dir', 'datasets/mixed_normal',
         '--type', 'normal',
         '--epochs', '3000',
-        '--lr', '9e-5',
+        '--lr', '5e-5',
         '--output_dir', "out_normal",
         "--batch_size", "83"
 #        '--generated_model_path', "checkpoints/last.ckpt"

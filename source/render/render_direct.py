@@ -20,7 +20,7 @@ class Direct(Render):
         img = mi.render(scene, seed=0, spp=256, integrator=self._integrator_lodaded)
         # If mesh has invalid mesh vertices, rendering contains nan.
         if dr.any(dr.isnan(img)):
-            print(
-                "Rendered image includes invalid data! Vertex normals in input model " + input_path + " might be corrupt.")
-            #return
-        return np.array(img)
+            print("Rendered image includes invalid data! Vertex normals in input model " + input_path + " might be corrupt.")
+            return
+        np_img = np.array(img)
+        return np_img
