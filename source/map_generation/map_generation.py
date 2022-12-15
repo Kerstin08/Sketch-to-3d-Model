@@ -139,6 +139,7 @@ class MapGen(pl.LightningModule):
         img.save(image_path)
 
         if self.data_type == data_type.Type.normal:
+            predicted_image = torch.permute(predicted_image, (0, 2, 3, 1))
             OpenEXR_utils.writeImage(predicted_image, self.data_type, os.path.join(self.output_dir, imagename + "_normal.exr"))
         else:
             predicted_image = (predicted_image + 1) / 2
