@@ -103,7 +103,6 @@ class MapGen(pl.LightningModule):
     def validation_step(self, sample_batched, batch_idx):
         predicted_image = self(sample_batched)
         pixelwise_loss = self.L1(predicted_image, sample_batched['target'])
-        # Otherwise pytorch throws warning
         self.log("val_loss", pixelwise_loss.item(), batch_size=self.batch_size, sync_dist=True)
         target_norm = (sample_batched['target'] + 1) / 2
         predicted_list = predicted_image[:6]

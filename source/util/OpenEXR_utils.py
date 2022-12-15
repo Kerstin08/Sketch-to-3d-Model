@@ -41,18 +41,15 @@ def writeImage(image, given_data_type, path):
         raise Exception("Image to write is neither torch tensor nor numpy array.")
 
     size = img.shape
-    if given_data_type == data_type.Type.normal:
-        header = OpenEXR.Header(size[1], size[2])
-    else:
-        header = OpenEXR.Header(size[0], size[1])
+    header = OpenEXR.Header(size[0], size[1])
 
     if given_data_type == data_type.Type.normal:
         half_chan = Imath.Channel(Imath.PixelType(Imath.PixelType.HALF))
         header['channels'] = dict([(c, half_chan) for c in "RGB"])
         out = OpenEXR.OutputFile(path, header)
-        R = (img[0, :, :]).astype(np.float16).tostring()
-        G = (img[1, :, :]).astype(np.float16).tostring()
-        B = (img[2, :, :]).astype(np.float16).tostring()
+        R = (img[:, :, 0]).astype(np.float16).tostring()
+        G = (img[:, :, 1]).astype(np.float16).tostring()
+        B = (img[:, :, 2]).astype(np.float16).tostring()
         out.writePixels({'R': R, 'G': G, 'B': B})
     else:
         half_chan = Imath.Channel(Imath.PixelType(Imath.PixelType.HALF))
