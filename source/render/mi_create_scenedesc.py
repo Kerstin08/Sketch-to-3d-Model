@@ -24,6 +24,12 @@ def create_integrator_normal():
     }
     return integrator
 
+def create_integrator_silhouette():
+    integrator = {
+        'type': 'silhouette_reparam'
+    }
+    return integrator
+
 def create_integrator_direct(emitter_samples):
     integrator = {"type": "direct", "emitter_samples": emitter_samples}
     return integrator

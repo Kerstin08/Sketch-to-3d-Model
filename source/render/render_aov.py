@@ -1,4 +1,3 @@
-import numpy as np
 import mitsuba as mi
 import drjit as dr
 
@@ -14,6 +13,7 @@ class AOV(Render):
         Render.__init__(self, views, fov, dim)
         self._depth_integrator = self.__load_depth_integrator()
         self._normal_integrator = self.__load_normal_integrator()
+        self._silhouette_integrator = self.__load_normal_silhouette()
         self.aovs = aovs
 
     def __load_depth_integrator(self):
@@ -24,26 +24,39 @@ class AOV(Render):
         normal_integrator = create_scenedesc.create_integrator_normal()
         return mi.load_dict(normal_integrator)
 
-    def render_depth(self, scene, input_path):
-        img = mi.render(scene, seed=0, spp=256, integrator=self._depth_integrator)
+    def __load_normal_silhouette(self):
+        silhouette_integrator = create_scenedesc.create_integrator_normal()
+        return mi.load_dict(silhouette_integrator)
+
+    def render_depth(self, scene, input_path, seed=0, spp=256, params=None):
+        img = mi.render(scene, params, seed=seed, spp=spp, integrator=self._depth_integrator)
         # If mesh has invalid mesh vertices, rendering contains nan.
         if dr.any(dr.isnan(img)):
             print("Rendered image  includes invalid data! Vertex normals in input model " + input_path + " might be corrupt.")
             return
 
-        img = img[:, :, 0]
-        mask = img.array < (self.far_distance - self.near_distance)
-        depth = dr.select(mask,
-                          img.array / (self.far_distance - self.near_distance),
-                          1)
-        np_depth = np.array(depth).reshape((256, 256))
-        return np_depth
+        with dr.suspend_grad():
+            single_channel_depth = img[:, :, 0]
+            mask = single_channel_depth.array < (self.far_distance - self.near_distance)
 
-    def render_normal(self, scene, input_path):
-        img = mi.render(scene, seed=0, spp=256, integrator=self._normal_integrator)
+        depth = dr.select(mask,
+                        img[:, :, 0].array / (self.far_distance - self.near_distance),
+                        1)
+        depth_tens = mi.TensorXf(depth, shape=(256, 256))
+        return depth_tens
+
+    def render_normal(self, scene, input_path, seed=0, spp=256, params=None):
+        img = mi.render(scene, params, seed=seed, spp=spp, integrator=self._normal_integrator)
         # If mesh has invalid mesh vertices, rendering contains nan.
         if dr.any(dr.isnan(img)):
             print("Rendered image includes invalid data! Vertex normals in input model " + input_path + " might be corrupt.")
             return
-        np_img = np.array(img)
-        return np_img
+        return img
+
+    def render_silhouette(self, scene, input_path, seed=0, spp=256, params=None):
+        img = mi.render(scene, params, seed=seed, spp=spp, integrator=self._silhouette_integrator)
+        # If mesh has invalid mesh vertices, rendering contains nan.
+        if dr.any(dr.isnan(img)):
+            print("Rendered image includes invalid data! Vertex normals in input model " + input_path + " might be corrupt.")
+            return
+        return img

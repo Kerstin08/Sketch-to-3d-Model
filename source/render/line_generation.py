@@ -13,7 +13,7 @@ class LineGen():
         return scenes
 
     def create_line_images(self, scene, input_path):
-        img_direct = self.renderer.render(scene, input_path)
+        img_direct = np.array(self.renderer.render(scene, input_path))
         img_direct = (img_direct * 255).astype(np.uint8)
         if img_direct is None:
             return
@@ -25,4 +25,5 @@ class LineGen():
         dsize = (self.dim_final, self.dim_final)
         output = cv.resize(cv.bitwise_not(img_dilation), dsize)
         img_binary = cv.threshold(output, 250, 255, cv.THRESH_BINARY)[1]
+        del img_direct
         return img_binary

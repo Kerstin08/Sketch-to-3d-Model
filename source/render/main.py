@@ -20,8 +20,8 @@ def run(render_type, line_gen, input_path, output_dirs, output_name, aovs=[]):
         scenes_aov = renders_aov.create_scene(input_path)
         count = 0
         for scene in scenes_aov:
-            depth = renders_aov.render_depth(scene, input_path)
-            normal = renders_aov.render_normal(scene, input_path)
+            depth = np.array(renders_aov.render_depth(scene, input_path))
+            normal = np.array(renders_aov.render_normal(scene, input_path))
             save_renderings.save_png(depth, output_dirs, str(count) + "_" + output_name, data_type.Type.depth)
             save_renderings.save_png(normal, output_dirs, str(count) + "_" + output_name, data_type.Type.normal)
             count = count + 1
@@ -30,7 +30,7 @@ def run(render_type, line_gen, input_path, output_dirs, output_name, aovs=[]):
         scenes_direct = renders_direct.create_scene(input_path)
         count = 0
         for scene in scenes_direct:
-            direct = renders_direct.render(scene, input_path)
+            direct = np.array(renders_direct.render(scene, input_path))
             direct = (direct*255).astype(np.uint8)
             save_renderings.save_png(direct, output_dirs, str(count) + "_" + output_name)
             count = count + 1

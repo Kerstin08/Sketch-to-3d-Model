@@ -7,16 +7,21 @@ import torch
 import math
 from torch.utils.tensorboard import SummaryWriter
 
+from source.render.render_aov import AOV
 import source.render.mi_create_scenedesc as create_scenedesc
 from mitsuba.scalar_rgb import Transform4f as T
-import source.render.normal_reparam_integrator
-import source.render.depth_reparam_integrator
-import source.render.silhouette_reparam_integrator
+#import source.render.normal_reparam_integrator
+#import source.render.depth_reparam_integrator
+#import source.render.silhouette_reparam_integrator
 mi.set_variant('cuda_ad_rgb')
 
 class MeshGen():
-    def __init__(self, output_dir, logs, weight_depth, weight_normal, weight_smoothness, weight_edge, weight_silhouette, epochs, log_frequency, lr):
+    def __init__(self, output_dir, logs,
+                 weight_depth, weight_normal, weight_smoothness, weight_edge, weight_silhouette,
+                 epochs, log_frequency, lr, views):
         super(MeshGen, self).__init__()
+        if views is None:
+            views = [(125, 30)]
         self.weight_depth = weight_depth
         self.weight_normal = weight_normal
         self.weight_smoothness = weight_smoothness
@@ -27,8 +32,8 @@ class MeshGen():
         self.logs = logs
         self.writer = SummaryWriter(logs)
         self.epochs = epochs
-        self.fov = 60
         self.log_frequency = log_frequency
+        self.renderer = AOV(views, {"dd.y": "depth", "nn": "sh_normal"})
 
     def write_output_renders(self, render_normal, render_depth, silhouette, image_name):
         bpm_normal = mi.util.convert_to_bitmap(render_normal)
@@ -48,19 +53,9 @@ class MeshGen():
 
         return edge_lengths
 
-    def smoothness_helper(self, v1, v2, v3):
-        a = v2 - v1
-        b = v3 - v1
-        sqr_magnitude_a = dr.sum(dr.sqr(a))
-        dot_ab = dr.sum(a * b)
-
-        l = dot_ab / sqr_magnitude_a
-        c = a * l
-        cb = b-c
-        l1_cb = dr.sqrt(dr.sum(dr.sqr(cb)))
-        return cb, l1_cb
-
-    def smoothness_helper_kato(self, v1, v2, v3, eps):
+    # Smoothness loss according to how Kato et. al computed it in their work
+    # https://github.com/hiroharu-kato/mesh_reconstruction/blob/master/mesh_reconstruction/loss_functions.py
+    def smoothness_helper(self, v1, v2, v3, eps):
         a = v2 - v1
         b = v3 - v1
         sqr_magnitude_a = dr.sum(dr.sqr(a))
@@ -144,7 +139,6 @@ class MeshGen():
         return v1, v2, v3_face1_idx, v3_face2_idx
 
     def offset_verts(self, params, opt, initial_vertex_positions):
-        #opt['deform_verts'] = dr.clamp(opt['deform_verts'], -0.5, 0.5)
         trafo = mi.Transform4f.translate(opt['deform_verts'])
         params['shape.vertex_positions'] = dr.ravel(trafo @ initial_vertex_positions)
         params.update()
@@ -182,54 +176,11 @@ class MeshGen():
         self.write_output_renders(normal_map_target, depth_map_target, silhouette_target, "target_images")
         self.log_hparams()
 
-        depth_integrator = {
-                'type': 'depth_reparam'
-        }
-        normal_integrator = {
-                'type': 'normal_reparam'
-        }
-        silhouette_integrator = {
-                'type': 'silhouette_reparam'
-        }
-        depth_integrator_lodaded = mi.load_dict(depth_integrator)
-        normal_integrator_lodaded = mi.load_dict(normal_integrator)
-        silhouette_integrator_lodaded = mi.load_dict(silhouette_integrator)
-
-        datatype = basic_mesh.rsplit(".", 1)[1]
-        if datatype != "obj" and datatype != "ply":
-            raise Exception("Datatype of given mesh {} cannot be processed! Must either be .ply or .obj".format(basic_mesh))
-        shape = create_scenedesc.create_shape(basic_mesh, datatype)
-        distance = math.tan(math.radians(self.fov))/1.75
-        near_distance = distance
-        far_distance = distance * 4
-        centroid = np.array([distance, -distance, distance])
-
-        # center is assumed to be at 0,0,0, see mesh_preprocess_operations.py translate_to_origin
-        camera = create_scenedesc.create_camera(T.look_at(target=(0.0, 0.0, 0.0),
-                                                          origin=tuple(centroid),
-                                                          up=(0, 0, 1),
-                                                          ),
-                                                self.fov, near_distance, far_distance,
-                                                256, 256)
-        scene_desc = {"type": "scene", "shape": shape, "camera": camera}
-        scene = mi.load_dict(scene_desc)
-        normal_img_init = mi.render(scene, seed=0, spp=256, integrator=normal_integrator_lodaded)
-        depth_img_init = mi.render(scene, seed=0, spp=256, integrator=depth_integrator_lodaded)
-        mask = depth_img_init.array < 1.5
-        curr_min_val = dr.min(depth_img_init)
-        masked_img = dr.select(mask,
-                               depth_img_init.array,
-                               0.0)
-        curr_max_val = dr.max(masked_img)
-        wanted_range_min, wanted_range_max = 0.0, 0.75
-        depth = dr.select(mask,
-                          (depth_img_init.array - curr_min_val) * (
-                                  (wanted_range_max - wanted_range_min) / (
-                                  curr_max_val - curr_min_val)) + wanted_range_min,
-                          1.0)
-        depth_init_tens = mi.TensorXf(depth, shape=(256, 256, 3))
-        silhouette_img_init = mi.render(scene, seed=0, spp=256, integrator=silhouette_integrator_lodaded)
-        self.write_output_renders(normal_img_init, depth_init_tens, silhouette_img_init, "init_images")
+        scene = self.renderer.create_scene(basic_mesh)[0]
+        normal_img_init = self.renderer.render_normal(scene, basic_mesh)
+        depth_img_init = self.renderer.render_depth(scene, basic_mesh)
+        silhouette_img_init = self.renderer.render_silhouette(scene, basic_mesh)
+        self.write_output_renders(normal_img_init, depth_img_init, silhouette_img_init, "init_images")
 
         params = mi.traverse(scene)
         print(params)
@@ -251,9 +202,10 @@ class MeshGen():
 
         for epoch in range(self.epochs):
             self.offset_verts(params, opt, initial_vertex_positions)
-            normal_img = mi.render(scene, params, seed=epoch, spp=256, integrator=normal_integrator_lodaded)
-            depth_img = mi.render(scene, params, seed=epoch, spp=256, integrator=depth_integrator_lodaded)
-            silhouette_img = mi.render(scene, params, seed=epoch, spp=256, integrator=silhouette_integrator_lodaded)
+
+            normal_img = self.renderer.render_normal(scene, basic_mesh, seed=epoch, spp=256, params=params)
+            depth_img = self.renderer.render_depth(scene, basic_mesh, seed=epoch, spp=256, params=params)
+            silhouette_img = self.renderer.render_silhouette(scene, basic_mesh, seed=epoch, spp=256, params=params)
 
             # Test if renderings contain invalid values due to corrupt mesh
             # Write failure images and mesh for debug purposes
@@ -265,27 +217,11 @@ class MeshGen():
                                        params[face_str])
                 raise Exception("Normal rendering contains nan!")
 
-            with dr.suspend_grad():
-                single_channel_depth = depth_img[:, :, 0]
-                mask = single_channel_depth.array < 1.5
-                curr_min_val = dr.min(single_channel_depth)
-                masked_img = dr.select(mask,
-                                   single_channel_depth.array,
-                                   0.0)
-                curr_max_val = dr.max(masked_img)
-                wanted_range_min, wanted_range_max = 0.0,  0.75
-            depth = dr.select(mask,
-                              (single_channel_depth.array - curr_min_val) * (
-                                      (wanted_range_max - wanted_range_min) / (
-                                      curr_max_val - curr_min_val)) + wanted_range_min,
-                              1.0)
-            depth_tens = mi.TensorXf(depth, shape=(256, 256))
-
-            if epoch % self.log_frequency == 0 or epoch==epoch-1:
+            if epoch % self.log_frequency == 0 or epoch == epoch-1:
                 image_name = "deformed_images" + str(epoch)
-                self.write_output_renders(normal_img, depth_tens, silhouette_img, image_name)
+                self.write_output_renders(normal_img, depth_img, silhouette_img, image_name)
 
-            depth_loss = dr.sum(abs((depth_tens - depth_map_target)))
+            depth_loss = dr.sum(abs((depth_img - depth_map_target)))
             normal_loss = dr.sum(abs((normal_img * 0.5 + 0.5) - (normal_map_target * 0.5 + 0.5)))
             silhouette_loss = self.iou(silhouette_img[:, :, 0], silhouette_target)
             current_vertex_positions = dr.unravel(mi.Point3f, params[vertex_positions_str])
@@ -314,8 +250,8 @@ class MeshGen():
                     dr.gather(dr.cuda.ad.Float, raveled_vertice_positions, face_v3_face2[1]),
                     dr.gather(dr.cuda.ad.Float, raveled_vertice_positions, face_v3_face2[2])
             )
-            cb_1, l1_cb_1 = self.smoothness_helper_kato(v1, v2, v3_face1, 1e-6)
-            cb_2, l1_cb_2 = self.smoothness_helper_kato(v1, v2, v3_face2, 1e-6)
+            cb_1, l1_cb_1 = self.smoothness_helper(v1, v2, v3_face1, 1e-6)
+            cb_2, l1_cb_2 = self.smoothness_helper(v1, v2, v3_face2, 1e-6)
             cos = dr.sum(cb_1 * cb_2) / (l1_cb_1 * l1_cb_2)
             smoothness_loss = dr.sum(dr.sqr(cos+1))
 

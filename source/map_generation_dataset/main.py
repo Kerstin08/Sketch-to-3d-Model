@@ -2,6 +2,7 @@ import argparse
 import os
 from pathlib import Path
 import sys
+import numpy as np
 
 from source.render import save_renderings
 from source.render.line_generation import LineGen
@@ -54,8 +55,8 @@ def gen_images(path, datatype, renderer_aov, line_gen, output_dirs, create_debug
         del lines
         # generate depth and normal
         scene_aov = renderer_aov.create_scene(path)[0]
-        normal = renderer_aov.render_normal(scene_aov, path)
-        depth = renderer_aov.render_depth(scene_aov, path)
+        normal = np.array(renderer_aov.render_normal(scene_aov, path))
+        depth = np.array(renderer_aov.render_depth(scene_aov, path))
         del scene_aov
         if normal is None or depth is None:
             return

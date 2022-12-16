@@ -22,5 +22,4 @@ class Direct(Render):
         if dr.any(dr.isnan(img)):
             print("Rendered image includes invalid data! Vertex normals in input model " + input_path + " might be corrupt.")
             return
-        np_img = np.array(img)
-        return np_img
+        return img

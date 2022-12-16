@@ -7,10 +7,12 @@ from source.util import data_type
 from source.util import dir_utils
 
 def run(normal_map_path, depth_map_path, silhouette_map_path, basic_mesh, output_dir, log_dir,
-        epochs, log_frequency, lr, weight_depth, weight_normal, weight_smoothness, weight_edge, weight_silhouette):
+        epochs, log_frequency, views, lr, weight_depth, weight_normal, weight_smoothness, weight_edge, weight_silhouette):
 
     if not os.path.exists(normal_map_path) or not os.path.exists(depth_map_path) or not os.path.exists(silhouette_map_path) or not os.path.exists(basic_mesh):
         raise Exception("Normal map {}, depth map {}, silhouette map {} or base mesh {} does not exist!".format(normal_map_path, depth_map_path, silhouette_map_path, basic_mesh))
+    if len(views) != 1:
+        raise Exception("Only one view can be given to deform the mesh generation!")
 
     # use logdir creation for outputdir creation to get different deformed meshes when running parallel
     output_dir = dir_utils.create_version_folder(output_dir)
@@ -24,7 +26,8 @@ def run(normal_map_path, depth_map_path, silhouette_map_path, basic_mesh, output
                         weight_silhouette,
                         epochs,
                         log_frequency,
-                        lr)
+                        lr,
+                        views)
     normal_map = OpenEXR_utils.getImageEXR(normal_map_path, data_type.Type.normal, 2)
     depth_map = OpenEXR_utils.getImageEXR(depth_map_path, data_type.Type.depth, 2).squeeze()
     silhouette_map = OpenEXR_utils.getImageEXR(silhouette_map_path, data_type.Type.depth, 2).squeeze()
@@ -40,6 +43,7 @@ def diff_args(args):
         args.log_dir,
         args.epoch,
         args.log_frequency,
+        args.views,
         args.lr,
         args.weight_depth,
         args.weight_normal,
@@ -58,6 +62,7 @@ def main(args):
     parser.add_argument("--log_dir", type=str, default="logs", help="path to logs dir")
     parser.add_argument("--epoch", type=int, default=20000, help="# of epoch for mesh generation")
     parser.add_argument("--log_frequency", type=int, default=100, help="frequency logs are written")
+    parser.add_argument("--views", type=list, default=[(225, 30)], help="define rendering view angles")
     parser.add_argument("--lr", type=float, default=0.0002, help="initial learning rate for mesh generation")
     parser.add_argument("--weight_depth", type=float, default=0.002, help="depth weight")
     parser.add_argument("--weight_normal", type=float, default=0.002, help="normal weight")
