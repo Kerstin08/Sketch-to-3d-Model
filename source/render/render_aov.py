@@ -4,6 +4,7 @@ import drjit as dr
 from source.render.render_base import Render
 import source.render.normal_reparam_integrator
 import source.render.depth_reparam_integrator
+import source.render.silhouette_reparam_integrator
 import source.render.mi_create_scenedesc as create_scenedesc
 
 mi.set_variant('cuda_ad_rgb')
@@ -13,7 +14,7 @@ class AOV(Render):
         Render.__init__(self, views, fov, dim)
         self._depth_integrator = self.__load_depth_integrator()
         self._normal_integrator = self.__load_normal_integrator()
-        self._silhouette_integrator = self.__load_normal_silhouette()
+        self._silhouette_integrator = self.__load_silhouette_integrator()
         self.aovs = aovs
 
     def __load_depth_integrator(self):
@@ -24,8 +25,8 @@ class AOV(Render):
         normal_integrator = create_scenedesc.create_integrator_normal()
         return mi.load_dict(normal_integrator)
 
-    def __load_normal_silhouette(self):
-        silhouette_integrator = create_scenedesc.create_integrator_normal()
+    def __load_silhouette_integrator(self):
+        silhouette_integrator = create_scenedesc.create_integrator_silhouette()
         return mi.load_dict(silhouette_integrator)
 
     def render_depth(self, scene, input_path, seed=0, spp=256, params=None):
