@@ -244,14 +244,24 @@ def run(input_dir, output_dir, datatype, fov, dim_render, dim_line_gen_intermedi
     line_gen = LineGen(views_sketch_hires, fov, dim_line_gen_intermediate, dim_render, emitter_samples)
 
     dir = Path(input_dir)
+    #if dir.stem == "ABC":
+    #    train = (0, 993012)
+    #    test = (993500, 994499)
+    #    val = [(993014, 993168), (991500, 991558)]
+    #elif dir.stem == "thingi10k":
+    #    train = (0, 289670)
+    #    test = (472182, 1502911)
+    #    val = [(389251, 462509), (462540, 472111), (71760, 73413)]
+
+    #small test dir
     if dir.stem == "ABC":
-        train = (0, 993012)
-        test = (993500, 994499)
-        val = [(993014, 993168), (991500, 991558)]
+        train = (0, 990999)
+        test = (992000, 992265)
+        val = [(991000, 991073)]
     elif dir.stem == "thingi10k":
-        train = (0, 289670)
-        test = (472182, 1502911)
-        val = [(389251, 462509), (462540, 472111), (71760, 73413)]
+        train = (0, 51510)
+        test = (107910, 119247)
+        val = [(71760, 73163)]
     recuse(input_dir, datatype, train, test, val, output_dir, line_gen, sketch_dirs, renderer_aov, rendering_dirs)
 
 
@@ -282,8 +292,4 @@ def main(args):
 
 
 if __name__ == '__main__':
-    params = [
-        '--input_dir', '..\\..\\resources\\test_lun\\thingi10k',
-        '--output_dir', '..\\..\\output\\lun_ABC'
-    ]
-    main(params)
+    main(sys.argv[1:])
