@@ -60,7 +60,7 @@ def main(args):
     parser.add_argument("--base_mesh_path", type=str, help="path to base mesh object")
     parser.add_argument("--output_dir", type=str, default="output dir", help="path to output dir")
     parser.add_argument("--log_dir", type=str, default="logs", help="path to logs dir")
-    parser.add_argument("--epoch", type=int, default=20000, help="# of epoch for mesh generation")
+    parser.add_argument("--epoch", type=int, default=10000, help="# of epoch for mesh generation")
     parser.add_argument("--log_frequency", type=int, default=100, help="frequency logs are written")
     parser.add_argument("--views", type=list, default=[(225, 30)], help="define rendering view angles")
     parser.add_argument("--lr", type=float, default=0.0002, help="initial learning rate for mesh generation")
