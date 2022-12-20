@@ -17,14 +17,12 @@ def save_exr(img, output_dirs, output_name, given_data_type=None):
     OpenEXR_utils.writeImage(img, given_data_type, path)
 
 # Todo: check if filenamedir is necessary
-def save_png(img, output_dirs, output_name, given_data_type=None, dir_key = 'default', mode='RGB', filename_dir=False):
+def save_png(img, output_dirs, output_name, given_data_type=None, dir_key = 'default', mode='RGB', filename_dir=None):
     if given_data_type == data_type.Type.depth:
         img = img * 255
         output_dir_png = output_dirs['dd_png']
-        if filename_dir:
-            filename = Path(output_name)
-            filename_split = filename.stem.split("-", -1)[1]
-            output_dir_png = os.path.join(output_dir_png, filename_split)
+        if not filename_dir is None:
+            output_dir_png = os.path.join(output_dir_png, filename_dir)
             dir_utils.create_general_folder(output_dir_png)
         png_filename = output_name + "_depth.png"
         path_debug = os.path.join(output_dir_png, png_filename)
@@ -34,10 +32,8 @@ def save_png(img, output_dirs, output_name, given_data_type=None, dir_key = 'def
     elif given_data_type == data_type.Type.normal:
         img = (img + 1.0) * 127
         output_dir_png = output_dirs['nn_png']
-        if filename_dir:
-            filename = Path(output_name)
-            filename_split = filename.stem.split("-", -1)[-1]
-            output_dir_png = os.path.join(output_dir_png, filename_split)
+        if not filename_dir is None:
+            output_dir_png = os.path.join(output_dir_png, filename_dir)
             dir_utils.create_general_folder(output_dir_png)
         png_filename = output_name + "_normal.png"
         path_debug = os.path.join(output_dir_png, png_filename)
@@ -46,10 +42,8 @@ def save_png(img, output_dirs, output_name, given_data_type=None, dir_key = 'def
         Image.fromarray(img.astype('uint8'), mode='RGB').save(path_debug)
     elif given_data_type == data_type.Type.sketch:
         output_dir_png = output_dirs['sketch']
-        if filename_dir:
-            filename = Path(output_name)
-            filename_split = filename.stem.split("-", -1)[-1]
-            output_dir_png = os.path.join(output_dir_png, filename_split)
+        if not filename_dir is None:
+            output_dir_png = os.path.join(output_dir_png, filename_dir)
             dir_utils.create_general_folder(output_dir_png)
         png_filename = output_name + "_sketch.png"
         output_dir = os.path.join(output_dir_png, png_filename)
@@ -60,10 +54,8 @@ def save_png(img, output_dirs, output_name, given_data_type=None, dir_key = 'def
         if not filename.suffix == ".png":
             output_name = filename.stem + ".png"
         output_dir_png = output_dirs[dir_key]
-        if filename_dir:
-            filename = Path(output_name)
-            filename_split = filename.stem.split("-", -1)[-1]
-            output_dir_png = os.path.join(output_dir_png, filename_split)
+        if not filename_dir is None:
+            output_dir_png = os.path.join(output_dir_png, filename_dir)
             dir_utils.create_general_folder(output_dir_png)
         output_dir = os.path.join(output_dir_png, output_name)
         Image.fromarray(img.astype('uint8'), mode=mode).save(output_dir)

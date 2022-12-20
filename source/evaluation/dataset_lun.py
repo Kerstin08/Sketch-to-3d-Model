@@ -78,7 +78,7 @@ def write_view_file(view_path, fov, views):
 3 9 13 5")
 
 
-def gen_normals_depths(path, output_name, renderer_aov, rendering_dirs):
+def gen_normals_depths(path, renderer_aov, rendering_dirs):
         # generate sketches
         aov_scenes = renderer_aov.create_scene(path)
         count = 0
@@ -95,24 +95,27 @@ def gen_normals_depths(path, output_name, renderer_aov, rendering_dirs):
                 # save_renderings.save_exr(depth, rendering_dirs,  output_name, data_type.Type.depth)
                 # save_renderings.save_exr(normal, rendering_dirs, output_name, data_type.Type.normal)
                 stack = np.concatenate([normal, depth], axis=2)
+                file = Path(path)
+                filename = file.stem.split(".")[0]
                 del normal
                 del depth
                 # Todo: dnfs and sketch need front view
                 # save first two views as dnfs and sketch
                 if count < 2:
-                    counted_out_name = str(count) + "-" + output_name
+                    counted_out_name = "256-" + str(count)
                     dn_name = "dnfs-" + counted_out_name
-                    save_renderings.save_png(stack, rendering_dirs, dn_name, dir_key='dnfs', mode='RGBA', filename_dir=True)
+                    save_renderings.save_png(stack, rendering_dirs, dn_name, dir_key='dnfs', mode='RGBA',
+                                             filename_dir=filename)
                 else:
-                    counted_out_name = str(count-2) + "-" + output_name
+                    counted_out_name = "256-" + str(count-2)
                     dn_name = "dn-" + counted_out_name
                     save_renderings.save_png(stack, rendering_dirs, dn_name, dir_key='dn', mode='RGBA',
-                                             filename_dir=True)
+                                             filename_dir=filename)
                 count = count + 1
                 del stack
         del aov_scenes
 
-def gen_sketches_hires(path, output_name, renderer_line, sketch_dirs):
+def gen_sketches_hires(path, renderer_line, sketch_dirs):
         # generate sketches
         line_scenes = renderer_line.create_scenes(path)
         count = 0
@@ -120,30 +123,33 @@ def gen_sketches_hires(path, output_name, renderer_line, sketch_dirs):
             line_scene = line_scenes[i]
             # generate depth and normal
             line = renderer_line.create_line_images(line_scene, path)
+            file = Path(path)
+            filename = file.stem.split(".")[0]
             # Todo: activate this once png works
             if not line is None:
                 stack = np.stack([line, line, line], axis=-1)
                 # Todo: dnfs and sketch need front view
                 # save first two views as dnfs and sketch
                 if count == 0:
-                    counted_out_name = "T-0-" + output_name
+                    counted_out_name = "T-0"
                 elif count == 1:
-                    counted_out_name = "S-0-" + output_name
+                    counted_out_name = "S-0"
                 elif count == 2:
-                    counted_out_name = "F-0-" + output_name
+                    counted_out_name = "F-0"
 
                 dn_name = "hires-" + counted_out_name
-                save_renderings.save_png(stack, sketch_dirs, dn_name, dir_key='hires', mode='RGB', filename_dir=True)
+                save_renderings.save_png(stack, sketch_dirs, dn_name, dir_key='hires', mode='RGB',
+                                         filename_dir=filename)
                 dn_name = "sketch-" + counted_out_name
                 save_renderings.save_png(stack, sketch_dirs, dn_name, dir_key='sketch', mode='RGB',
-                                         filename_dir=True)
+                                         filename_dir=filename)
                 count = count + 1
                 del line
                 del stack
         del line_scenes
 
 def create_train(path, filename):
-    path = os.path.join(path, "val-list.txt")
+    path = os.path.join(path, "validate-list.txt")
     with open(path, "a") as f:
         f.write(filename + "\n")
 
@@ -162,7 +168,9 @@ def create_list(path, filename):
     with open(path, "a") as f:
         f.write(filename + "\n")
 
-def recuse(path, datatype, train, test, val, output_dir, renderer_line, sketch_dirs, renderer_aov, rendering_dirs):
+def recuse(path, datatype, train, test, val, output_dir_train,
+           output_dir_test, line_gen, sketch_dirs_train, sketch_dirs_test,
+           renderer_aov, rendering_dirs_train, rendering_dirs_test):
     filename = Path(path)
     if os.path.isfile(path) and filename.suffix == datatype:
         # stl files cannot be processed by mitsuba
@@ -178,35 +186,41 @@ def recuse(path, datatype, train, test, val, output_dir, renderer_line, sketch_d
         output_name = filename.stem
         if int(filenumber) >= train[0] and int(filenumber) <= train[1]:
             in_dataset = True
-            create_train(output_dir, output_name)
-        if int(filenumber) >= test[0] and int(filenumber) <= test[1]:
-            in_dataset = True
-            create_test(output_dir, output_name)
+            create_train(output_dir_train, output_name)
+            rendering_dirs = rendering_dirs_train
+            sketch_dirs = sketch_dirs_train
         for x, y in val:
             if int(filenumber) >= x and int(filenumber) <= y:
                 in_dataset = True
-                create_val(output_dir, output_name)
+                create_val(output_dir_train, output_name)
+                rendering_dirs = rendering_dirs_train
+                sketch_dirs = sketch_dirs_train
+        if in_dataset:
+            create_list(output_dir_train, output_name)
+
+        if int(filenumber) >= test[0] and int(filenumber) <= test[1]:
+            in_dataset = True
+            create_test(output_dir_test, output_name)
+            create_list(output_dir_test, output_name)
+            rendering_dirs = rendering_dirs_test
+            sketch_dirs = sketch_dirs_test
+
         if not in_dataset:
             print("{} not in dataset".format(path))
             return
-        else:
-            create_list(output_dir, output_name)
 
         print('\r' + 'Processing ' + path, end='')
-        gen_normals_depths(path, output_name, renderer_aov, rendering_dirs)
-        gen_sketches_hires(path, output_name, renderer_line, sketch_dirs)
+        gen_normals_depths(path, renderer_aov, rendering_dirs)
+        gen_sketches_hires(path, line_gen, sketch_dirs)
         return
     for path, _, files in os.walk(path):
         for file in files:
             new_path = os.path.join(path, file)
-            recuse(new_path, datatype, train, test, val, output_dir, renderer_line, sketch_dirs, renderer_aov, rendering_dirs)
+            recuse(new_path, datatype, train, test, val, output_dir_train,
+                    output_dir_test, line_gen, sketch_dirs_train, sketch_dirs_test,
+                    renderer_aov, rendering_dirs_train, rendering_dirs_test)
 
-
-def run(input_dir, output_dir, datatype, fov, dim_render, dim_line_gen_intermediate, emitter_samples, create_debug_png):
-    if not os.path.exists(input_dir):
-        raise Exception("Input directory {} does not exits".format(input_dir))
-
-    # generate folders
+def create_folders(output_dir):
     if not os.path.exists(output_dir):
         dir_utils.create_general_folder(output_dir)
     dn = dir_utils.create_general_folder(os.path.join(output_dir, "dn"))
@@ -217,6 +231,17 @@ def run(input_dir, output_dir, datatype, fov, dim_render, dim_line_gen_intermedi
 
     rendering_dirs = {"dn": dn, "dnfs": dnfs_path}
     sketch_dirs = {"sketch": sketch_path, "hires": hires_path}
+    return rendering_dirs, sketch_dirs, view_path
+
+
+def run(input_dir, output_dir_train, output_dir_test, datatype, fov, dim_render, dim_line_gen_intermediate, emitter_samples, create_debug_png):
+    if not os.path.exists(input_dir):
+        raise Exception("Input directory {} does not exits".format(input_dir))
+
+    # generate folders
+    rendering_dirs_train, sketch_dirs_train, view_path_train = create_folders(output_dir_train)
+    rendering_dirs_test, sketch_dirs_test, view_path_test = create_folders(output_dir_test)
+
     # Angles used by Lun et. al
     views_dnfs_dn = [
             (90, 90),
@@ -236,7 +261,9 @@ def run(input_dir, output_dir, datatype, fov, dim_render, dim_line_gen_intermedi
             (122, 0),
             (-58, 0),
             (-122, 0)]
-    write_view_file(view_path, fov, views_dnfs_dn)
+    write_view_file(view_path_train, fov, views_dnfs_dn)
+    write_view_file(view_path_test, fov, views_dnfs_dn)
+
     renderer_aov = AOV(views_dnfs_dn, {"dd.y": "depth", "nn": "sh_normal"}, fov, dim_render)
     views_sketch_hires = [(90, 90),
             (0, 0),
@@ -254,20 +281,32 @@ def run(input_dir, output_dir, datatype, fov, dim_render, dim_line_gen_intermedi
     #    val = [(389251, 462509), (462540, 472111), (71760, 73413)]
 
     #small test dir
+    #if dir.stem == "ABC":
+    #    train = (0, 990999)
+    #    test = (992000, 992265)
+    #    val = [(991000, 991073)]
+    #elif dir.stem == "thingi10k":
+    #    train = (0, 51510)
+    #    test = (107910, 119247)
+    #    val = [(71760, 73163)]
+
     if dir.stem == "ABC":
-        train = (0, 990999)
-        test = (992000, 992265)
-        val = [(991000, 991073)]
+        train = (0, 990112)
+        test = (994086, 994514)
+        val = [(990112, 990114)]
     elif dir.stem == "thingi10k":
-        train = (0, 51510)
-        test = (107910, 119247)
-        val = [(71760, 73163)]
-    recuse(input_dir, datatype, train, test, val, output_dir, line_gen, sketch_dirs, renderer_aov, rendering_dirs)
+        train = (0, 71760)
+        test = (289660, 289670)
+        val = [(472180, 472182)]
+    recuse(input_dir, datatype, train, test, val, output_dir_train,
+           output_dir_test, line_gen, sketch_dirs_train, sketch_dirs_test,
+           renderer_aov, rendering_dirs_train, rendering_dirs_test)
 
 
 def diff_args(args):
     run(args.input_dir,
-        args.output_dir,
+        args.output_dir_train,
+        args.output_dir_test,
         args.datatype,
         args.fov,
         args.dim_render,
@@ -278,8 +317,9 @@ def diff_args(args):
 
 def main(args):
     parser = argparse.ArgumentParser(prog="map_generation_dataset")
-    parser.add_argument("--input_dir", type=str, help="path to reference objects")
-    parser.add_argument("--output_dir", type=str, help="path to output objects")
+    parser.add_argument("--input_dir", type=str, default='datasets/ABC', help="path to reference objects")
+    parser.add_argument("--output_dir_train", type=str, default='output_train', help="path to output objects for training")
+    parser.add_argument("--output_dir_test", type=str, default='output_test', help="path to output objects for testing")
     parser.add_argument("--datatype", type=str, default=".stl", help="Object datatype")
     parser.add_argument("--fov", type=int, default=50, help="define rendering fov")
     parser.add_argument("--dim_render", type=int, default=256, help="final output format for images")
