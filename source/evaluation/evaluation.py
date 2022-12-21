@@ -15,10 +15,13 @@ import trimesh
 import trimesh.sample
 
 from source.util import dir_utils
+from source.util import mesh_preprocess_operations
 
 def sample_mesh(mesh_file, num_samples, rejection_radius=None):
     try:
         mesh = trimesh.load(mesh_file)
+        mesh = mesh_preprocess_operations.normalize_mesh(mesh, mode='longest_edge')
+        mesh = mesh_preprocess_operations.translate_to_origin(mesh)
     except:
         return np.zeros((0, 3))
     samples, face_indices = trimesh.sample.sample_surface_even(mesh, num_samples, rejection_radius)
@@ -88,14 +91,14 @@ def intersection_over_union(file_in, file_ref, num_samples, num_dims=3):
 # iou zufälliges mesh, bounding box 1, nicht so efficient
 # result/{.ply
 # num_samples ein paar seconds pro vergleich, ergebnisse um ein paar procent varianz
-def get_metric_mesh(result_file_template: str, shape_list: list,
+def get_metric_mesh(pmf, shape_list: list,
 gt_mesh_files: list, num_samples: int,
                     metric: typing.Literal['chamfer', 'iou'] = 'chamfer') \
         -> typing.Iterable[np.ndarray]:
     cd_list = []
     for sni, shape_name in enumerate(shape_list):
         gt_mesh_file = gt_mesh_files[sni]
-        mesh_file = shape_name
+        mesh_file = os.path.join(pmf, shape_name)
         if os.path.isfile(mesh_file) and os.path.isfile(gt_mesh_file):
             if metric == 'chamfer':
                 file_in, file_ref, metric_result = chamfer_distance(
@@ -175,61 +178,51 @@ def make_excel_file_comparison(cd_pred_list, human_readable_results, output_file
 def make_quantitative_comparison(
         shape_names: typing.Sequence[str], gt_mesh_files: typing.Sequence[str],
         result_headers: typing.Sequence[str], result_file_templates: typing.Sequence[str],
-        comp_output_dir: str, num_samples=10000, num_processes=0):
+        comp_output_dir: str, num_samples=10000):
 
-    from source.evaluation.utils_mp import start_process_pool
-
-    iou_params = [(pmf, shape_names, gt_mesh_files, num_samples, 'iou') for pmf in result_file_templates]
-    iou_pred_list = start_process_pool(
-        worker_function=get_metric_mesh, parameters=iou_params, num_processes=num_processes)
+    iou_pred_list = []
+    cd_pred_list = []
+    for pmf in result_file_templates:
+        iou_pred_list.append(get_metric_mesh(pmf, shape_names, gt_mesh_files, num_samples, 'iou'))
+        cd_pred_list.append(get_metric_mesh(pmf, shape_names, gt_mesh_files, num_samples, 'chamfer'))
     iou_output_file = os.path.join(comp_output_dir, 'iou.xlsx')
     make_excel_file_comparison(
         iou_pred_list, result_headers, iou_output_file,
         result_file_templates, shape_names, low_metrics_better=False)
 
-    cd_params = [(pmf, shape_names, gt_mesh_files, num_samples, 'chamfer') for pmf in result_file_templates]
-    cd_pred_list = start_process_pool(
-        worker_function=get_metric_mesh, parameters=cd_params, num_processes=num_processes)
     cd_output_file = os.path.join(comp_output_dir, 'chamfer_distance.xlsx')
     make_excel_file_comparison(cd_pred_list, result_headers, cd_output_file, result_file_templates, shape_names)
 
     return cd_pred_list, iou_pred_list
 
-def run(input_dir, comp_dir, output_dir, result_headers, result_file_templates):
+def run(input_dir, comp_dir, output_dir, result_headers):
     if not os.path.exists(input_dir) or not os.path.exists(comp_dir):
         raise Exception("Input dir {} or ground truth dir {} does not exist".format(input_dir, comp_dir))
 
-    input_files = []
+    result_file_templates = []
     comp_files = []
+    input_files = []
     for root, dirs, files in os.walk(input_dir):
-        for file in files:
-            if file.endswith('.ply'):
-                input_files.append(os.path.join(root, file))
+        for dir in dirs:
+            result_file_templates.append(os.path.join(root, dir))
     for root, dirs, files in os.walk(comp_dir):
         for file in files:
             if file.endswith('.ply'):
                 comp_files.append(os.path.join(root, file))
-    if len(comp_files) != len(input_files):
-        raise Exception("Input and Target directories do not include same files.")
-    for i in range(len(comp_files)):
-        file_comp = Path(comp_files[i])
-        file_input = Path(input_files[i])
-        if file_comp.stem != file_input.stem:
-            raise Exception("Input and Target directories do not include same files.")
+                input_files.append(file)
 
     dir_utils.create_general_folder(output_dir)
-    make_quantitative_comparison(input_files, comp_files,  result_headers, result_file_templates, output_dir,)
+    make_quantitative_comparison(input_files, comp_files, result_headers, result_file_templates, output_dir)
 
 def diff_ars(args):
-    run(args.input_dir, args.comp_dir, args.output_dir, args.result_headers, args.result_file_templates)
+    run(args.input_dir, args.comp_dir, args.output_dir, args.result_headers)
 
 def main(args):
     parser = argparse.ArgumentParser(prog="evaluation")
     parser.add_argument("--input_dir", type=str, default="", help="Directory that holds predicted meshes.")
     parser.add_argument("--comp_dir", type=str, default='..\\..\\resources\\topology_meshes', help="Directory that holds ground truth meshes.")
     parser.add_argument("--output_dir", type=str, default='..\\..\\output\\evaluation', help="Directory where excel output.")
-    parser.add_argument("--result_headers", type=str, default='\{\}', help="Headers for results in excel file")
-    parser.add_argument("--result_file_templates", type=str, default='output_file', help="Path to the directory where the resulting exr and possible png sould be stored.")
+    parser.add_argument("--result_headers", type=list, default=["normal", "depth+normal"], help="Headers for results in excel file")
     args = parser.parse_args(args)
     diff_ars(args)
 

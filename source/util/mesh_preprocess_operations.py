@@ -49,11 +49,17 @@ def clean_mesh(path, mesh):
         return None
     return mesh
 
-def normalize_mesh(mesh):
+def normalize_mesh(mesh, mode='diagonal'):
     bounds = mesh.bounds
     dim = abs(bounds[1] - bounds[0])
-    dim_mag = math.sqrt(sum(pow(element, 2) for element in dim))
-    scale = 1/dim_mag
+    scale = 1
+    if mode == 'diagonal':
+        dim_mag = math.sqrt(sum(pow(element, 2) for element in dim))
+        scale = 1 / dim_mag
+    elif mode == 'longest_edge':
+        scale = 1/max(dim)
+    else:
+        print("Mode given not known, mesh is not normalized.")
     matrix = np.eye(4)
     matrix[:3, :3] *= scale
     mesh.apply_transform(matrix)
