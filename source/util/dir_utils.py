@@ -20,7 +20,7 @@ def create_version_folder(log_dir):
 
 def create_prefix_folder(prefix, dir):
     filename = Path(dir)
-    dir_name = prefix + filename.name
+    dir_name = prefix + "_" + filename.name
     path = os.path.join(filename.parents[0], dir_name)
     if not os.path.exists(path):
         os.makedirs(path)

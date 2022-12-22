@@ -19,10 +19,13 @@ from source.util import data_type
 ## 2. euler
 ## (2.a. get connectivity between the holes in order to obtain better mesh)
 ## 3. obtain mesh based on euler result (and connectivity result)
-def topology(sketch_path, genus_dir, output_dir):
+def topology(sketch_path, genus_dir, output_dir, use_genus0):
     image = sketch_utils.load_image(sketch_path, True)
     filled_image, exr_path = floodfill.startFill(image, sketch_path, output_dir, False)
-    holes = euler.get_number_holes(filled_image)
+    if not use_genus0:
+        holes = euler.get_number_holes(filled_image)
+    else:
+        holes = 0
     basic_mesh_path = basic_mesh.get_basic_mesh_path(holes, genus_dir)
     return basic_mesh_path, exr_path
 
@@ -47,14 +50,14 @@ def map_generation(input_sketch, output_dir, normal_map_gen_model, depth_map_gen
 
 # Mesh deformation
 ## 1. put input mesh and normal and depth map into mesh deformation
-def mesh_deformation(normal_map_path, depth_map_path, silhouette_map_path, basic_mesh, output_dir, logs,
+def mesh_deformation(output_name, normal_map_path, depth_map_path, silhouette_map_path, basic_mesh, output_dir, logs,
                      weight_depth, weight_normal, weight_smoothness, weight_edge, weight_silhouette,
-                     epochs, log_frequency, lr):
+                     epochs, log_frequency, lr, views, use_depth, eval_dir):
     if not os.path.exists(logs):
         dir_utils.create_version_folder(logs)
-    mesh_gen = deform_mesh.MeshGen(output_dir, logs,
+    mesh_gen = deform_mesh.MeshGen(output_name, output_dir, logs,
                                    weight_depth, weight_normal, weight_smoothness, weight_silhouette, weight_edge,
-                                   epochs, log_frequency, lr)
+                                   epochs, log_frequency, lr, views, use_depth, eval_dir)
     normal_map = OpenEXR_utils.getImageEXR(normal_map_path, data_type.Type.normal, 2)
     depth_map = OpenEXR_utils.getImageEXR(depth_map_path, data_type.Type.depth, 2).squeeze()
     silhouette_map = OpenEXR_utils.getImageEXR(silhouette_map_path, data_type.Type.depth, 2).squeeze()
@@ -63,36 +66,38 @@ def mesh_deformation(normal_map_path, depth_map_path, silhouette_map_path, basic
 def run(input_sketch,
         output_dir, logs_dir, genus_dir,
         depth_map_gen_model, normal_map_gen_model,
-        epochs_mesh_gen, log_frequency_mesh_gen, lr_mesh_gen, weight_depth, weight_normal, weight_smoothness, weight_edge, weight_silhouette
-        ):
+        epochs_mesh_gen, log_frequency_mesh_gen, lr_mesh_gen,
+        weight_depth, weight_normal, weight_smoothness, weight_edge, weight_silhouette, views,
+        use_depth, use_genus0, eval_dir):
     for x in (input_sketch, depth_map_gen_model, normal_map_gen_model):
         if not os.path.exists(x):
             raise Exception("{} does not exist".format(x))
 
-    if not os.path.exists(output_dir):
-        output_dir=dir_utils.create_version_folder(output_dir)
+    file = Path(input_sketch)
+    output_name = file.stem
+    prefix = output_name.split("_", 1)[0]
+    output_dir = dir_utils.create_prefix_folder(prefix, output_dir)
+    logs_dir = dir_utils.create_prefix_folder(prefix, logs_dir)
+    eval_dir = dir_utils.create_general_folder(eval_dir)
 
-    if not os.path.exists(logs_dir):
-        logs_dir=dir_utils.create_version_folder(logs_dir)
-
-    basic_mesh, silhouette_map_path = topology(input_sketch, genus_dir, output_dir)
+    basic_mesh, silhouette_map_path = topology(input_sketch, genus_dir, output_dir, use_genus0)
     logs_map_generation_normal = os.path.join(logs_dir, "map_generation_normal")
     if not os.path.exists(logs_map_generation_normal):
         dir_utils.create_general_folder(logs_map_generation_normal)
     logs_map_generation_depth = os.path.join(logs_dir, "map_generation_depth")
     if not os.path.exists(logs_map_generation_depth):
            dir_utils.create_general_folder(logs_map_generation_depth)
-    normal_output_path, depth_output_path = map_generation(input_sketch, output_dir, normal_map_gen_model, depth_map_gen_model, logs_map_generation_normal, logs_map_generation_depth)
+    normal_output_path, depth_output_path = map_generation(input_sketch, output_dir, normal_map_gen_model, depth_map_gen_model,
+                                                           logs_map_generation_normal, logs_map_generation_depth)
 
     logs_meshGen = os.path.join(logs_dir, "mesh_generation")
     if not os.path.exists(logs_meshGen):
         dir_utils.create_general_folder(logs_meshGen)
-    filename = Path(input_sketch)
-    normal_map = os.path.join(normal_output_path, "{}_normal.exr".format(filename.stem))
-    depth_map = os.path.join(depth_output_path, "{}_depth.exr".format(filename.stem))
-    mesh_deformation(normal_map, depth_map, silhouette_map_path, basic_mesh, output_dir, logs_meshGen,
+    normal_map = os.path.join(normal_output_path, "{}_normal.exr".format(output_name))
+    depth_map = os.path.join(depth_output_path, "{}_depth.exr".format(output_name))
+    mesh_deformation(output_name, normal_map, depth_map, silhouette_map_path, basic_mesh, output_dir, logs_meshGen,
                      weight_depth, weight_normal, weight_smoothness, weight_silhouette, weight_edge,
-                     epochs_mesh_gen, log_frequency_mesh_gen, lr_mesh_gen)
+                     epochs_mesh_gen, log_frequency_mesh_gen, lr_mesh_gen, views, use_depth, eval_dir)
 
 def diff_ars(args):
     run(args.input_sketch,
@@ -108,25 +113,35 @@ def diff_ars(args):
         args.weight_normal,
         args.weight_smoothness,
         args.weight_edge,
-        args.weight_silhouette
+        args.weight_silhouette,
+        args.views,
+        args.use_depth,
+        args.use_genus0,
+        args.eval_dir
         )
 
 def main(args):
     parser = argparse.ArgumentParser(prog="sketch_to_mesh")
     parser.add_argument("--input_sketch", type=str, help="Path to sketch.")
-    parser.add_argument("--output_dir", type=str, default="output_pipeline", help="Directory where the test output is stored")
-    parser.add_argument("--logs_dir", type=str, default="logs_pipeline", help="Directory where the logs are stored")
+    parser.add_argument("--output_dir", type=str, default="..\\output_pipeline", help="Directory where the test output is stored")
+    parser.add_argument("--logs_dir", type=str, default="..\\logs_pipeline", help="Directory where the logs are stored")
     parser.add_argument("--genus_dir", type=str, default="genus", help="Path to the directory where the genus templates are stored")
     parser.add_argument("--depth_map_gen_model", type=str, help="Path to model, which is used to determine depth map.")
     parser.add_argument("--normal_map_gen_model", type=str, help="Path to model, which is used to determine normal map.")
-    parser.add_argument("--epochs_mesh_gen", type=int, default=20000, help="# of epoch for mesh generation")
+    parser.add_argument("--epochs_mesh_gen", type=int, default=1, help="# of epoch for mesh generation")
     parser.add_argument("--log_frequency_mesh_gen", type=int, default=100, help="frequency logs of the mesh generation are written")
     parser.add_argument("--lr_mesh_gen", type=float, default=0.001, help="initial learning rate for mesh generation")
     parser.add_argument("--weight_depth", type=float, default=0.002, help="depth weight")
-    parser.add_argument("--weight_normal", type=float, default=0.002, help="normal weight")
+    parser.add_argument("--weight_normal", type=float, default=0.002,help="normal weight")
     parser.add_argument("--weight_smoothness", type=float, default=0.01, help="smoothness weight")
     parser.add_argument("--weight_edge", type=float, default=0.9, help="edge weight")
     parser.add_argument("--weight_silhouette", type=float, default=0.9, help="silhouette weight")
+    parser.add_argument("--views", type=list, default=[(225, 30)], help="define rendering view angles")
+    # For ablation study
+    parser.add_argument("--use_depth", type=bool, default=True, help="Use depth loss for mesh deformation")
+    parser.add_argument("--use_genus0", type=bool, default=False, help="Use base mesh genus 0 regardless for every given shape")
+    # Additional directory to store created meshes in for easier evaluation
+    parser.add_argument("--eval_dir", type=str, default="..\\eval", help="Additional directory to store only mesh for evaluation")
     args = parser.parse_args(args)
     diff_ars(args)
 

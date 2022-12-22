@@ -79,13 +79,13 @@ def run(input_dir, output_dir, datatype, fov, view, dim_render, dim_line_gen_int
     if len(view) > 1 or len(view) < 1:
         raise Exception("Exactly 1 view required for this dataset generation!")
     # generate folders
-    sketch_path = dir_utils.create_prefix_folder("sketch_", output_dir)
-    n_path = dir_utils.create_prefix_folder("n_", output_dir)
-    d_path = dir_utils.create_prefix_folder("d_", output_dir)
+    sketch_path = dir_utils.create_prefix_folder("sketch", output_dir)
+    n_path = dir_utils.create_prefix_folder("n", output_dir)
+    d_path = dir_utils.create_prefix_folder("d", output_dir)
     output_dirs = {"dd.y": d_path, "nn": n_path, "sketch": sketch_path}
     if(create_debug_png):
-        n_png_path = dir_utils.create_prefix_folder("n_png_", output_dir)
-        d_png_path = dir_utils.create_prefix_folder("d_png_", output_dir)
+        n_png_path = dir_utils.create_prefix_folder("n_png", output_dir)
+        d_png_path = dir_utils.create_prefix_folder("d_png", output_dir)
         output_dirs["dd_png"] = d_png_path
         output_dirs["nn_png"] = n_png_path
 

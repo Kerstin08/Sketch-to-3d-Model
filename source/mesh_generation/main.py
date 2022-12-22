@@ -1,6 +1,7 @@
 import argparse
 import deform_mesh
 import os
+from pathlib import Path
 
 from source.util import OpenEXR_utils
 from source.util import data_type
@@ -17,7 +18,10 @@ def run(normal_map_path, depth_map_path, silhouette_map_path, basic_mesh, output
     # use logdir creation for outputdir creation to get different deformed meshes when running parallel
     output_dir = dir_utils.create_version_folder(output_dir)
     log_dir = dir_utils.create_version_folder(log_dir)
-    mesh_gen = deform_mesh.MeshGen(output_dir,
+    file = Path(depth_map_path)
+    output_name = file.stem
+    mesh_gen = deform_mesh.MeshGen(output_name,
+                        output_dir,
                         log_dir,
                         weight_depth,
                         weight_normal,
