@@ -122,7 +122,7 @@ class MapGen(pl.LightningModule):
 
     def test_step(self, sample_batched, batch_idx):
         predicted_image = self(sample_batched)
-        imagename = Path(sample_batched['input_path'][0]).stem
+        imagename = Path(sample_batched['input_path'][0]).stem.rsplit("_", 1)[0]
         predicted_image_norm = (predicted_image+1.0) * 127.5
         if 'target' in sample_batched:
             target_image_norm = (sample_batched['target']+1.0) * 127.5
@@ -135,7 +135,7 @@ class MapGen(pl.LightningModule):
             img = Image.fromarray(temp.transpose(1, 2, 0))
         else:
             img = Image.fromarray(temp)
-        image_path = os.path.join(self.output_dir, imagename + ".png")
+        image_path = os.path.join(self.output_dir, imagename + "_pred.png")
         img.save(image_path)
 
         if self.data_type == data_type.Type.normal:

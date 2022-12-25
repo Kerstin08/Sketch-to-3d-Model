@@ -1,5 +1,6 @@
 import argparse
 import os
+import sys
 from pathlib import Path
 
 from source.mesh_generation import deform_mesh
@@ -75,7 +76,7 @@ def run(input_sketch,
 
     file = Path(input_sketch)
     output_name = file.stem
-    prefix = output_name.split("_", 1)[0]
+    prefix = output_name.rsplit("_", 1)[0]
     output_dir = dir_utils.create_prefix_folder(prefix, output_dir)
     logs_dir = dir_utils.create_prefix_folder(prefix, logs_dir)
     eval_dir = dir_utils.create_general_folder(eval_dir)
@@ -93,9 +94,9 @@ def run(input_sketch,
     logs_meshGen = os.path.join(logs_dir, "mesh_generation")
     if not os.path.exists(logs_meshGen):
         dir_utils.create_general_folder(logs_meshGen)
-    normal_map = os.path.join(normal_output_path, "{}_normal.exr".format(output_name))
-    depth_map = os.path.join(depth_output_path, "{}_depth.exr".format(output_name))
-    mesh_deformation(output_name, normal_map, depth_map, silhouette_map_path, basic_mesh, output_dir, logs_meshGen,
+    normal_map = os.path.join(normal_output_path, "{}_normal.exr".format(prefix))
+    depth_map = os.path.join(depth_output_path, "{}_depth.exr".format(prefix))
+    mesh_deformation(prefix, normal_map, depth_map, silhouette_map_path, basic_mesh, output_dir, logs_meshGen,
                      weight_depth, weight_normal, weight_smoothness, weight_silhouette, weight_edge,
                      epochs_mesh_gen, log_frequency_mesh_gen, lr_mesh_gen, views, use_depth, eval_dir)
 
@@ -123,11 +124,11 @@ def diff_ars(args):
 def main(args):
     parser = argparse.ArgumentParser(prog="sketch_to_mesh")
     parser.add_argument("--input_sketch", type=str, help="Path to sketch.")
-    parser.add_argument("--output_dir", type=str, default="..\\output_pipeline", help="Directory where the test output is stored")
-    parser.add_argument("--logs_dir", type=str, default="..\\logs_pipeline", help="Directory where the logs are stored")
-    parser.add_argument("--genus_dir", type=str, default="genus", help="Path to the directory where the genus templates are stored")
-    parser.add_argument("--depth_map_gen_model", type=str, help="Path to model, which is used to determine depth map.")
-    parser.add_argument("--normal_map_gen_model", type=str, help="Path to model, which is used to determine normal map.")
+    parser.add_argument("--output_dir", type=str, default="output_pipeline", help="Directory where the test output is stored")
+    parser.add_argument("--logs_dir", type=str, default="logs_pipeline", help="Directory where the logs are stored")
+    parser.add_argument("--genus_dir", type=str, default="datasets/topology_meshes", help="Path to the directory where the genus templates are stored")
+    parser.add_argument("--depth_map_gen_model", type=str, default="datasets/mapgen_test_models/depth.ckpt", help="Path to model, which is used to determine depth map.")
+    parser.add_argument("--normal_map_gen_model", type=str, default="datasets/mapgen_test_models/normal.ckpt", help="Path to model, which is used to determine normal map.")
     parser.add_argument("--epochs_mesh_gen", type=int, default=1, help="# of epoch for mesh generation")
     parser.add_argument("--log_frequency_mesh_gen", type=int, default=100, help="frequency logs of the mesh generation are written")
     parser.add_argument("--lr_mesh_gen", type=float, default=0.001, help="initial learning rate for mesh generation")
@@ -141,15 +142,9 @@ def main(args):
     parser.add_argument("--use_depth", type=bool, default=True, help="Use depth loss for mesh deformation")
     parser.add_argument("--use_genus0", type=bool, default=False, help="Use base mesh genus 0 regardless for every given shape")
     # Additional directory to store created meshes in for easier evaluation
-    parser.add_argument("--eval_dir", type=str, default="..\\eval", help="Additional directory to store only mesh for evaluation")
+    parser.add_argument("--eval_dir", type=str, default="eval", help="Additional directory to store only mesh for evaluation")
     args = parser.parse_args(args)
     diff_ars(args)
 
 if __name__ == '__main__':
-    params = [
-        '--input_sketch', 'datasets/deform_test/32770_sketch_genus0.png',
-        '--genus_dir', 'datasets/topology_meshes',
-        '--depth_map_gen_model', 'datasets/mapgen_test_models/depth.ckpt',
-        '--normal_map_gen_model', 'datasets/mapgen_test_models/normal.ckpt'
-        ]
-    main(params)
+    main(sys.argv[1:])
