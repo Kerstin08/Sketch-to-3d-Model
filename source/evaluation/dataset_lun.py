@@ -281,23 +281,15 @@ def run(input_dir, output_dir_train, output_dir_test, datatype, fov, dim_render,
     #    val = [(389251, 462509), (462540, 472111), (71760, 73413)]
 
     #small test dir
-    #if dir.stem == "ABC":
-    #    train = (0, 990999)
-    #    test = (992000, 992265)
-    #    val = [(991000, 991073)]
-    #elif dir.stem == "thingi10k":
-    #    train = (0, 51510)
-    #    test = (107910, 119247)
-    #    val = [(71760, 73163)]
-
     if dir.stem == "ABC":
-        train = (0, 990112)
-        test = (994086, 994514)
-        val = [(990112, 990114)]
+        train = (0, 990999)
+        test = (992000, 992265)
+        val = [(991000, 991073)]
     elif dir.stem == "thingi10k":
-        train = (0, 71760)
-        test = (289660, 289670)
-        val = [(472180, 472182)]
+        train = (0, 51510)
+        test = (107910, 119247)
+        val = [(71760, 73163)]
+
     recuse(input_dir, datatype, train, test, val, output_dir_train,
            output_dir_test, line_gen, sketch_dirs_train, sketch_dirs_test,
            renderer_aov, rendering_dirs_train, rendering_dirs_test)

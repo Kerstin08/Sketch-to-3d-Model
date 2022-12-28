@@ -6,11 +6,11 @@ import torch
 from source.util import OpenEXR_utils
 from source.util import data_type
 
-sketch = r"C:\Users\Kerstin\Desktop\sketch"
-normal = r"C:\Users\Kerstin\Desktop\normal"
-depth = r"C:\Users\Kerstin\Desktop\depth"
-normal_pred = r"C:\Users\Kerstin\Desktop\normal_pred"
-depth_pred = r"C:\Users\Kerstin\Desktop\depth_pred"
+sketch = r"datasets/genera/sketch_mapgen/test"
+normal = r"datasets/genera/n_map_generation"
+depth = r"datasets/genera/d_map_generation"
+normal_pred = "out_normal"
+depth_pred = "out_depth"
 loss_list = []
 file_list = []
 
@@ -35,9 +35,9 @@ Z = [x for _, x in sorted(zip(loss_list, file_list))]
 count = 0
 for i in Z:
     new_name = str(count) + "_" + i
-    old_path = os.path.join(root, i)
-    new_path = os.path.join(root, new_name)
-    shutil.move(old_path, new_path)
+    old_path_sketch = os.path.join(sketch, i)
+    new_path_sketch = os.path.join(sketch, new_name)
+    shutil.move(old_path_sketch, new_path_sketch)
     count+=1
 
             #f.write(str(loss) + " " + name + "\n")
