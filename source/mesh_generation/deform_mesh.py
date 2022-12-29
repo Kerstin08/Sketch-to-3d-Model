@@ -57,7 +57,7 @@ class MeshGen():
         sqr_magnitude_a = dr.sum(dr.sqr(a))
         dot_ab = dr.sum(a * b)
 
-        l = dot_ab / sqr_magnitude_a
+        l = dot_ab / (sqr_magnitude_a + 1e-6)
         c = a * l
         cb = b-c
         l1_cb = dr.sqrt(dr.sum(dr.sqr(cb)))
@@ -251,7 +251,7 @@ class MeshGen():
             )
             cb_1, l1_cb_1 = self.smoothness_helper(v1, v2, v3_face1)
             cb_2, l1_cb_2 = self.smoothness_helper(v1, v2, v3_face2)
-            cos = dr.sum(cb_1 * cb_2) / (l1_cb_1 * l1_cb_2)
+            cos = dr.sum(cb_1 * cb_2) / (l1_cb_1 * l1_cb_2 + 1e-6)
             smoothness_loss = dr.sum(dr.sqr(cos+1))
 
             if self.use_depth:
