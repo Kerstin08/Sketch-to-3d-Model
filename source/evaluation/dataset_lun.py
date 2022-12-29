@@ -234,7 +234,7 @@ def create_folders(output_dir):
     return rendering_dirs, sketch_dirs, view_path
 
 
-def run(input_dir, output_dir_train, output_dir_test, datatype, fov, dim_render, dim_line_gen_intermediate, emitter_samples, create_debug_png):
+def run(input_dir, output_dir_train, output_dir_test, datatype, fov, dim_render, dim_line_gen_intermediate, emitter_samples):
     if not os.path.exists(input_dir):
         raise Exception("Input directory {} does not exits".format(input_dir))
 
@@ -303,8 +303,7 @@ def diff_args(args):
         args.fov,
         args.dim_render,
         args.dim_line_gen_intermediate,
-        args.emitter_samples,
-        args.create_debug_png)
+        args.emitter_samples)
 
 
 def main(args):
@@ -318,7 +317,6 @@ def main(args):
     parser.add_argument("--dim_line_gen_intermediate", type=int, default=1024,
                         help="intermediate output format for rendered images to perform line detection on")
     parser.add_argument("--emitter_samples", type=int, default=4, help="# of emitter samples for direct rendering")
-    parser.add_argument("--create_debug_png", type=bool, default=True, help="save pngs of aovs for easier debug")
     args = parser.parse_args(args)
     diff_args(args)
 

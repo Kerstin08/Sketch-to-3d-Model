@@ -12,6 +12,7 @@ from source.util import dir_utils
 from source.map_generation.test import test
 from source.util import OpenEXR_utils
 from source.util import data_type
+from source.util import bool_parse
 
 # Topology
 ## (1.a. split input points into different input sketches based on different "classes", which are signaled by different colors)
@@ -69,10 +70,13 @@ def run(input_sketch,
         depth_map_gen_model, normal_map_gen_model,
         epochs_mesh_gen, log_frequency_mesh_gen, lr_mesh_gen,
         weight_depth, weight_normal, weight_smoothness, weight_edge, weight_silhouette, views,
-        use_depth, use_genus0, eval_dir):
+        use_depth_str, use_genus0_str, eval_dir):
     for x in (input_sketch, depth_map_gen_model, normal_map_gen_model):
         if not os.path.exists(x):
             raise Exception("{} does not exist".format(x))
+
+    use_depth = bool_parse.parse(use_depth_str)
+    use_genus0 = bool_parse.parse(use_genus0_str)
 
     file = Path(input_sketch)
     output_name = file.stem
@@ -129,18 +133,19 @@ def main(args):
     parser.add_argument("--genus_dir", type=str, default="datasets/topology_meshes", help="Path to the directory where the genus templates are stored")
     parser.add_argument("--depth_map_gen_model", type=str, default="datasets/mapgen_test_models/depth.ckpt", help="Path to model, which is used to determine depth map.")
     parser.add_argument("--normal_map_gen_model", type=str, default="datasets/mapgen_test_models/normal.ckpt", help="Path to model, which is used to determine normal map.")
-    parser.add_argument("--epochs_mesh_gen", type=int, default=1, help="# of epoch for mesh generation")
+    parser.add_argument("--epochs_mesh_gen", type=int, default=15000, help="# of epoch for mesh generation")
     parser.add_argument("--log_frequency_mesh_gen", type=int, default=100, help="frequency logs of the mesh generation are written")
     parser.add_argument("--lr_mesh_gen", type=float, default=0.001, help="initial learning rate for mesh generation")
-    parser.add_argument("--weight_depth", type=float, default=0.002, help="depth weight")
+    parser.add_argument("--weight_depth", type=float, default=0.0009, help="depth weight")
     parser.add_argument("--weight_normal", type=float, default=0.002,help="normal weight")
     parser.add_argument("--weight_smoothness", type=float, default=0.01, help="smoothness weight")
     parser.add_argument("--weight_edge", type=float, default=0.9, help="edge weight")
-    parser.add_argument("--weight_silhouette", type=float, default=0.9, help="silhouette weight")
+    parser.add_argument("--weight_silhouette", type=float, default=0.5, help="silhouette weight")
     parser.add_argument("--views", type=list, default=[(225, 30)], help="define rendering view angles")
     # For ablation study
-    parser.add_argument("--use_depth", type=bool, default=True, help="Use depth loss for mesh deformation")
-    parser.add_argument("--use_genus0", type=bool, default=False, help="Use base mesh genus 0 regardless for every given shape")
+    # If using via command line for false add "" instead of false since that for some reason can cause problems
+    parser.add_argument("--use_depth", type=str, default="True", help="Use depth loss for mesh deformation; use \"True\" or \"False\" as parameter")
+    parser.add_argument("--use_genus0", type=str, default="False", help="Use base mesh genus 0 regardless for every given shape; use \"True\" or \"False\" as parameter")
     # Additional directory to store created meshes in for easier evaluation
     parser.add_argument("--eval_dir", type=str, default="eval", help="Additional directory to store only mesh for evaluation")
     args = parser.parse_args(args)

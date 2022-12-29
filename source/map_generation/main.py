@@ -1,15 +1,20 @@
 import argparse
 from source.map_generation.test import test
 from source.map_generation.train import train
-import source.util.dir_utils as dir_utils
+from source.util import dir_utils
+from source.util import bool_parse
 
-def run(train_b, input_dir, output_dir, logs_dir, checkpoint_dir,
+
+def run(train_b_str, input_dir, output_dir, logs_dir, checkpoint_dir,
         type, epochs, lr, batch_size, n_critic, weight_L1,
         gradient_penalty_coefficient, log_frequency,
-        use_generated_model, generated_model_path, devices):
+        use_generated_model_str, generated_model_path, devices):
     if len(output_dir) <= 0:
         raise Exception("Checkpoint Path is not given!")
     dir_utils.create_general_folder(output_dir)
+
+    train_b = bool_parse.parse(train_b_str)
+    use_generated_model = bool_parse.parse(use_generated_model_str)
 
     if train_b:
         train(input_dir, output_dir, logs_dir, checkpoint_dir,
@@ -39,7 +44,7 @@ def diff_args(args):
 
 def main(args):
     parser = argparse.ArgumentParser(prog="map_generation_dataset")
-    parser.add_argument("--train", type=bool, default=True, help="Train or test")
+    parser.add_argument("--train", type=str, default="True", help="If training should be executed, otherwise test is run; use \"True\" or \"False\" as parameter")
     parser.add_argument("--input_dir", type=str, default="..\\..\\resources\\sketch_meshes",
                         help="Directory where the input sketches for training are stored")
     parser.add_argument("--output_dir", type=str, default="output",
@@ -56,8 +61,8 @@ def main(args):
     parser.add_argument("--weight_L1", type=int, default=500, help="L1 weight")
     parser.add_argument("--gradient_penalty_coefficient", type=int, default=10, help="gradient penalty coefficient")
     parser.add_argument("--log_frequency", type=int, default=15, help="log frequency for training")
-    parser.add_argument("--use_generated_model", type=bool, default=False,
-                        help="If models are trained from scratch or already trained models are used")
+    parser.add_argument("--use_generated_model", type=str, default="False",
+                        help="If models are trained from scratch or already trained models are used; use \"True\" or \"False\" as parameter")
     parser.add_argument("--generated_model_path", type=str, default="..\\..\\output\\test.ckpt",
                         help="If test is used determine if comparison images should be generated")
     parser.add_argument("--devices", type=int, default=4,

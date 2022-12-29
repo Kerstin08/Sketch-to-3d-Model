@@ -255,7 +255,7 @@ class MeshGen():
             smoothness_loss = dr.sum(dr.sqr(cos+1))
 
             if self.use_depth:
-                loss = normal_loss * self.weight_normal + depth_loss + self.weight_depth + silhouette_loss * self.weight_silhouette + edge_loss * self.weight_edge + smoothness_loss * self.weight_smoothness
+                loss = normal_loss * self.weight_normal + depth_loss * self.weight_depth + silhouette_loss * self.weight_silhouette + edge_loss * self.weight_edge + smoothness_loss * self.weight_smoothness
             else:
                 loss = normal_loss * self.weight_normal + silhouette_loss * self.weight_silhouette + edge_loss * self.weight_edge + smoothness_loss * self.weight_smoothness
 

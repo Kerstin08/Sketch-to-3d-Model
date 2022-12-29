@@ -7,13 +7,14 @@ from source.render.render_aov import AOV
 from source.render.line_generation import LineGen
 from source.render import save_renderings
 from source.util import data_type
+from source.util import bool_parse
 
-
-def run(render_type, line_gen, input_path, output_dirs, output_name, aovs=[]):
+def run(render_type, line_gen_str, input_path, output_dirs, output_name, aovs=[]):
     for key, value in output_dirs.items():
         if not os.path.exists(value):
             os.mkdir(value)
 
+    line_gen = bool_parse.parse(line_gen_str)
     views = [(225, 35), (45, 35), (135, 35), (315, 35), (0, 90), (90, 0)]
     if render_type == "aov" or render_type == "combined":
         renders_aov = AOV(views, aovs)
@@ -51,7 +52,7 @@ def diff_ars(args):
 def main(args):
     parser = argparse.ArgumentParser(prog="scene_rendering")
     parser.add_argument("--render_type", type=str, default='combined', help="use \"aov\", \"rendering\" or \"combined\"")
-    parser.add_argument("--line_gen", type=bool, default=True, help="if sketch should be generated")
+    parser.add_argument("--line_gen", type=str, default="True", help="if sketch should be generated; use \"True\" or \"False\" as parameter")
     parser.add_argument("--input_path", default='..\\..\\resources\\thingi10k\\0_499\\32770.ply', type=str, help="path to input model")
     parser.add_argument("--output_dirs", type=dict, default={'nn': '..\\..\\output', 'dd.y': '..\\..\\output', "dd_png": '..\\..\\output', "nn_png": '..\\..\\output', 'default': '..\\..\\output', 'sketch': '..\\..\\output'}, help="directories to save renderings")
     parser.add_argument("--output_name", type=str, default="test", help="Name of output images")

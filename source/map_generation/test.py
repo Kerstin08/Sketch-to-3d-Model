@@ -61,5 +61,5 @@ def test(input_dir, output_dir, logs_dir,
                       logger=logger,
                       num_nodes=1)
     dataloader = DataLoader(dataSet, batch_size=1,
-                                shuffle=False, num_workers=1)
+                                shuffle=False, num_workers=48)
     trainer.test(model, dataloaders=dataloader)

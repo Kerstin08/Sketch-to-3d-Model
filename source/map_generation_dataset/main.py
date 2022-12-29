@@ -10,6 +10,7 @@ from source.render.render_aov import AOV
 from source.util import mesh_preprocess_operations as mesh_preprocess
 from source.util import dir_utils
 from source.util import data_type
+from source.util import bool_parse
 
 # For windows + conda here certain combinations of python, numpy and trimesh versions can cause conflicts in loading libraries
 # Allowing duplicate loading of libraries is the most common suggested and fixes those issues:
@@ -73,11 +74,12 @@ def gen_images(path, datatype, renderer_aov, line_gen, output_dirs, create_debug
             new_path = os.path.join(path, file)
             gen_images(new_path, datatype, renderer_aov, line_gen, output_dirs, create_debug_png)
 
-def run(input_dir, output_dir, datatype, fov, view, dim_render, dim_line_gen_intermediate, emitter_samples, create_debug_png):
+def run(input_dir, output_dir, datatype, fov, view, dim_render, dim_line_gen_intermediate, emitter_samples, create_debug_png_str):
     if not os.path.exists(input_dir):
         raise Exception("Input directory {} does not exits".format(input_dir))
     if len(view) > 1 or len(view) < 1:
         raise Exception("Exactly 1 view required for this dataset generation!")
+    create_debug_png = bool_parse.parse(create_debug_png_str)
     # generate folders
     sketch_path = dir_utils.create_prefix_folder("sketch", output_dir)
     n_path = dir_utils.create_prefix_folder("n", output_dir)
@@ -114,7 +116,7 @@ def main(args):
     parser.add_argument("--dim_render", type=int, default=256, help="final output format for images")
     parser.add_argument("--dim_line_gen_intermediate", type=int, default=1024, help="intermediate output format for rendered images to perform line detection on")
     parser.add_argument("--emitter_samples", type=int, default=4, help="# of emitter samples for direct rendering")
-    parser.add_argument("--create_debug_png", type=bool, default=True, help="save pngs of aovs for easier debug")
+    parser.add_argument("--create_debug_png", type=str, default="True", help="save pngs of aovs for easier debug; use \"True\" or \"False\" as parameter")
     args = parser.parse_args(args)
     diff_args(args)
 
