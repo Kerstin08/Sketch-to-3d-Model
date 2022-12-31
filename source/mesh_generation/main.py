@@ -7,7 +7,7 @@ from source.util import OpenEXR_utils
 from source.util import data_type
 from source.util import dir_utils
 
-def run(normal_map_path, depth_map_path, silhouette_map_path, basic_mesh, output_dir, log_dir,
+def run(normal_map_path, depth_map_path, silhouette_map_path, basic_mesh, output_name, output_dir, log_dir,
         epochs, log_frequency, views, lr, weight_depth, weight_normal, weight_smoothness, weight_edge, weight_silhouette):
 
     if not os.path.exists(normal_map_path) or not os.path.exists(depth_map_path) or not os.path.exists(silhouette_map_path) or not os.path.exists(basic_mesh):
@@ -18,8 +18,6 @@ def run(normal_map_path, depth_map_path, silhouette_map_path, basic_mesh, output
     # use logdir creation for outputdir creation to get different deformed meshes when running parallel
     output_dir = dir_utils.create_version_folder(output_dir)
     log_dir = dir_utils.create_version_folder(log_dir)
-    file = Path(depth_map_path)
-    output_name = file.stem
     mesh_gen = deform_mesh.MeshGen(output_name,
                         output_dir,
                         log_dir,
@@ -43,6 +41,7 @@ def diff_args(args):
         args.depth_file_path,
         args.silhouette_file_path,
         args.base_mesh_path,
+        args.output_name,
         args.output_dir,
         args.log_dir,
         args.epoch,
@@ -62,9 +61,10 @@ def main(args):
     parser.add_argument("--depth_file_path", type=str, help="path to depth map")
     parser.add_argument("--silhouette_file_path", type=str, help="path to depth map")
     parser.add_argument("--base_mesh_path", type=str, help="path to base mesh object")
-    parser.add_argument("--output_dir", type=str, default="output dir", help="path to output dir")
+    parser.add_argument("--output_name", type=str, default="deform_mesh", help="filename of output mesh")
+    parser.add_argument("--output_dir", type=str, default="output_dir", help="path to output dir")
     parser.add_argument("--log_dir", type=str, default="logs", help="path to logs dir")
-    parser.add_argument("--epoch", type=int, default=10000, help="# of epoch for mesh generation")
+    parser.add_argument("--epoch", type=int, default=50, help="# of epoch for mesh generation")
     parser.add_argument("--log_frequency", type=int, default=100, help="frequency logs are written")
     parser.add_argument("--views", type=list, default=[(225, 30)], help="define rendering view angles")
     parser.add_argument("--lr", type=float, default=0.0002, help="initial learning rate for mesh generation")

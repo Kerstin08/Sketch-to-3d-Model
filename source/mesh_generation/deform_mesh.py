@@ -201,9 +201,9 @@ class MeshGen():
         for epoch in range(self.epochs):
             self.offset_verts(params, opt, initial_vertex_positions)
 
-            normal_img = self.renderer.render_normal(scene, basic_mesh, seed=epoch, spp=256, params=params)
-            depth_img = self.renderer.render_depth(scene, basic_mesh, seed=epoch, spp=256, params=params)
-            silhouette_img = self.renderer.render_silhouette(scene, basic_mesh, seed=epoch, spp=256, params=params)
+            normal_img = self.renderer.render_normal(scene, basic_mesh, seed=epoch, spp=16, params=params)
+            depth_img = self.renderer.render_depth(scene, basic_mesh, seed=epoch, spp=16, params=params)
+            silhouette_img = self.renderer.render_silhouette(scene, basic_mesh, seed=epoch, spp=16, params=params)
 
             # Test if renderings contain invalid values due to corrupt mesh
             # Write failure images and mesh for debug purposes
