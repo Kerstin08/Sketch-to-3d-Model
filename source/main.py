@@ -136,11 +136,11 @@ def main(args):
     parser.add_argument("--epochs_mesh_gen", type=int, default=40000, help="# of epoch for mesh generation")
     parser.add_argument("--log_frequency_mesh_gen", type=int, default=100, help="frequency image logs of the mesh generation are written")
     parser.add_argument("--lr_mesh_gen", type=float, default=0.001, help="initial learning rate for mesh generation")
-    parser.add_argument("--weight_depth", type=float, default=0.0009, help="depth weight")
+    parser.add_argument("--weight_depth", type=float, default=0.002, help="depth weight")
     parser.add_argument("--weight_normal", type=float, default=0.002,help="normal weight")
     parser.add_argument("--weight_smoothness", type=float, default=0.01, help="smoothness weight")
     parser.add_argument("--weight_edge", type=float, default=0.9, help="edge weight")
-    parser.add_argument("--weight_silhouette", type=float, default=0.5, help="silhouette weight")
+    parser.add_argument("--weight_silhouette", type=float, default=0.9, help="silhouette weight")
     parser.add_argument("--views", type=list, default=[(225, 30)], help="define rendering view angles")
     # For ablation study
     # If using via command line for false add "" instead of false since that for some reason can cause problems
