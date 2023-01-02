@@ -205,12 +205,7 @@ class MeshGen():
             depth_img = self.renderer.render_depth(scene, basic_mesh, seed=epoch, spp=16, params=params)
             silhouette_img = self.renderer.render_silhouette(scene, basic_mesh, seed=epoch, spp=16, params=params)
 
-            # Test if renderings contain invalid values due to corrupt mesh
-            # Write failure images and mesh for debug purposes
-            test_sum_normal = dr.sum(normal_img)
-
-            if dr.any(dr.isnan(test_sum_normal)):
-                self.write_output_renders(normal_img, depth_img, silhouette_img, "failure_mesh")
+            if normal_img is None:
                 self.write_output_mesh(vertex_count, params[vertex_positions_str], params[face_count_str],
                                        params[face_str], failed_deform=True)
                 raise Exception("Normal rendering contains nan!")
