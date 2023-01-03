@@ -12,8 +12,8 @@ class LineGen():
         scenes = self.renderer.create_scene(input_path)
         return scenes
 
-    def create_line_images(self, scene, input_path):
-        img_direct = np.array(self.renderer.render(scene, input_path))
+    def create_line_images(self, scene, input_path, spp=256):
+        img_direct = np.array(self.renderer.render(scene, input_path, spp=spp))
         img_direct = (img_direct * 255).astype(np.uint8)
         if img_direct is None:
             return

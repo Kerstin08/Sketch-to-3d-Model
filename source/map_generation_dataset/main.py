@@ -34,7 +34,7 @@ if sys.platform == 'win32':
 # Manually delete returned variables in order to get memory problem (leak or fragmentation)
 # somewhat under control which seems to can occur if code is run on linux OS
 # Seems to stabilize memory consumption, however there may be better solutions for that problem
-def gen_images(path, datatype, renderer_aov, line_gen, output_dirs, create_debug_png):
+def gen_images(path, datatype, renderer_aov, line_gen, output_dirs, spp_direct, spp_aov, create_debug_png):
     filename = Path(path)
     if os.path.isfile(path) and filename.suffix == datatype:
         # stl files cannot be processed by mitsuba
@@ -48,7 +48,7 @@ def gen_images(path, datatype, renderer_aov, line_gen, output_dirs, create_debug
         output_name = filename.stem
         # generate sketches
         line_scene = line_gen.create_scenes(path)[0]
-        lines = line_gen.create_line_images(line_scene, path)
+        lines = line_gen.create_line_images(line_scene, path, spp=spp_direct)
         del line_scene
         if lines is None:
             return
@@ -56,8 +56,8 @@ def gen_images(path, datatype, renderer_aov, line_gen, output_dirs, create_debug
         del lines
         # generate depth and normal
         scene_aov = renderer_aov.create_scene(path)[0]
-        normal = np.array(renderer_aov.render_normal(scene_aov, path))
-        depth = np.array(renderer_aov.render_depth(scene_aov, path))
+        normal = np.array(renderer_aov.render_normal(scene_aov, path, spp=spp_aov))
+        depth = np.array(renderer_aov.render_depth(scene_aov, path, spp=spp_aov))
         del scene_aov
         if normal is None or depth is None:
             return
@@ -72,9 +72,9 @@ def gen_images(path, datatype, renderer_aov, line_gen, output_dirs, create_debug
     for path, _, files in os.walk(path):
         for file in files:
             new_path = os.path.join(path, file)
-            gen_images(new_path, datatype, renderer_aov, line_gen, output_dirs, create_debug_png)
+            gen_images(new_path, datatype, renderer_aov, line_gen, output_dirs, spp_direct, spp_aov, create_debug_png)
 
-def run(input_dir, output_dir, datatype, fov, view, dim_render, dim_line_gen_intermediate, emitter_samples, create_debug_png_str):
+def run(input_dir, output_dir, datatype, fov, view, dim_render, dim_line_gen_intermediate, emitter_samples, spp_direct, spp_aov, create_debug_png_str):
     if not os.path.exists(input_dir):
         raise Exception("Input directory {} does not exits".format(input_dir))
     if len(view) > 1 or len(view) < 1:
@@ -93,7 +93,7 @@ def run(input_dir, output_dir, datatype, fov, view, dim_render, dim_line_gen_int
 
     renderer_aov = AOV(view, {"dd.y": "depth", "nn": "sh_normal"}, fov, dim_render)
     line_gen = LineGen(view, fov, dim_line_gen_intermediate, dim_render, emitter_samples)
-    gen_images(input_dir, datatype, renderer_aov, line_gen, output_dirs, create_debug_png)
+    gen_images(input_dir, datatype, renderer_aov, line_gen, output_dirs, spp_direct, spp_aov, create_debug_png)
 
 def diff_args(args):
     run(args.input_dir,
@@ -104,6 +104,8 @@ def diff_args(args):
         args.dim_render,
         args.dim_line_gen_intermediate,
         args.emitter_samples,
+        args.spp_direct,
+        args.spp_aov,
         args.create_debug_png)
 
 def main(args):
@@ -116,6 +118,8 @@ def main(args):
     parser.add_argument("--dim_render", type=int, default=256, help="final output format for images")
     parser.add_argument("--dim_line_gen_intermediate", type=int, default=1024, help="intermediate output format for rendered images to perform line detection on")
     parser.add_argument("--emitter_samples", type=int, default=4, help="# of emitter samples for direct rendering")
+    parser.add_argument("--spp_direct", type=int, default=256, help="# of samples per pixel for direct rendering")
+    parser.add_argument("--spp_aov", type=int, default=256, help="# of samples per pixel for aov rendering")
     parser.add_argument("--create_debug_png", type=str, default="True", help="save pngs of aovs for easier debug; use \"True\" or \"False\" as parameter")
     args = parser.parse_args(args)
     diff_args(args)
