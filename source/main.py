@@ -135,7 +135,7 @@ def main(args):
     parser.add_argument("--normal_map_gen_model", type=str, default="datasets/mapgen_test_models/normal.ckpt", help="Path to model, which is used to determine normal map.")
     parser.add_argument("--epochs_mesh_gen", type=int, default=40000, help="# of epoch for mesh generation")
     parser.add_argument("--log_frequency_mesh_gen", type=int, default=100, help="frequency image logs of the mesh generation are written")
-    parser.add_argument("--lr_mesh_gen", type=float, default=0.001, help="initial learning rate for mesh generation")
+    parser.add_argument("--lr_mesh_gen", type=float, default=0.0002, help="initial learning rate for mesh generation")
     parser.add_argument("--weight_depth", type=float, default=0.002, help="depth weight")
     parser.add_argument("--weight_normal", type=float, default=0.002,help="normal weight")
     parser.add_argument("--weight_smoothness", type=float, default=0.01, help="smoothness weight")
