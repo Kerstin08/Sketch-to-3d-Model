@@ -20,7 +20,8 @@ from source.util import mesh_preprocess_operations
 def sample_mesh(mesh_file, num_samples, rejection_radius=None):
     try:
         mesh = trimesh.load(mesh_file)
-        mesh = mesh_preprocess_operations.normalize_mesh(mesh, mode='longest_edge')
+        # Todo: try with and without preprocess to see what brings better restults
+        mesh = mesh_preprocess_operations.normalize_mesh(mesh)
         mesh = mesh_preprocess_operations.translate_to_origin(mesh)
     except:
         return np.zeros((0, 3))
