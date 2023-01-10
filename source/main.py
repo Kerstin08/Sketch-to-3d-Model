@@ -138,7 +138,7 @@ def main(args):
     parser.add_argument("--lr_mesh_gen", type=float, default=0.0002, help="initial learning rate for mesh generation")
     parser.add_argument("--weight_depth", type=float, default=0.002, help="depth weight")
     parser.add_argument("--weight_normal", type=float, default=0.002,help="normal weight")
-    parser.add_argument("--weight_smoothness", type=float, default=0.01, help="smoothness weight")
+    parser.add_argument("--weight_smoothness", type=float, default=0.02, help="smoothness weight")
     parser.add_argument("--weight_edge", type=float, default=0.9, help="edge weight")
     parser.add_argument("--weight_silhouette", type=float, default=0.9, help="silhouette weight")
     parser.add_argument("--views", type=list, default=[(225, 30)], help="define rendering view angles")

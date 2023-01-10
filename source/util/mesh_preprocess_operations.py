@@ -2,7 +2,7 @@ import trimesh
 import math
 import numpy as np
 import argparse
-def preprocess(path):
+def preprocess(path, shapenet=False):
     try:
         mesh = trimesh.load(path)
     except Exception as e:
@@ -12,7 +12,8 @@ def preprocess(path):
     if not mesh.area > 0:
         print(str(path) + " contains no usable model!")
         return None
-    if mesh.body_count > 1:
+    # Since data rencostructed form SDF has artifacts the body count is rarely 1, but that does not effect the images too much
+    if not shapenet and mesh.body_count > 1:
         print(str(path) + " contains more than one model!")
         return None
 
@@ -22,6 +23,11 @@ def preprocess(path):
 
     norm_mesh = normalize_mesh(mesh)
     trans_norm_mesh = translate_to_origin(norm_mesh)
+    # The ShapeNet data is not aligned like the other data, therefore it is rotated
+    # Changing the rendering view would also be an option
+    if shapenet:
+        trans_norm_mesh = align_Shapenet(trans_norm_mesh)
+
     if path.rsplit(".", 1)[1] != "ply":
         path = path.rsplit(".", 1)[0] + ".ply"
     ply = trimesh.exchange.ply.export_ply(trans_norm_mesh, encoding='binary', include_attributes=False)
@@ -63,6 +69,17 @@ def normalize_mesh(mesh, mode='diagonal'):
     matrix = np.eye(4)
     matrix[:3, :3] *= scale
     mesh.apply_transform(matrix)
+    return mesh
+
+def align_Shapenet(mesh):
+    angle = math.pi / 2
+    direction = [1, 0, 0]
+    center = [0, 0, 0]
+    rot = trimesh.transformations.rotation_matrix(angle, direction, center)
+    mesh.apply_transform(rot)
+    direction = [0, 0, -1]
+    rot = trimesh.transformations.rotation_matrix(angle, direction, center)
+    mesh.apply_transform(rot)
     return mesh
 
 def translate_to_origin(mesh):

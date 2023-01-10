@@ -34,18 +34,20 @@ if sys.platform == 'win32':
 # Manually delete returned variables in order to get memory problem (leak or fragmentation)
 # somewhat under control which seems to can occur if code is run on linux OS
 # Seems to stabilize memory consumption, however there may be better solutions for that problem
-def gen_images(path, datatype, renderer_aov, line_gen, output_dirs, spp_direct, spp_aov, create_debug_png):
+def gen_images(path, datatype, renderer_aov, line_gen, output_dirs, spp_direct, spp_aov, create_debug_png, shapenet_data):
     filename = Path(path)
     if os.path.isfile(path) and filename.suffix == datatype:
-        # stl files cannot be processed by mitsuba
-        if datatype == ".stl":
-            path = mesh_preprocess.preprocess(path)
-            if not path:
-                return
-            else:
-                filename = Path(path)
+        path = mesh_preprocess.preprocess(path, shapenet_data)
+        if not path:
+            return
+        else:
+            filename = Path(path)
         print('\r' + 'Processing ' + path, end='')
-        output_name = filename.stem
+        # Use folder name for output name since the files in the preprocessed dataset are named iso-mesh
+        if shapenet_data:
+            output_name = os.path.basename(os.path.dirname(path))
+        else:
+            output_name = filename.stem
         # generate sketches
         line_scene = line_gen.create_scenes(path)[0]
         lines = line_gen.create_line_images(line_scene, path, spp=spp_direct)
@@ -72,14 +74,16 @@ def gen_images(path, datatype, renderer_aov, line_gen, output_dirs, spp_direct, 
     for path, _, files in os.walk(path):
         for file in files:
             new_path = os.path.join(path, file)
-            gen_images(new_path, datatype, renderer_aov, line_gen, output_dirs, spp_direct, spp_aov, create_debug_png)
+            gen_images(new_path, datatype, renderer_aov, line_gen, output_dirs, spp_direct, spp_aov, create_debug_png, shapenet_data)
 
-def run(input_dir, output_dir, datatype, fov, view, dim_render, dim_line_gen_intermediate, emitter_samples, spp_direct, spp_aov, create_debug_png_str):
+def run(input_dir, output_dir, datatype, fov, view, dim_render, dim_line_gen_intermediate, emitter_samples,
+        spp_direct, spp_aov, create_debug_png_str, shapenet_data_str):
     if not os.path.exists(input_dir):
         raise Exception("Input directory {} does not exits".format(input_dir))
     if len(view) > 1 or len(view) < 1:
         raise Exception("Exactly 1 view required for this dataset generation!")
     create_debug_png = bool_parse.parse(create_debug_png_str)
+    shapenet_data = bool_parse.parse(shapenet_data_str)
     # generate folders
     sketch_path = dir_utils.create_prefix_folder("sketch", output_dir)
     n_path = dir_utils.create_prefix_folder("n", output_dir)
@@ -93,7 +97,7 @@ def run(input_dir, output_dir, datatype, fov, view, dim_render, dim_line_gen_int
 
     renderer_aov = AOV(view, {"dd.y": "depth", "nn": "sh_normal"}, fov, dim_render)
     line_gen = LineGen(view, fov, dim_line_gen_intermediate, dim_render, emitter_samples)
-    gen_images(input_dir, datatype, renderer_aov, line_gen, output_dirs, spp_direct, spp_aov, create_debug_png)
+    gen_images(input_dir, datatype, renderer_aov, line_gen, output_dirs, spp_direct, spp_aov, create_debug_png, shapenet_data)
 
 def diff_args(args):
     run(args.input_dir,
@@ -106,7 +110,8 @@ def diff_args(args):
         args.emitter_samples,
         args.spp_direct,
         args.spp_aov,
-        args.create_debug_png)
+        args.create_debug_png,
+        args.shapenet_data)
 
 def main(args):
     parser = argparse.ArgumentParser(prog="map_generation_dataset")
@@ -121,6 +126,7 @@ def main(args):
     parser.add_argument("--spp_direct", type=int, default=256, help="# of samples per pixel for direct rendering")
     parser.add_argument("--spp_aov", type=int, default=256, help="# of samples per pixel for aov rendering")
     parser.add_argument("--create_debug_png", type=str, default="True", help="save pngs of aovs for easier debug; use \"True\" or \"False\" as parameter")
+    parser.add_argument("--shapenet_data", type=str, default="False", help="save pngs of aovs for easier debug; use \"True\" or \"False\" as parameter")
     args = parser.parse_args(args)
     diff_args(args)
 
