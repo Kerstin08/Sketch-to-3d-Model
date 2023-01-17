@@ -10,3 +10,6 @@ code_phillip
 checkpoint
 output_meshdef
 output_mapgen
+eval
+execute_pipeline
+logs_pipeline
