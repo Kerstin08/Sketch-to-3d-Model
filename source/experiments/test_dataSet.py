@@ -1,6 +1,7 @@
 import torch
 
-import source.map_generation_dataset.dataset as DataSet
+from source.map_generation_dataset import dataset
+from source.map_generation_dataset import dataset_ShapeNet
 import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader
 from torchvision import transforms
@@ -10,19 +11,23 @@ import os
 # and this is only an experiment.
 os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 
-from source.map_generation import map_generation
+from source.util import data_type
 
 epochs = 10
-target_dir = "..\\..\\resources\\mapgen_dataset\\ABC\\0_499\\n_mapgen"
-input_dir = "..\\..\\resources\\mapgen_dataset\\ABC\\0_499\\sketch_mapgen"
+target_dir = "..\\..\\resources\\map_generation_dataset\\mixed_depth_ShapeNet\\target_map_generation\\val"
+input_dir = "..\\..\\resources\\map_generation_dataset\\mixed_depth_ShapeNet\\sketch_map_generation\\val"
 figure = plt.figure(figsize=(8, 8))
 cols, rows = 1, 2
-dataSet = DataSet.DS(input_dir, target_dir, map_generation.Type.normal)
-dataloader = DataLoader(dataSet, batch_size=1,
+#dataSet = dataset.DS(input_dir, target_dir, data_type.Type.normal)
+#dataloader = DataLoader(dataSet, batch_size=1,
+#                        shuffle=True, num_workers=0)
+dataSet = dataset_ShapeNet.DS(True, data_type.Type.depth, input_dir, target_dir, size=2)
+dataSet = dataset_ShapeNet.DS(True, data_type.Type.depth, input_dir, target_dir, full_ds=True)
+dataloader = DataLoader(dataSet, batch_size=4,
                         shuffle=True, num_workers=0)
 for i_batch, sample_batched in enumerate(dataloader):
-    print(i_batch, sample_batched['input'].size(),
-          sample_batched['target'].size())
+    #print(i_batch, sample_batched['input'].size(),
+    #      sample_batched['target'].size())
     if i_batch==0:
         transform = transforms.ToPILImage()
         figure.add_subplot(rows, cols, (1))

@@ -8,20 +8,23 @@ from source.util import bool_parse
 def run(train_b_str, input_dir, output_dir, logs_dir, checkpoint_dir,
         type, epochs, lr, batch_size, n_critic, weight_L1,
         gradient_penalty_coefficient, log_frequency,
-        use_generated_model_str, generated_model_path, devices):
+        use_generated_model_str, generated_model_path, devices,
+        shapenet, shapenet_train_size):
     if len(output_dir) <= 0:
         raise Exception("Checkpoint Path is not given!")
     dir_utils.create_general_folder(output_dir)
 
     train_b = bool_parse.parse(train_b_str)
     use_generated_model = bool_parse.parse(use_generated_model_str)
+    shapenet_b = bool_parse.parse(shapenet)
 
     if train_b:
         train(input_dir, output_dir, logs_dir, checkpoint_dir,
         type, epochs, lr, batch_size, n_critic, weight_L1,
-        gradient_penalty_coefficient, log_frequency, use_generated_model, generated_model_path, devices)
+        gradient_penalty_coefficient, log_frequency, use_generated_model, generated_model_path, devices,
+        shapenet_b, shapenet_train_size)
     else:
-        test(input_dir, output_dir, logs_dir, type, generated_model_path)
+        test(input_dir, output_dir, logs_dir, type, generated_model_path, shapenet_b)
 
 def diff_args(args):
     run(args.train,
@@ -39,7 +42,9 @@ def diff_args(args):
         args.log_frequency,
         args.use_generated_model,
         args.generated_model_path,
-        args.devices)
+        args.devices,
+        args.shapenet,
+        args.shapenet_train_size)
 
 
 def main(args):
@@ -67,6 +72,12 @@ def main(args):
                         help="If test is used determine if comparison images should be generated")
     parser.add_argument("--devices", type=int, default=4,
                         help="Define the number of cpu or gpu devices used")
+    parser.add_argument("--shapenet", type=str, default="False",
+                        help="If Shapenet dataset is used")
+    parser.add_argument("--shapenet_train_size", type=int, default=200,
+                        help="usage of # images per class in shapenet dataset in training epoch. "
+                             "Needs to be a common multiple of batch_sizes and devices"
+                             "# validation is calculated based on this number")
     args = parser.parse_args(args)
     diff_args(args)
 

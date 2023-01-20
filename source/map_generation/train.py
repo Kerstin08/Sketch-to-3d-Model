@@ -6,17 +6,17 @@ from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.trainer import Trainer
 from source.map_generation_dataset import dataset
+from source.map_generation_dataset import dataset_ShapeNet
 from source.util import data_type
 from source.util import dir_utils
-from pytorch_lightning.callbacks.early_stopping import EarlyStopping
-
 def train(input_dir, output_dir, logs_dir, checkpoint_dir,
         type, epochs, lr, batch_size, n_critic, weight_L1,
         gradient_penalty_coefficient, log_frequency,
-        use_generated_model=False, generated_model_path="", devices=1):
+        use_generated_model=False, generated_model_path="", devices=1,
+        shapenet=False, shapenet_train_size=200):
 
-    sketch_dir = os.path.join(input_dir, "sketch_mapgen")
-    target_dir = os.path.join(input_dir, "target_mapgen")
+    sketch_dir = os.path.join(input_dir, "sketch_map_generation")
+    target_dir = os.path.join(input_dir, "target_map_generation")
     if not os.path.exists(sketch_dir) or not os.path.exists(target_dir):
         raise Exception("Sketch dir: {} or target dir: {} does not exists!".format(sketch_dir, target_dir))
 
@@ -81,9 +81,25 @@ def train(input_dir, output_dir, logs_dir, checkpoint_dir,
     if not os.path.exists(target_test_dir):
         raise Exception("Test dir in {} does not exist".format(target_dir))
 
-    dataSet_train = dataset.DS(True, given_type, sketch_train_dir, target_train_dir)
-    dataSet_val = dataset.DS(True, given_type, sketch_val_dir, target_val_dir)
-    dataSet_test = dataset.DS(True, given_type, sketch_test_dir, target_test_dir)
+    if shapenet:
+        if shapenet_train_size%batch_size > 0:
+            raise Exception("When using ShapeNet dataset the given training size need to be multiple of the "
+                            "given device number in order to process all classes.")
+        # Compute train, validation split based on ratio used by Kato et al. (Neural mesh renderer)
+        split_train, split_val = 87.5, 12.5
+        split_train_val = shapenet_train_size/split_train * 100
+        shapenet_val_size = int(split_train_val * 12.5 / 100)
+        if shapenet_val_size%devices > 0:
+          print("Validation Size {0} per class is not a multiple of the used devices. The validation loss is biased".format(shapenet_val_size))
+        else:
+          print ("Validation size {0}".format(shapenet_val_size))
+        dataSet_train = dataset_ShapeNet.DS(True, given_type, sketch_train_dir, target_train_dir, size=shapenet_train_size, full_ds=False)
+        dataSet_val = dataset_ShapeNet.DS(True, given_type, sketch_val_dir, target_val_dir, size=shapenet_val_size, full_ds=False)
+        dataSet_test = dataset_ShapeNet.DS(True, given_type, sketch_test_dir, target_test_dir, full_ds=True)
+    else:
+        dataSet_train = dataset.DS(True, given_type, sketch_train_dir, target_train_dir)
+        dataSet_val = dataset.DS(True, given_type, sketch_val_dir, target_val_dir)
+        dataSet_test = dataset.DS(True, given_type, sketch_test_dir, target_test_dir)
 
     strategy = None
     accelerator = 'gpu' if torch.cuda.is_available() else 'cpu'
@@ -100,7 +116,14 @@ def train(input_dir, output_dir, logs_dir, checkpoint_dir,
                       precision=16,
                       strategy=strategy,
                       log_every_n_steps=log_frequency)
-    dataloader_train = DataLoader(dataSet_train, batch_size=batch_size,
+
+    # Do not use shuffle with ShapeNet Dataset, since shuffle can return same index on different gpus, which
+    # in turn means classes are trained inequally
+    if shapenet:
+        dataloader_train = DataLoader(dataSet_train, batch_size=batch_size,
+                                  shuffle=False, num_workers=48)
+    else:
+        dataloader_train = DataLoader(dataSet_train, batch_size=batch_size,
                                   shuffle=True, num_workers=48)
     dataloader_vaild = DataLoader(dataSet_val, batch_size=batch_size,
                                   shuffle=False, num_workers=48)

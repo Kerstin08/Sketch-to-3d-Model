@@ -92,6 +92,12 @@ class MapGen(pl.LightningModule):
         return d_loss
 
     def training_step(self, sample_batched, batch_idx, optimizer_idx):
+       #Todo: delete
+        with open(str(self.current_epoch)+"3_train.txt", "a") as f:
+            for i in sample_batched['input_path']:
+                y = i.split("/")[-1]
+                z = i.split("/")[-2]
+                f.write("Train:" + y + " " + z + "\n")
         fake_images = self(sample_batched)
         if optimizer_idx == 0:
             loss = self.generator_step(sample_batched, fake_images)
@@ -101,6 +107,12 @@ class MapGen(pl.LightningModule):
         return loss
 
     def validation_step(self, sample_batched, batch_idx):
+        #Todo: delete
+        with open(str(self.current_epoch)+"3_val.txt", "a") as f:
+            for i in sample_batched['input_path']:
+                y = i.split("/")[-1]
+                z = i.split("/")[-2]
+                f.write("Val:" + y + " " + z + "\n")
         predicted_image = self(sample_batched)
         pixelwise_loss = self.L1(predicted_image, sample_batched['target'])
         self.log("val_loss", pixelwise_loss.item(), batch_size=self.batch_size, sync_dist=True)
