@@ -74,7 +74,7 @@ def main(args):
                         help="Define the number of cpu or gpu devices used")
     parser.add_argument("--shapenet", type=str, default="False",
                         help="If Shapenet dataset is used")
-    parser.add_argument("--shapenet_train_size", type=int, default=200,
+    parser.add_argument("--shapenet_train_size", type=int, default=400,
                         help="usage of # images per class in shapenet dataset in training epoch. "
                              "Needs to be a common multiple of batch_sizes and devices"
                              "# validation is calculated based on this number")
@@ -90,6 +90,5 @@ if __name__ == '__main__':
         '--lr', '5e-5',
         '--output_dir', "out_normal",
         "--batch_size", "83"
-#        '--generated_model_path', "checkpoints/last.ckpt"
     ]
     main(params)

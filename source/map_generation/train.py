@@ -82,7 +82,7 @@ def train(input_dir, output_dir, logs_dir, checkpoint_dir,
         raise Exception("Test dir in {} does not exist".format(target_dir))
 
     if shapenet:
-        if shapenet_train_size%batch_size > 0:
+        if shapenet_train_size%devices > 0:
             raise Exception("When using ShapeNet dataset the given training size need to be multiple of the "
                             "given device number in order to process all classes.")
         # Compute train, validation split based on ratio used by Kato et al. (Neural mesh renderer)
