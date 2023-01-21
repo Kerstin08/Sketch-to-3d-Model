@@ -29,7 +29,7 @@ class MeshGen():
         self.writer = SummaryWriter(logs)
         self.epochs = epochs
         self.log_frequency = log_frequency
-        self.renderer = AOV(views, {"dd.y": "depth", "nn": "sh_normal"})
+        self.renderer = AOV(views)
         self.use_depth = use_depth
         self.eval_dir = eval_dir
 

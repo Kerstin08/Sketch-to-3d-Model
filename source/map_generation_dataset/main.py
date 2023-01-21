@@ -95,7 +95,7 @@ def run(input_dir, output_dir, datatype, fov, view, dim_render, dim_line_gen_int
         output_dirs["dd_png"] = d_png_path
         output_dirs["nn_png"] = n_png_path
 
-    renderer_aov = AOV(view, {"dd.y": "depth", "nn": "sh_normal"}, fov, dim_render)
+    renderer_aov = AOV(view, fov, dim_render)
     line_gen = LineGen(view, fov, dim_line_gen_intermediate, dim_render, emitter_samples)
     gen_images(input_dir, datatype, renderer_aov, line_gen, output_dirs, spp_direct, spp_aov, create_debug_png, shapenet_data)
 

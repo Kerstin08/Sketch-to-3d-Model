@@ -10,12 +10,11 @@ import source.render.mi_create_scenedesc as create_scenedesc
 mi.set_variant('cuda_ad_rgb')
 
 class AOV(Render):
-    def __init__(self, views, aovs, fov=50, dim=256):
+    def __init__(self, views, fov=50, dim=256):
         Render.__init__(self, views, fov, dim)
         self._depth_integrator = self.__load_depth_integrator()
         self._normal_integrator = self.__load_normal_integrator()
         self._silhouette_integrator = self.__load_silhouette_integrator()
-        self.aovs = aovs
 
     def __load_depth_integrator(self):
         depth_integrator = create_scenedesc.create_integrator_depth()

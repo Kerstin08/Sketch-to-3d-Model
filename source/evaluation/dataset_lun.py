@@ -264,7 +264,7 @@ def run(input_dir, output_dir_train, output_dir_test, datatype, fov, dim_render,
     write_view_file(view_path_train, fov, views_dnfs_dn)
     write_view_file(view_path_test, fov, views_dnfs_dn)
 
-    renderer_aov = AOV(views_dnfs_dn, {"dd.y": "depth", "nn": "sh_normal"}, fov, dim_render)
+    renderer_aov = AOV(views_dnfs_dn, fov, dim_render)
     views_sketch_hires = [(90, 90),
             (0, 0),
             (90, 0)]

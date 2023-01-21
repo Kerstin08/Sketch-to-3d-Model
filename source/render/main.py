@@ -9,7 +9,7 @@ from source.render import save_renderings
 from source.util import data_type
 from source.util import bool_parse
 
-def run(render_type, line_gen_str, input_path, output_dirs, output_name, aovs=[]):
+def run(render_type, line_gen_str, input_path, output_dirs, output_name):
     for key, value in output_dirs.items():
         if not os.path.exists(value):
             os.mkdir(value)
@@ -17,7 +17,7 @@ def run(render_type, line_gen_str, input_path, output_dirs, output_name, aovs=[]
     line_gen = bool_parse.parse(line_gen_str)
     views = [(225, 35), (45, 35), (135, 35), (315, 35), (0, 90), (90, 0)]
     if render_type == "aov" or render_type == "combined":
-        renders_aov = AOV(views, aovs)
+        renders_aov = AOV(views)
         scenes_aov = renders_aov.create_scene(input_path)
         count = 0
         for scene in scenes_aov:
@@ -47,7 +47,7 @@ def run(render_type, line_gen_str, input_path, output_dirs, output_name, aovs=[]
             count = count + 1
 
 def diff_ars(args):
-    run(args.render_type, args.line_gen, args.input_path, args.output_dirs, args.output_name, args.aovs)
+    run(args.render_type, args.line_gen, args.input_path, args.output_dirs, args.output_name)
 
 def main(args):
     parser = argparse.ArgumentParser(prog="scene_rendering")
@@ -56,7 +56,6 @@ def main(args):
     parser.add_argument("--input_path", default='..\\..\\resources\\thingi10k\\0_499\\32770.ply', type=str, help="path to input model")
     parser.add_argument("--output_dirs", type=dict, default={'nn': '..\\..\\output', 'dd.y': '..\\..\\output', "dd_png": '..\\..\\output', "nn_png": '..\\..\\output', 'default': '..\\..\\output', 'sketch': '..\\..\\output'}, help="directories to save renderings")
     parser.add_argument("--output_name", type=str, default="test", help="Name of output images")
-    parser.add_argument("--aovs", type=dir, default={"nn": "sh_normal", "dd.y": "depth"}, help="Types of AOV; use \"sh_normal\" or \"depth\"")
     args = parser.parse_args(args)
     diff_ars(args)
 
