@@ -65,7 +65,7 @@ def main(args):
     parser.add_argument("--n_critic", type=int, default=5, help="# of n_critic")
     parser.add_argument("--weight_L1", type=int, default=500, help="L1 weight")
     parser.add_argument("--gradient_penalty_coefficient", type=int, default=10, help="gradient penalty coefficient")
-    parser.add_argument("--log_frequency", type=int, default=15, help="log frequency for training")
+    parser.add_argument("--log_frequency", type=int, default=100, help="log frequency for training")
     parser.add_argument("--use_generated_model", type=str, default="False",
                         help="If models are trained from scratch or already trained models are used; use \"True\" or \"False\" as parameter")
     parser.add_argument("--generated_model_path", type=str, default="..\\..\\output\\test.ckpt",
@@ -84,11 +84,15 @@ def main(args):
 
 if __name__ == '__main__':
     params = [
-        '--input_dir', 'datasets/mixed_normal',
-        '--type', 'normal',
-        '--epochs', '3000',
+        '--input_dir', 'datasets/mixed_depth_ShapeNet',
+        '--type', 'depth',
+        '--epochs', '1000',
         '--lr', '5e-5',
-        '--output_dir', "out_normal",
-        "--batch_size", "83"
+        '--output_dir', "out",
+        "--logs_dir", "logs",
+        "--checkpoint_dir", "checkpoint",
+        "--batch_size", "91",
+        "--shapenet", "True",
+        "--shapenet_train_size", "392"
     ]
     main(params)

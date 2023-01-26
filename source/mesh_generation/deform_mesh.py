@@ -16,7 +16,7 @@ class MeshGen():
                  epochs, log_frequency, lr, views, use_depth=True, eval_dir=None):
         super(MeshGen, self).__init__()
         if views is None:
-            views = [(125, 30)]
+            views = [(225, 30)]
         self.weight_depth = weight_depth
         self.weight_normal = weight_normal
         self.weight_smoothness = weight_smoothness

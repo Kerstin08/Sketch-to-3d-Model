@@ -1,9 +1,9 @@
 import os
 import torch
+import numpy as np
 from torchvision import transforms
 from torch.utils.data import Dataset
 from PIL import Image
-from random import randrange
 
 from source.util import data_type
 from source.util import OpenEXR_utils
@@ -36,6 +36,7 @@ class DS(Dataset):
             for root, dirs, files in os.walk(os.path.join(dir, c)):
                 for file in files:
                     images[c].append(os.path.join(root, file))
+            images[c] = sorted(images[c])
         return images
 
     def create_dataSet_list(self, dir):
@@ -69,10 +70,9 @@ class DS(Dataset):
             input_path = self.image_paths_input[index]
             target_path = self._image_paths_target[index]
         else:
-            current_class = self.classes[int(index / self.size)]
+            current_class = np.random.choice(self.classes)
+            rand_idx = np.random.randint(0, len(self.images_input[current_class]))
             # input is sketch, therefore png file
-            i = len(self.images_input[current_class])
-            rand_idx=randrange(i)
             input_path = self.images_input[current_class][rand_idx]
             target_path = self._images_target[current_class][rand_idx]
 
