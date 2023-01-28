@@ -3,6 +3,8 @@ import os
 import sys
 from pathlib import Path
 
+import cv2
+
 from source.mesh_generation import deform_mesh
 from source.util import sketch_utils
 from source.topology import floodfill
@@ -54,7 +56,7 @@ def map_generation(input_sketch, output_dir, normal_map_gen_model, depth_map_gen
 ## 1. put input mesh and normal and depth map into mesh deformation
 def mesh_deformation(output_name, normal_map_path, depth_map_path, silhouette_map_path, basic_mesh, output_dir, logs,
                      weight_depth, weight_normal, weight_smoothness, weight_edge, weight_silhouette,
-                     epochs, log_frequency, lr, views, use_depth, eval_dir):
+                     epochs, log_frequency, lr, views, use_depth, eval_dir, resize):
     if not os.path.exists(logs):
         dir_utils.create_version_folder(logs)
     mesh_gen = deform_mesh.MeshGen(output_name, output_dir, logs,
@@ -62,6 +64,12 @@ def mesh_deformation(output_name, normal_map_path, depth_map_path, silhouette_ma
                                    epochs, log_frequency, lr, views, use_depth, eval_dir)
     normal_map = OpenEXR_utils.getImageEXR(normal_map_path, data_type.Type.normal, 2)
     depth_map = OpenEXR_utils.getImageEXR(depth_map_path, data_type.Type.depth, 2).squeeze()
+    # resize and downsample image for shapenet
+    # only view resulting images via exr viewer not png generated from save_render, since conversion to unit8 can
+    # introduce wrong image values in depth map for whatever reason, which at that resolution is very obvious
+    if resize:
+        normal_map = cv2.resize(normal_map, dsize=(64, 64), interpolation=cv2.INTER_LANCZOS4)
+        depth_map = cv2.resize(depth_map, dsize=(64, 64), interpolation=cv2.INTER_LANCZOS4)
     silhouette_map = OpenEXR_utils.getImageEXR(silhouette_map_path, data_type.Type.depth, 2).squeeze()
     mesh_gen.deform_mesh(normal_map, depth_map, silhouette_map, basic_mesh)
 
@@ -70,13 +78,14 @@ def run(input_sketch,
         depth_map_gen_model, normal_map_gen_model,
         epochs_mesh_gen, log_frequency_mesh_gen, lr_mesh_gen,
         weight_depth, weight_normal, weight_smoothness, weight_edge, weight_silhouette, views,
-        use_depth_str, use_genus0_str, eval_dir):
+        use_depth_str, use_genus0_str, eval_dir, resize):
     for x in (input_sketch, depth_map_gen_model, normal_map_gen_model):
         if not os.path.exists(x):
             raise Exception("{} does not exist".format(x))
 
     use_depth = bool_parse.parse(use_depth_str)
     use_genus0 = bool_parse.parse(use_genus0_str)
+    use_resize = bool_parse.parse(resize)
 
     file = Path(input_sketch)
     output_name = file.stem
@@ -102,7 +111,7 @@ def run(input_sketch,
     depth_map = os.path.join(depth_output_path, "{}_depth.exr".format(prefix))
     mesh_deformation(prefix, normal_map, depth_map, silhouette_map_path, basic_mesh, output_dir, logs_meshGen,
                      weight_depth, weight_normal, weight_smoothness, weight_silhouette, weight_edge,
-                     epochs_mesh_gen, log_frequency_mesh_gen, lr_mesh_gen, views, use_depth, eval_dir)
+                     epochs_mesh_gen, log_frequency_mesh_gen, lr_mesh_gen, views, use_depth, eval_dir, use_resize)
 
 def diff_ars(args):
     run(args.input_sketch,
@@ -122,7 +131,8 @@ def diff_ars(args):
         args.views,
         args.use_depth,
         args.use_genus0,
-        args.eval_dir
+        args.eval_dir,
+        args.resize
         )
 
 def main(args):
@@ -148,6 +158,8 @@ def main(args):
     parser.add_argument("--use_genus0", type=str, default="False", help="Use base mesh genus 0 regardless for every given shape; use \"True\" or \"False\" as parameter")
     # Additional directory to store created meshes in for easier evaluation
     parser.add_argument("--eval_dir", type=str, default="eval", help="Additional directory to store only mesh for evaluation")
+    # Use for comparison since Neural mesh renderer works with 64x64 images
+    parser.add_argument("--resize", type=str, default="False", help="Whether or not normal and depth map should be resized to 64x64")
     args = parser.parse_args(args)
     diff_ars(args)
 
