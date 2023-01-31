@@ -24,8 +24,8 @@ class DS(Dataset):
             self.image_paths_input = sorted(self.create_dataSet_list(dir_input))
             self._image_paths_target = sorted(self.create_dataSet_list(dir_target))
         else:
-            self.images_input = self.create_dataSet_dir(dir_input)
-            self._images_target = self.create_dataSet_dir(dir_target)
+            self.image_paths_input = self.create_dataSet_dir(dir_input)
+            self._image_paths_target = self.create_dataSet_dir(dir_target)
         self.size = size
         self.full_ds = full_ds
 
@@ -71,10 +71,10 @@ class DS(Dataset):
             target_path = self._image_paths_target[index]
         else:
             current_class = np.random.choice(self.classes)
-            rand_idx = np.random.randint(0, len(self.images_input[current_class]))
+            rand_idx = np.random.randint(0, len(self.image_paths_input[current_class]))
             # input is sketch, therefore png file
-            input_path = self.images_input[current_class][rand_idx]
-            target_path = self._images_target[current_class][rand_idx]
+            input_path = self.image_paths_input[current_class][rand_idx]
+            target_path = self._image_paths_target[current_class][rand_idx]
 
         if self.data_type == data_type.Type.normal:
             input_image = Image.open(input_path).convert("RGB")

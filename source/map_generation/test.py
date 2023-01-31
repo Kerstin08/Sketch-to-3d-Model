@@ -20,8 +20,8 @@ def test(input_dir, output_dir, logs_dir,
     logs_dir_name = "testModel"
     # Use general folder instead of logs dir since pytorch already takes care of folder versioning.
     dir_utils.create_general_folder(os.path.join(logs_dir, logs_dir_name))
-    sketch_dir = os.path.join(input_dir, "sketch_mapgen")
-    target_dir = os.path.join(input_dir, "target_mapgen")
+    sketch_dir = os.path.join(input_dir, "sketch_map_generation")
+    target_dir = os.path.join(input_dir, "target_map_generation")
     if not os.path.exists(sketch_dir):
         raise Exception("Sketch dir: {} does not exists!".format(sketch_dir))
     test_dir_sketch = os.path.join(sketch_dir, "test")
@@ -40,9 +40,9 @@ def test(input_dir, output_dir, logs_dir,
                                   output_dir=output_dir)
 
     if shapenet and os.path.exists(test_dir_target):
-        dataSet = dataset_ShapeNet.DS(False, given_type, test_dir_sketch, test_dir_target, True)
+        dataSet = dataset_ShapeNet.DS(False, given_type, test_dir_sketch, test_dir_target, full_ds=True)
     elif shapenet:
-        dataSet = dataset_ShapeNet.DS(False, given_type, test_dir_sketch, True)
+        dataSet = dataset_ShapeNet.DS(False, given_type, test_dir_sketch, full_ds=True)
     elif os.path.exists(test_dir_target):
         dataSet = dataset.DS(False, given_type, test_dir_sketch, test_dir_target)
     else:

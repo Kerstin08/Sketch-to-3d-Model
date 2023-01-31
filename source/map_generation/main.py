@@ -24,7 +24,7 @@ def run(train_b_str, input_dir, output_dir, logs_dir, checkpoint_dir,
         gradient_penalty_coefficient, log_frequency, use_generated_model, generated_model_path, devices,
         shapenet_b, shapenet_train_size)
     else:
-        test(input_dir, output_dir, logs_dir, type, generated_model_path, shapenet_b)
+        test(input_dir, output_dir, logs_dir, type, generated_model_path, 1, shapenet_b)
 
 def diff_args(args):
     run(args.train,
