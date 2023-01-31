@@ -6,7 +6,9 @@ def create_shape(input_mesh, datatype):
             "type": "diffuse",
             "reflectance" : {
                 "type" : "rgb",
-                "value" : [0.5, 0.5, 0.5],
+                "value" : [0.5,0.5,0.5],
+                # value for kato
+                #"value": [0.8, 1, 1],
             }
         }
     }
@@ -35,6 +37,15 @@ def create_integrator_direct(emitter_samples):
     return integrator
 
 def create_emitter():
+    # kato emitter
+    #emitter = {
+    #    'type': 'point',
+    #    'position': [1.0, -1.0, 1.0],
+    #    'intensity': {
+    #        'type': 'spectrum',
+    #        'value': 5.0,
+    #    }
+    #}
     emitter = {
         "type": "constant"
     }
