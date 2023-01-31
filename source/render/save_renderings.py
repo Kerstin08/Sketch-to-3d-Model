@@ -10,9 +10,15 @@ def save_exr(img, output_dirs, output_name, given_data_type=None):
     if given_data_type == data_type.Type.depth:
         filename = output_name + "_depth.exr"
         output_dir = output_dirs['dd.y']
-    else:
+    elif given_data_type == data_type.Type.silhouette:
+        filename = output_name + "_silhouette.exr"
+        output_dir = output_dirs['default']
+    elif given_data_type == data_type.Type.normal:
         filename = output_name + "_normal.exr"
         output_dir = output_dirs['nn']
+    else:
+        filename = output_name + ".exr"
+        output_dir = output_dirs['default']
     path = os.path.join(output_dir, filename)
     OpenEXR_utils.writeImage(img, given_data_type, path)
 

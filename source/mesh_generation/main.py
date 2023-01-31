@@ -32,7 +32,7 @@ def run(normal_map_path, depth_map_path, silhouette_map_path, basic_mesh, output
                         views)
     normal_map = OpenEXR_utils.getImageEXR(normal_map_path, data_type.Type.normal, 2)
     depth_map = OpenEXR_utils.getImageEXR(depth_map_path, data_type.Type.depth, 2).squeeze()
-    silhouette_map = OpenEXR_utils.getImageEXR(silhouette_map_path, data_type.Type.depth, 2).squeeze()
+    silhouette_map = OpenEXR_utils.getImageEXR(silhouette_map_path, data_type.Type.silhouette, 2).squeeze()
 
     mesh_gen.deform_mesh(normal_map, depth_map, silhouette_map, basic_mesh)
 

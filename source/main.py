@@ -64,13 +64,14 @@ def mesh_deformation(output_name, normal_map_path, depth_map_path, silhouette_ma
                                    epochs, log_frequency, lr, views, use_depth, eval_dir)
     normal_map = OpenEXR_utils.getImageEXR(normal_map_path, data_type.Type.normal, 2)
     depth_map = OpenEXR_utils.getImageEXR(depth_map_path, data_type.Type.depth, 2).squeeze()
+    silhouette_map = OpenEXR_utils.getImageEXR(silhouette_map_path, data_type.Type.silhouette, 2).squeeze()
     # resize and downsample image for shapenet
     # only view resulting images via exr viewer not png generated from save_render, since conversion to unit8 can
     # introduce wrong image values in depth map for whatever reason, which at that resolution is very obvious
     if resize:
         normal_map = cv2.resize(normal_map, dsize=(64, 64), interpolation=cv2.INTER_LANCZOS4)
         depth_map = cv2.resize(depth_map, dsize=(64, 64), interpolation=cv2.INTER_LANCZOS4)
-    silhouette_map = OpenEXR_utils.getImageEXR(silhouette_map_path, data_type.Type.depth, 2).squeeze()
+        silhouette_map = cv2.resize(silhouette_map, dsize=(64, 64), interpolation=cv2.INTER_NEAREST)
     mesh_gen.deform_mesh(normal_map, depth_map, silhouette_map, basic_mesh)
 
 def run(input_sketch,

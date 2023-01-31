@@ -21,7 +21,7 @@ def startFill(image, image_path, output_dir, write_debug_png=True):
     image = sketch_utils.unpad(image, 1)
     filename = Path(image_path)
     exr_path = os.path.join(output_dir, filename.stem + "_filled.exr")
-    OpenEXR_utils.writeImage(image, data_type.Type.depth, exr_path)
+    OpenEXR_utils.writeImage(image, data_type.Type.silhouette, exr_path)
 
     if write_debug_png:
         image_png = image * 255
