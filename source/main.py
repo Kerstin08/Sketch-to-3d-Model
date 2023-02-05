@@ -1,9 +1,8 @@
 import argparse
 import os
 import sys
-from pathlib import Path
-
 import cv2
+from pathlib import Path
 
 from source.mesh_generation import deform_mesh
 from source.util import sketch_utils
@@ -37,7 +36,7 @@ def topology(sketch_path, genus_dir, output_dir, use_genus0):
 ## 2. put cleaned input sketch into trained neural network normal
 ## 3. put cleaned input sketch into trained neural network depth
 def map_generation(input_sketch, output_dir, normal_map_gen_model, depth_map_gen_model, log_dir_normal, log_dir_depth):
-    sketch_filepath = os.path.join(output_dir, "sketch_mapgen")
+    sketch_filepath = os.path.join(output_dir, "sketch_map_generation")
     sketch_filepath_test = os.path.join(sketch_filepath, "test")
     if not os.path.exists(sketch_filepath_test):
         dir_utils.create_general_folder(sketch_filepath_test)
@@ -59,9 +58,14 @@ def mesh_deformation(output_name, normal_map_path, depth_map_path, silhouette_ma
                      epochs, log_frequency, lr, views, use_depth, eval_dir, resize):
     if not os.path.exists(logs):
         dir_utils.create_version_folder(logs)
-    mesh_gen = deform_mesh.MeshGen(output_name, output_dir, logs,
+    if resize:
+        mesh_gen = deform_mesh.MeshGen(output_name, output_dir, logs,
                                    weight_depth, weight_normal, weight_smoothness, weight_silhouette, weight_edge,
-                                   epochs, log_frequency, lr, views, use_depth, eval_dir)
+                                   epochs, log_frequency, lr, views, use_depth, eval_dir, dim=64)
+    else:
+        mesh_gen = deform_mesh.MeshGen(output_name, output_dir, logs,
+                                   weight_depth, weight_normal, weight_smoothness, weight_silhouette, weight_edge,
+                                   epochs, log_frequency, lr, views, use_depth, eval_dir, dim=256)
     normal_map = OpenEXR_utils.getImageEXR(normal_map_path, data_type.Type.normal, 2)
     depth_map = OpenEXR_utils.getImageEXR(depth_map_path, data_type.Type.depth, 2).squeeze()
     silhouette_map = OpenEXR_utils.getImageEXR(silhouette_map_path, data_type.Type.silhouette, 2).squeeze()

@@ -1,5 +1,3 @@
-import numpy as np
-
 from source.render.render_base import Render
 import source.render.mi_create_scenedesc as create_scenedesc
 

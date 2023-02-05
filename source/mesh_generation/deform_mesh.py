@@ -13,7 +13,7 @@ mi.set_variant('cuda_ad_rgb')
 class MeshGen():
     def __init__(self, output_name, output_dir, logs,
                  weight_depth, weight_normal, weight_smoothness, weight_edge, weight_silhouette,
-                 epochs, log_frequency, lr, views, use_depth=True, eval_dir=None):
+                 epochs, log_frequency, lr, views, use_depth=True, eval_dir=None, dim=256):
         super(MeshGen, self).__init__()
         if views is None:
             views = [(225, 30)]
@@ -29,7 +29,7 @@ class MeshGen():
         self.writer = SummaryWriter(logs)
         self.epochs = epochs
         self.log_frequency = log_frequency
-        self.renderer = AOV(views)
+        self.renderer = AOV(views, dim=dim)
         self.use_depth = use_depth
         self.eval_dir = eval_dir
 

@@ -42,7 +42,7 @@ class AOV(Render):
         depth = dr.select(mask,
                         img[:, :, 0].array / (self.far_distance - self.near_distance),
                         1)
-        depth_tens = mi.TensorXf(depth, shape=(256, 256))
+        depth_tens = mi.TensorXf(depth, shape=(self.dim, self.dim))
         return depth_tens
 
     def render_normal(self, scene, input_path, seed=0, spp=256, params=None):

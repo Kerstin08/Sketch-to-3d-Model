@@ -15,6 +15,7 @@ class Render:
         self.far_distance = self.distance * 3
         self.cameras = self.__load_cameras(views, fov, dim)
         self.emitter = self.__load_emitter()
+        self.dim = dim
 
     def __load_emitter(self):
         return create_scenedesc.create_emitter()

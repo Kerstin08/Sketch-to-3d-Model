@@ -1,8 +1,5 @@
 import argparse
-import json
 import os
-import sys
-
 import numpy as np
 
 from source.render.render_direct import Direct
@@ -19,13 +16,13 @@ def run(render_type, line_gen_str, input_path, output_dirs, output_name, views):
 
     line_gen = bool_parse.parse(line_gen_str)
     if render_type == "aov" or render_type == "combined":
-        renders_aov = AOV(views)
+        renders_aov = AOV(views, dim=64)
         scenes_aov = renders_aov.create_scene(input_path)
         count = 0
         for scene in scenes_aov:
-            depth = np.array(renders_aov.render_depth(scene, input_path))
-            normal = np.array(renders_aov.render_normal(scene, input_path))
-            silhouette = np.array(renders_aov.render_silhouette(scene, input_path))
+            depth = np.array(renders_aov.render_depth(scene, input_path, spp=8))
+            normal = np.array(renders_aov.render_normal(scene, input_path, spp=8))
+            silhouette = np.array(renders_aov.render_silhouette(scene, input_path, spp=8))
             save_renderings.save_png(depth, output_dirs, str(count) + "_" + output_name, data_type.Type.depth)
             save_renderings.save_png(normal, output_dirs, str(count) + "_" + output_name, data_type.Type.normal)
             save_renderings.save_png(silhouette*255, output_dirs, str(count) + "_" + output_name)
@@ -74,7 +71,7 @@ def main(args):
     parser.add_argument("--line_gen", type=str, default="True", help="if sketch should be generated; use \"True\" or \"False\" as parameter")
     parser.add_argument("--input_path", default='..\\..\\resources\\thingi10k\\0_499\\32770.ply', type=str, help="path to input model")
     parser.add_argument("--output_dirs", type=dict, default={'nn': '..\\..\\output', 'dd.y': '..\\..\\output', "dd_png": '..\\..\\output', "nn_png": '..\\..\\output', 'default': '..\\..\\output', 'sketch': '..\\..\\output'}, help="directories to save renderings")
-    parser.add_argument("--output_name", type=str, default="04256520_e78c23ab7426227b4b3c42e318f3affc_sketch", help="Name of output images")
+    parser.add_argument("--output_name", type=str, default="output_8", help="Name of output images")
     parser.add_argument("--views", type=list, default=[(225, 30)], help="define rendering view angles")
     args = parser.parse_args(args)
     diff_ars(args)
@@ -82,7 +79,7 @@ def main(args):
 if __name__ == '__main__':
     output_dirs = {'nn': '..\\..\\output', 'dd.y': '..\\..\\output', "dd_png": '..\\..\\output', "nn_png": '..\\..\\output', 'default': '..\\..\\output', 'sketch': '..\\..\\output'}
     params = [
-        '--render_type', 'kato',
-        '--input_path', r'C:\Users\Kerstin\Documents\MasterThesis\masterthesis_hofer_kerstin\resources\eval\Comparison\meshes\04090263_d400c42c4c4b3ec1589c07868201b17e_sketch.ply',
+        '--render_type', 'aov',
+        '--input_path', r'C:\Users\Kerstin\Documents\MasterThesis\masterthesis_hofer_kerstin\resources\eval\Comparison\meshes\02691156_e09c32b947e33f619ba010ddb4974fe.ply',
         ]
     main(params)
