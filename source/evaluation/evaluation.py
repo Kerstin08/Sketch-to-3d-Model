@@ -20,7 +20,7 @@ from source.util import mesh_preprocess_operations
 def sample_mesh(mesh_file, num_samples, rejection_radius=None):
     try:
         mesh = trimesh.load(mesh_file)
-        # Todo: try with and without preprocess to see what brings better results
+        # Scale and translate mesh to unify meshes for comparison
         mesh = mesh_preprocess_operations.normalize_mesh(mesh)
         mesh = mesh_preprocess_operations.translate_to_origin(mesh)
     except:
@@ -222,14 +222,14 @@ def main(args):
     parser = argparse.ArgumentParser(prog="evaluation")
     parser.add_argument("--input_dir", type=str, default="", help="Directory that holds predicted meshes.")
     parser.add_argument("--comp_dir", type=str, default='..\\..\\resources\\topology_meshes', help="Directory that holds ground truth meshes.")
-    parser.add_argument("--output_dir", type=str, default='..\\..\\output\\evaluation_baseline_norm', help="Directory where excel output.")
-    parser.add_argument("--result_headers", type=list, default=["base_line", "genus0", "my_version", "no_depth", "simple"], help="Headers for results in excel file")
+    parser.add_argument("--output_dir", type=str, default='..\\..\\eval\\comparison\\output_eval\\evaluation_baseline_norm', help="Directory where excel output.")
+    parser.add_argument("--result_headers", type=list, default=["64x64", "256x256", "base_line", "kato"], help="Headers for results in excel file")
     args = parser.parse_args(args)
     diff_ars(args)
 
 if __name__ == '__main__':
     params = [
-        '--input_dir', '..\\..\\eval\\ablation\\eval',
-        '--comp_dir', '..\\..\\eval\\ablation\\ground_truth'
+        '--input_dir', '..\\..\\eval\\comparison\\eval',
+        '--comp_dir', '..\\..\\eval\\comparison\\ground_truth'
         ]
     main(params)

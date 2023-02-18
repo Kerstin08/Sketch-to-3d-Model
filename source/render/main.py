@@ -16,7 +16,7 @@ def run(render_type, line_gen_str, input_path, output_dirs, output_name, views):
 
     line_gen = bool_parse.parse(line_gen_str)
     if render_type == "aov" or render_type == "combined":
-        renders_aov = AOV(views, dim=64)
+        renders_aov = AOV(views, dim=256)
         scenes_aov = renders_aov.create_scene(input_path)
         count = 0
         for scene in scenes_aov:
