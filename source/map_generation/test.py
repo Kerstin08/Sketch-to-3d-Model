@@ -1,3 +1,4 @@
+# Setup for testing of map generation
 import os.path
 import source.map_generation.map_generation as map_generation
 import torch
@@ -13,7 +14,7 @@ from source.util import dir_utils
 
 def test(input_dir, output_dir, logs_dir,
          type, generated_model_path, devices=1,
-         shapenet=False):
+         use_shapenet=False):
     if len(input_dir) <= 0 or not os.path.exists(input_dir):
         raise Exception("Input directory: {} is not given or does not exist!".format(input_dir))
     if len(logs_dir) <= 0:
@@ -21,28 +22,28 @@ def test(input_dir, output_dir, logs_dir,
     logs_dir_name = "testModel"
     # Use general folder instead of logs dir since pytorch already takes care of folder versioning.
     dir_utils.create_general_folder(os.path.join(logs_dir, logs_dir_name))
-    sketch_dir = os.path.join(input_dir, "sketch_map_generation")
-    target_dir = os.path.join(input_dir, "target_map_generation")
+    sketch_dir = os.path.join(input_dir, 'sketch_map_generation')
+    target_dir = os.path.join(input_dir, 'target_map_generation')
     if not os.path.exists(sketch_dir):
         raise Exception("Sketch dir: {} does not exists!".format(sketch_dir))
-    test_dir_sketch = os.path.join(sketch_dir, "test")
-    test_dir_target = os.path.join(target_dir, "test")
+    test_dir_sketch = os.path.join(sketch_dir, 'test')
+    test_dir_target = os.path.join(target_dir, 'test')
 
-    if type == "depth":
+    if type == 'depth':
         given_type = data_type.Type.depth
-    elif type == "normal":
+    elif type == 'normal':
         given_type = data_type.Type.normal
     else:
         raise Exception("Given type should either be \"normal\" or \"depth\"!")
 
     if not os.path.exists(generated_model_path):
-        raise Exception("Generated model paths are not given!")
+        raise Exception("Generated model paths are not given or false!")
     model = map_generation.MapGen.load_from_checkpoint(generated_model_path,
                                                        output_dir=output_dir)
 
-    if shapenet and os.path.exists(test_dir_target):
+    if use_shapenet and os.path.exists(test_dir_target):
         dataSet = dataset_ShapeNet.DS(False, given_type, test_dir_sketch, test_dir_target, full_ds=True)
-    elif shapenet:
+    elif use_shapenet:
         dataSet = dataset_ShapeNet.DS(False, given_type, test_dir_sketch, full_ds=True)
     elif os.path.exists(test_dir_target):
         dataSet = dataset.DS(False, given_type, test_dir_sketch, test_dir_target)

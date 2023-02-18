@@ -1,3 +1,4 @@
+# renderer for line generation using mitsuba direct renderer and opencv
 import cv2 as cv
 import numpy as np
 

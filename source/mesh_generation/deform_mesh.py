@@ -1,3 +1,4 @@
+# mesh deformation module
 import os.path
 
 import drjit as dr
@@ -150,7 +151,7 @@ class MeshGen:
     def write_output_mesh(self, vertex_count, vertex_positions, face_count, faces, failed_deform=False):
         output_name = self.output_name
         if failed_deform:
-            output_name = output_name + "_failed"
+            output_name = output_name + '_failed'
         mesh = mi.Mesh(
             output_name,
             vertex_count=vertex_count,
@@ -160,14 +161,14 @@ class MeshGen:
         )
 
         mesh_params = mi.traverse(mesh)
-        mesh_params["vertex_positions"] = dr.ravel(vertex_positions)
-        mesh_params["faces"] = dr.ravel(faces)
+        mesh_params['vertex_positions'] = dr.ravel(vertex_positions)
+        mesh_params['faces'] = dr.ravel(faces)
         mesh_params.update()
-        output_path = os.path.join(self.output_dir, "{}.ply".format(output_name))
+        output_path = os.path.join(self.output_dir, '{}.ply'.format(output_name))
         mesh.write_ply(output_path)
 
         if not failed_deform and self.eval_dir is not None:
-            output_path = os.path.join(self.eval_dir, "{}.ply".format(output_name))
+            output_path = os.path.join(self.eval_dir, '{}.ply'.format(output_name))
             mesh.write_ply(output_path)
 
     # Use torch arithmetic function since dr.sum reduces tensors always over dim 0
@@ -184,21 +185,21 @@ class MeshGen:
         return x
 
     def deform_mesh(self, normal_map_target, depth_map_target, silhouette_target, basic_mesh):
-        self.write_output_renders(normal_map_target, depth_map_target, silhouette_target, "target_images")
+        self.write_output_renders(normal_map_target, depth_map_target, silhouette_target, 'target_images')
         self.log_hparams()
 
         scene = self.renderer.create_scene(basic_mesh)[0]
         normal_img_init = self.renderer.render_normal(scene, basic_mesh)
         depth_img_init = self.renderer.render_depth(scene, basic_mesh)
         silhouette_img_init = self.renderer.render_silhouette(scene, basic_mesh)
-        self.write_output_renders(normal_img_init, depth_img_init, silhouette_img_init, "init_images")
+        self.write_output_renders(normal_img_init, depth_img_init, silhouette_img_init, 'init_images')
 
         params = mi.traverse(scene)
         print(params)
-        vertex_positions_str = "shape.vertex_positions"
-        vertex_count_str = "shape.vertex_count"
-        face_str = "shape.faces"
-        face_count_str = "shape.face_count"
+        vertex_positions_str = 'shape.vertex_positions'
+        vertex_count_str = 'shape.vertex_count'
+        face_str = 'shape.faces'
+        face_count_str = 'shape.face_count'
         initial_vertex_positions = dr.unravel(mi.Point3f, params[vertex_positions_str])
         face_indices = dr.unravel(mi.Point3i, params[face_str])
 
@@ -226,7 +227,7 @@ class MeshGen:
                 raise Exception("Normal rendering contains nan!")
 
             if epoch % self.log_frequency == 0 or epoch == epoch - 1:
-                image_name = "deformed_images" + str(epoch)
+                image_name = 'deformed_images' + str(epoch)
                 self.write_output_renders(normal_img, depth_img, silhouette_img, image_name)
 
             if self.use_depth:
@@ -272,20 +273,20 @@ class MeshGen:
             dr.backward(loss)
 
             opt.step()
-            self.writer.add_scalar("loss", loss[0], epoch)
-            self.writer.add_scalar("loss_normal", normal_loss[0], epoch)
-            self.writer.add_scalar("loss_edge", edge_loss[0], epoch)
-            self.writer.add_scalar("loss_smoothness", smoothness_loss[0], epoch)
-            self.writer.add_scalar("loss_silhouette", silhouette_loss[0], epoch)
+            self.writer.add_scalar('loss', loss[0], epoch)
+            self.writer.add_scalar('loss_normal', normal_loss[0], epoch)
+            self.writer.add_scalar('loss_edge', edge_loss[0], epoch)
+            self.writer.add_scalar('loss_smoothness', smoothness_loss[0], epoch)
+            self.writer.add_scalar('loss_silhouette', silhouette_loss[0], epoch)
 
-            self.writer.add_scalar("loss_normal_weighted", normal_loss[0] * self.weight_normal, epoch)
-            self.writer.add_scalar("loss_edge_weighted", edge_loss[0] * self.weight_edge, epoch)
-            self.writer.add_scalar("loss_smoothness_weighted", smoothness_loss[0] * self.weight_smoothness, epoch)
-            self.writer.add_scalar("loss_silhouette_weighted", silhouette_loss[0] * self.weight_silhouette, epoch)
+            self.writer.add_scalar('loss_normal_weighted', normal_loss[0] * self.weight_normal, epoch)
+            self.writer.add_scalar('loss_edge_weighted', edge_loss[0] * self.weight_edge, epoch)
+            self.writer.add_scalar('loss_smoothness_weighted', smoothness_loss[0] * self.weight_smoothness, epoch)
+            self.writer.add_scalar('loss_silhouette_weighted', silhouette_loss[0] * self.weight_silhouette, epoch)
 
             if self.use_depth:
-                self.writer.add_scalar("loss_depth", depth_loss[0], epoch)
-                self.writer.add_scalar("loss_depth_weighted", depth_loss[0] * self.weight_depth, epoch)
+                self.writer.add_scalar('loss_depth', depth_loss[0], epoch)
+                self.writer.add_scalar('loss_depth_weighted', depth_loss[0] * self.weight_depth, epoch)
                 print(
                     "Epochs {}: error={} loss_normal={} loss_depth={} loss_edge={} loss_smoothness={} "
                     "loss_silhouette={}".format(

@@ -1,3 +1,4 @@
+# Utils to work with OpenEXR files
 import OpenEXR
 import Imath
 import numpy as np

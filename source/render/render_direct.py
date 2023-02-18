@@ -1,3 +1,4 @@
+# renderer that utilizes mitsuba direct renderer
 from source.render.render_base import Render
 import source.render.mi_create_scenedesc as create_scenedesc
 
@@ -8,8 +9,8 @@ mi.set_variant('cuda_ad_rgb')
 
 
 class Direct(Render):
-    def __init__(self, views, fov=50, dim=256, emitter_samples=4):
-        Render.__init__(self, views, fov, dim)
+    def __init__(self, views, fov=50, dim=256, emitter_samples=4, nmr=False):
+        Render.__init__(self, views, fov, dim, nmr)
         self._integrator_lodaded = self.__load_integrator(emitter_samples)
 
     def __load_integrator(self, emiiter_samples):

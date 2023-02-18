@@ -1,3 +1,4 @@
+# Preprocess operations for sketches
 import os
 import numpy as np
 from PIL import Image
@@ -9,8 +10,8 @@ bounds = 0
 
 def load_image(path, pad_image):
     if not os.path.exists(path):
-        raise Exception('File not found "{}".'.format(path))
-    image = Image.open(path).convert("L")
+        raise Exception("File not found {}.".format(path))
+    image = Image.open(path).convert('L')
     image_arr = np.asarray(image).copy()
     if pad_image:
         image_arr = np.pad(image_arr, 1, mode='constant', constant_values=255)

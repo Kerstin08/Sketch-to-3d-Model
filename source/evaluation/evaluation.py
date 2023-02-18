@@ -1,5 +1,6 @@
 # Code provided by Philipp Erler
 # Code slightly adapted for this thesis
+# computing IoU and Chamfer distance for given models
 import argparse
 
 import numpy as np
@@ -132,7 +133,7 @@ def make_excel_file_comparison(cd_pred_list, human_readable_results, output_file
         f = open(output_file, 'w')
         f.close()
     except:
-        raise OSError('File {} is already open'.format(output_file))
+        raise OSError("File {} is already open".format(output_file))
 
     # one shape per line, dataset per column
     cd_pred = np.array(cd_pred_list).transpose()
@@ -225,10 +226,10 @@ def diff_ars(args):
 def main(args):
     parser = argparse.ArgumentParser(prog="evaluation")
     parser.add_argument("--input_dir", type=str, default="", help="Directory that holds predicted meshes.")
-    parser.add_argument("--comp_dir", type=str, default='..\\..\\resources\\topology_meshes',
+    parser.add_argument("--comp_dir", type=str, default="..\\..\\resources\\topology_meshes",
                         help="Directory that holds ground truth meshes.")
     parser.add_argument("--output_dir", type=str,
-                        default='..\\..\\eval\\comparison\\output_eval\\evaluation_baseline_norm',
+                        default="..\\..\\eval\\comparison\\output_eval\\evaluation_baseline_norm",
                         help="Directory where excel output.")
     parser.add_argument("--result_headers", type=list, default=["64x64", "256x256", "base_line", "kato"],
                         help="Headers for results in excel file")
@@ -237,8 +238,4 @@ def main(args):
 
 
 if __name__ == '__main__':
-    params = [
-        '--input_dir', '..\\..\\eval\\comparison\\eval',
-        '--comp_dir', '..\\..\\eval\\comparison\\ground_truth'
-    ]
-    main(params)
+    main(sys.argv[1:])

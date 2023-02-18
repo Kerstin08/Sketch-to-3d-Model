@@ -1,8 +1,10 @@
+# Determination of Euler
+
 def get_number_holes(image):
     matches_Q1, matches_Q3, matches_QD = compute_matches_Q(image)
     # invert Q3 and Q1 since in this case black is object instead of white
-
     euler = matches_Q3 - matches_Q1 - 2 * matches_QD
+    # C is always 1 since we assume only 1 object in the sketch
     return 1 - int(euler / 4)
 
 

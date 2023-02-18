@@ -1,3 +1,4 @@
+# 8-connected stack-based floodfill to preprocess for hole determination and create silhouette image
 import os.path
 from PIL import Image
 from collections import deque
@@ -20,13 +21,13 @@ def startFill(image, image_path, output_dir, write_debug_png=True):
 
     image = sketch_utils.unpad(image, 1)
     filename = Path(image_path)
-    exr_path = os.path.join(output_dir, filename.stem + "_filled.exr")
+    exr_path = os.path.join(output_dir, filename.stem + '_filled.exr')
     OpenEXR_utils.writeImage(image, data_type.Type.silhouette, exr_path)
 
     if write_debug_png:
         image_png = image * 255
-        filled_image = Image.fromarray(image_png).convert("RGB")
-        png_path = os.path.join(output_dir, filename.stem + "_filled.png")
+        filled_image = Image.fromarray(image_png).convert('RGB')
+        png_path = os.path.join(output_dir, filename.stem + '_filled.png')
         filled_image.save(png_path)
 
     return image, exr_path

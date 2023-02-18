@@ -1,3 +1,4 @@
+# renderer that utilizes custom silhouette, normal and depth renderer
 import mitsuba as mi
 import drjit as dr
 

@@ -1,3 +1,4 @@
+# neural network for map generation
 import os
 import torch
 import pytorch_lightning as pl
@@ -52,7 +53,7 @@ class MapGen(pl.LightningModule):
         d_loss_fake = torch.mean(pred_false)
         pixelwise_loss = self.L1(fake_images, sample_batched['target'])
         g_loss = -d_loss_fake + pixelwise_loss * self.weight_L1
-        self.log("g_loss", float(g_loss.item()), on_epoch=False, prog_bar=True)
+        self.log('g_loss', float(g_loss.item()), on_epoch=False, prog_bar=True)
         return g_loss
 
     def gradient_penalty(self, real_images, fake_images):
@@ -84,9 +85,9 @@ class MapGen(pl.LightningModule):
 
         # loss as defined by Wasserstein paper
         d_loss = -d_loss_real + d_loss_fake + self.gradient_penalty_coefficient * gradient_penalty
-        self.log("d_loss", float(d_loss.item()), on_epoch=False, prog_bar=True)
-        self.log("d_loss_real", float(d_loss_real.item()), on_epoch=False, prog_bar=True)
-        self.log("d_loss_fake", float(d_loss_fake.item()), on_epoch=False, prog_bar=True)
+        self.log('d_loss', float(d_loss.item()), on_epoch=False, prog_bar=True)
+        self.log('d_loss_real', float(d_loss_real.item()), on_epoch=False, prog_bar=True)
+        self.log('d_loss_fake', float(d_loss_fake.item()), on_epoch=False, prog_bar=True)
 
         return d_loss
 
@@ -102,7 +103,7 @@ class MapGen(pl.LightningModule):
     def validation_step(self, sample_batched, batch_idx):
         predicted_image = self(sample_batched)
         pixelwise_loss = self.L1(predicted_image, sample_batched['target'])
-        self.log("val_loss", pixelwise_loss.item(), batch_size=self.batch_size, sync_dist=True)
+        self.log('val_loss', pixelwise_loss.item(), batch_size=self.batch_size, sync_dist=True)
         target_norm = (sample_batched['target'] + 1) / 2
         predicted_list = predicted_image[:6]
         transformed_images = []
@@ -116,12 +117,12 @@ class MapGen(pl.LightningModule):
 
         grid = torchvision.utils.make_grid(transformed_images)
         logger = self.logger.experiment
-        image_name_pred = str(self.global_step) + "generated_and_target_images"
+        image_name_pred = str(self.global_step) + 'generated_and_target_images'
         logger.add_image(image_name_pred, grid, 0)
 
     def test_step(self, sample_batched, batch_idx):
         predicted_image = self(sample_batched)
-        imagename = Path(sample_batched['input_path'][0]).stem.rsplit("_", 1)[0]
+        imagename = Path(sample_batched['input_path'][0]).stem.rsplit('_', 1)[0]
         predicted_image_norm = (predicted_image + 1.0) * 127.5
         if 'target' in sample_batched:
             target_image_norm = (sample_batched['target'] + 1.0) * 127.5
@@ -134,14 +135,14 @@ class MapGen(pl.LightningModule):
             img = Image.fromarray(temp.transpose(1, 2, 0))
         else:
             img = Image.fromarray(temp)
-        image_path = os.path.join(self.output_dir, imagename + "_pred.png")
+        image_path = os.path.join(self.output_dir, imagename + '_pred.png')
         img.save(image_path)
 
         if self.data_type == data_type.Type.normal:
             predicted_image = torch.permute(predicted_image, (0, 2, 3, 1))
             OpenEXR_utils.writeImage(predicted_image, self.data_type,
-                                     os.path.join(self.output_dir, imagename + "_normal.exr"))
+                                     os.path.join(self.output_dir, imagename + '_normal.exr'))
         else:
             predicted_image = (predicted_image + 1) / 2
             OpenEXR_utils.writeImage(predicted_image, self.data_type,
-                                     os.path.join(self.output_dir, imagename + "_depth.exr"))
+                                     os.path.join(self.output_dir, imagename + '_depth.exr'))

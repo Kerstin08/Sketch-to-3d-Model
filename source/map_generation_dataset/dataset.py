@@ -1,3 +1,4 @@
+# Dataset for Thingy10k/ABC data
 import os
 import torch
 from torchvision import transforms
@@ -9,7 +10,7 @@ from source.util import OpenEXR_utils
 
 
 class DS(Dataset):
-    def __init__(self, train, input_type, dir_input, dir_target=""):
+    def __init__(self, train, input_type, dir_input, dir_target=''):
         self.data_type = input_type
         self.train = train
         self.dir_input = dir_input
@@ -22,22 +23,22 @@ class DS(Dataset):
         return self.dir_target
 
     @dir_target.setter
-    def dir_target(self, dir_target=""):
+    def dir_target(self, dir_target=''):
         if self.train:
             self._dir_target = dir_target
         else:
-            self._dir_target = ""
+            self._dir_target = ''
 
     @property
     def image_paths_target(self):
         return self._image_paths_target
 
     @image_paths_target.setter
-    def image_paths_target(self, dir_target=""):
+    def image_paths_target(self, dir_target=''):
         if self.train:
             self._image_paths_target = sorted(self.create_dataSet(dir_target))
         else:
-            self._image_paths_target = ""
+            self._image_paths_target = ''
 
     def __len__(self):
         # return only length of one of the dirs since we want to iterate over both dirs at the same time and this
@@ -57,9 +58,9 @@ class DS(Dataset):
         # input is sketch, therefore png file
         input_path = self.image_paths_input[index]
         if self.data_type == data_type.Type.normal:
-            input_image = Image.open(input_path).convert("RGB")
+            input_image = Image.open(input_path).convert('RGB')
         else:
-            input_image = Image.open(input_path).convert("L")
+            input_image = Image.open(input_path).convert('L')
         transform = transforms.PILToTensor()
         input_image_tensor = transform(input_image).float() / 127.5 - 1.
 

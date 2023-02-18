@@ -1,3 +1,5 @@
+# Triangle mesh preprocess operations
+import sys
 import trimesh
 import math
 import numpy as np
@@ -14,7 +16,8 @@ def preprocess(path, shapenet=False):
     if not mesh.area > 0:
         print(str(path) + " contains no usable model!")
         return None
-    # Since data rencostructed form SDF has artifacts the body count is rarely 1, but that does not effect the images
+    # Since data reconstructed form SDF (https://github.com/Xharlie/DISN)
+    # has artifacts the body count is rarely 1, but that does not affect the images
     # too much
     if not shapenet and mesh.body_count > 1:
         print(str(path) + " contains more than one model!")
@@ -31,10 +34,10 @@ def preprocess(path, shapenet=False):
     if shapenet:
         trans_norm_mesh = align_Shapenet(trans_norm_mesh)
 
-    if path.rsplit(".", 1)[1] != "ply":
-        path = path.rsplit(".", 1)[0] + ".ply"
+    if path.rsplit('.', 1)[1] != 'ply':
+        path = path.rsplit('.', 1)[0] + '.ply'
     ply = trimesh.exchange.ply.export_ply(trans_norm_mesh, encoding='binary', include_attributes=False)
-    with open(path, "wb+") as output:
+    with open(path, 'wb+') as output:
         output.write(ply)
     return path
 
@@ -107,7 +110,4 @@ def main(args):
 
 
 if __name__ == '__main__':
-    params = [
-        '--input_mesh', '..\\..\\resources\\thinig10k\\2000_2499\\121396.stl',
-    ]
-    main(params)
+    main(sys.argv[1:])

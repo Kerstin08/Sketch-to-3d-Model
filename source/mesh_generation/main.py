@@ -4,6 +4,7 @@ import os
 
 from source.mesh_generation import deform_mesh
 from source.util import OpenEXR_utils
+from source.util import parse
 from source.util import data_type
 from source.util import dir_utils
 
@@ -65,16 +66,18 @@ def diff_args(args):
 
 def main(args):
     parser = argparse.ArgumentParser(prog="map_generation_dataset")
-    parser.add_argument("--normal_file_path", type=str, help="path to normal map")
-    parser.add_argument("--depth_file_path", type=str, help="path to depth map")
-    parser.add_argument("--silhouette_file_path", type=str, help="path to depth map")
-    parser.add_argument("--base_mesh_path", type=str, help="path to base mesh object")
+    parser.add_argument("--normal_file_path", type=str, default="normal.exr", help="path to normal map")
+    parser.add_argument("--depth_file_path", type=str, default="depth.exr", help="path to depth map")
+    parser.add_argument("--silhouette_file_path", type=str, default="silhouette.exr", help="path to depth map")
+    parser.add_argument("--base_mesh_path", type=str, default="datasets/topology_meshes", help="path to base mesh object")
     parser.add_argument("--output_name", type=str, default="deform_mesh", help="filename of output mesh")
     parser.add_argument("--output_dir", type=str, default="output_dir", help="path to output dir")
     parser.add_argument("--log_dir", type=str, default="logs", help="path to logs dir")
     parser.add_argument("--epoch", type=int, default=40000, help="# of epoch for mesh generation")
     parser.add_argument("--log_frequency", type=int, default=100, help="frequency logs are written")
-    parser.add_argument("--views", type=list, default=[(225, 30)], help="define rendering view angles")
+    parser.add_argument("--view", type=parse.views, default="225, 30", dest="view",
+                        help="define rendering view angles; string with tuples of azimuth and elveation "
+                             "e.g. \"0, 30, 255, 30\"")
     parser.add_argument("--lr", type=float, default=0.0002, help="initial learning rate for mesh generation")
     parser.add_argument("--weight_depth", type=float, default=0.002, help="depth weight")
     parser.add_argument("--weight_normal", type=float, default=0.002, help="normal weight")

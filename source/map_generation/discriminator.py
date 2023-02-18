@@ -1,3 +1,4 @@
+# Discrimiantor (critic) of Neural Network for map generation
 import torch.nn as nn
 
 

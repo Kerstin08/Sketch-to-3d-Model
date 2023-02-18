@@ -1,3 +1,4 @@
+# Generator of Neural Network for map generation
 import torch
 import torch.nn as nn
 

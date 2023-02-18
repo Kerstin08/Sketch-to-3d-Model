@@ -1,3 +1,4 @@
+# base class for all renderers
 import math
 import numpy as np
 import mitsuba as mi
@@ -10,16 +11,17 @@ mi.set_variant('cuda_ad_rgb')
 
 class Render:
     # Load integrators provided by renderer at the beginning of the
-    def __init__(self, views, fov=50, dim=256):
+    def __init__(self, views, fov=50, dim=256, nmr=False):
         self.distance = math.floor(math.tan(math.radians(fov)) / 1.75 * 10) / 10
         self.near_distance = self.distance
         self.far_distance = self.distance * 3
         self.cameras = self.__load_cameras(views, fov, dim)
-        self.emitter = self.__load_emitter()
+        self.emitter = self.__load_emitter(nmr)
         self.dim = dim
+        self.nmr = nmr
 
-    def __load_emitter(self):
-        return create_scenedesc.create_emitter()
+    def __load_emitter(self, nmr):
+        return create_scenedesc.create_emitter(nmr)
 
     # center is assumed to be at 0,0,0, see mesh_preprocess_operations.py translate_to_origin
     # bounding box diagonal is assumed to be 1, see mesh_preprocess_operations.py normalize_mesh
@@ -49,15 +51,15 @@ class Render:
         return cameras
 
     def create_scene(self, input_path):
-        datatype = input_path.rsplit(".", 1)[1]
-        if datatype != "obj" and datatype != "ply":
+        datatype = input_path.rsplit('.', 1)[1]
+        if datatype != 'obj' and datatype != 'ply':
             print("Given datatype cannot be processed, must be either obj or ply type.")
             return
-        shape = create_scenedesc.create_shape(input_path, datatype)
+        shape = create_scenedesc.create_shape(input_path, datatype, self.nmr)
 
         scenes = []
         for camera in self.cameras:
-            scene_desc = {"type": "scene", "shape": shape, "camera": camera, "emitter": self.emitter}
+            scene_desc = {'type': 'scene', 'shape': shape, 'camera': camera, 'emitter': self.emitter}
             # Sometimes mesh data is not incorrect and could not be loaded
             try:
                 scenes.append(mi.load_dict(scene_desc))

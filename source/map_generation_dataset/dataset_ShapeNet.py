@@ -1,3 +1,4 @@
+# Dataset for Shapenet data
 import os
 import torch
 import numpy as np
@@ -10,7 +11,7 @@ from source.util import OpenEXR_utils
 
 
 class DS(Dataset):
-    def __init__(self, train, input_type, dir_input, dir_target="", size=0, full_ds=False):
+    def __init__(self, train, input_type, dir_input, dir_target='', size=0, full_ds=False):
         self.data_type = input_type
         self.train = train
         self.classes = ['03001627', '02691156', '02828884', '02933112', '02958343', '03211117',
@@ -52,11 +53,11 @@ class DS(Dataset):
         return self.dir_target
 
     @dir_target.setter
-    def dir_target(self, dir_target=""):
+    def dir_target(self, dir_target=''):
         if self.train:
             self._dir_target = dir_target
         else:
-            self._dir_target = ""
+            self._dir_target = ''
 
     def __len__(self):
         if self.full_ds:
@@ -77,9 +78,9 @@ class DS(Dataset):
             target_path = self._image_paths_target[current_class][rand_idx]
 
         if self.data_type == data_type.Type.normal:
-            input_image = Image.open(input_path).convert("RGB")
+            input_image = Image.open(input_path).convert('RGB')
         else:
-            input_image = Image.open(input_path).convert("L")
+            input_image = Image.open(input_path).convert('L')
         transform = transforms.PILToTensor()
         input_image_tensor = transform(input_image).float() / 127.5 - 1.
 

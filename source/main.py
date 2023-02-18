@@ -1,3 +1,4 @@
+# Main function to run complete pipeline
 import argparse
 import os
 import sys
@@ -13,7 +14,7 @@ from source.util import dir_utils
 from source.map_generation.test import test
 from source.util import OpenEXR_utils
 from source.util import data_type
-from source.util import bool_parse
+from source.util import parse
 
 
 # Topology (1.a. split input points into different input sketches based on different "classes", which are signaled by
@@ -35,19 +36,19 @@ def topology(sketch_path, genus_dir, output_dir, use_genus0):
 # 2. put cleaned input sketch into trained neural network normal
 # 3. put cleaned input sketch into trained neural network depth
 def map_generation(input_sketch, output_dir, normal_map_gen_model, depth_map_gen_model, log_dir_normal, log_dir_depth):
-    sketch_filepath = os.path.join(output_dir, "sketch_map_generation")
-    sketch_filepath_test = os.path.join(sketch_filepath, "test")
+    sketch_filepath = os.path.join(output_dir, 'sketch_map_generation')
+    sketch_filepath_test = os.path.join(sketch_filepath, 'test')
     if not os.path.exists(sketch_filepath_test):
         dir_utils.create_general_folder(sketch_filepath_test)
     sketch_utils.clean_userinput(input_sketch, sketch_filepath_test)
-    normal_output_path = os.path.join(output_dir, "normal")
+    normal_output_path = os.path.join(output_dir, 'normal')
     if not os.path.exists(normal_output_path):
         dir_utils.create_general_folder(normal_output_path)
-    depth_output_path = os.path.join(output_dir, "depth")
+    depth_output_path = os.path.join(output_dir, 'depth')
     if not os.path.exists(depth_output_path):
         dir_utils.create_general_folder(depth_output_path)
-    test(output_dir, normal_output_path, log_dir_normal, "normal", normal_map_gen_model)
-    test(output_dir, depth_output_path, log_dir_depth, "depth", depth_map_gen_model)
+    test(output_dir, normal_output_path, log_dir_normal, 'normal', normal_map_gen_model)
+    test(output_dir, depth_output_path, log_dir_depth, 'depth', depth_map_gen_model)
     return normal_output_path, depth_output_path
 
 
@@ -73,6 +74,7 @@ def mesh_deformation(output_name, normal_map_path, depth_map_path, silhouette_ma
     # only view resulting images via exr viewer not png generated from save_render, since conversion to unit8 can
     # introduce wrong image values in depth map for whatever reason, which at that resolution is very obvious
     if resize:
+        print("Resize only possible for 64x64 for now, change if different are needed")
         normal_map = cv2.resize(normal_map, dsize=(64, 64), interpolation=cv2.INTER_LANCZOS4)
         depth_map = cv2.resize(depth_map, dsize=(64, 64), interpolation=cv2.INTER_LANCZOS4)
         silhouette_map = cv2.resize(silhouette_map, dsize=(64, 64), interpolation=cv2.INTER_NEAREST)
@@ -84,38 +86,34 @@ def run(input_sketch,
         depth_map_gen_model, normal_map_gen_model,
         epochs_mesh_gen, log_frequency_mesh_gen, lr_mesh_gen,
         weight_depth, weight_normal, weight_smoothness, weight_edge, weight_silhouette, views,
-        use_depth_str, use_genus0_str, eval_dir, resize):
+        use_depth, use_genus0, eval_dir, use_resize):
     for x in (input_sketch, depth_map_gen_model, normal_map_gen_model):
         if not os.path.exists(x):
             raise Exception("{} does not exist".format(x))
 
-    use_depth = bool_parse.parse(use_depth_str)
-    use_genus0 = bool_parse.parse(use_genus0_str)
-    use_resize = bool_parse.parse(resize)
-
     file = Path(input_sketch)
     output_name = file.stem
-    prefix = output_name.rsplit("_", 1)[0]
+    prefix = output_name.rsplit('_', 1)[0]
     output_dir = dir_utils.create_prefix_folder(prefix, output_dir)
     logs_dir = dir_utils.create_prefix_folder(prefix, logs_dir)
     eval_dir = dir_utils.create_general_folder(eval_dir)
 
     determined_basic_mesh, silhouette_map_path = topology(input_sketch, genus_dir, output_dir, use_genus0)
-    logs_map_generation_normal = os.path.join(logs_dir, "map_generation_normal")
+    logs_map_generation_normal = os.path.join(logs_dir, 'map_generation_normal')
     if not os.path.exists(logs_map_generation_normal):
         dir_utils.create_general_folder(logs_map_generation_normal)
-    logs_map_generation_depth = os.path.join(logs_dir, "map_generation_depth")
+    logs_map_generation_depth = os.path.join(logs_dir, 'map_generation_depth')
     if not os.path.exists(logs_map_generation_depth):
         dir_utils.create_general_folder(logs_map_generation_depth)
     normal_output_path, depth_output_path = map_generation(input_sketch, output_dir, normal_map_gen_model,
                                                            depth_map_gen_model,
                                                            logs_map_generation_normal, logs_map_generation_depth)
 
-    logs_meshGen = os.path.join(logs_dir, "mesh_generation")
+    logs_meshGen = os.path.join(logs_dir, 'mesh_generation')
     if not os.path.exists(logs_meshGen):
         dir_utils.create_general_folder(logs_meshGen)
-    normal_map = os.path.join(normal_output_path, "{}_normal.exr".format(prefix))
-    depth_map = os.path.join(depth_output_path, "{}_depth.exr".format(prefix))
+    normal_map = os.path.join(normal_output_path, '{}_normal.exr'.format(prefix))
+    depth_map = os.path.join(depth_output_path, '{}_depth.exr'.format(prefix))
     mesh_deformation(prefix, normal_map, depth_map, silhouette_map_path, determined_basic_mesh, output_dir, logs_meshGen,
                      weight_depth, weight_normal, weight_smoothness, weight_silhouette, weight_edge,
                      epochs_mesh_gen, log_frequency_mesh_gen, lr_mesh_gen, views, use_depth, eval_dir, use_resize)
@@ -165,18 +163,19 @@ def main(args):
     parser.add_argument("--weight_smoothness", type=float, default=0.02, help="smoothness weight")
     parser.add_argument("--weight_edge", type=float, default=0.9, help="edge weight")
     parser.add_argument("--weight_silhouette", type=float, default=0.9, help="silhouette weight")
-    parser.add_argument("--views", type=list, default=[(225, 30)], help="define rendering view angles")
+    parser.add_argument("--view", type=parse.views, default="225, 30", dest="view",
+                        help="define rendering view angles; string with tuples of azimuth and elveation "
+                             "e.g. \"0, 30, 255, 30\"")
     # For ablation study
-    # If using via command line for false add "" instead of false since that for some reason can cause problems
-    parser.add_argument("--use_depth", type=str, default="True",
+    parser.add_argument("--use_depth", type=parse.bool, default="True",
                         help="Use depth loss for mesh deformation; use \"True\" or \"False\" as parameter")
-    parser.add_argument("--use_genus0", type=str, default="False",
+    parser.add_argument("--use_genus0", type=parse.bool, default="False",
                         help="Use base mesh genus 0 regardless for every given shape; use \"True\" or \"False\" as parameter")
     # Additional directory to store created meshes in for easier evaluation
     parser.add_argument("--eval_dir", type=str, default="eval",
                         help="Additional directory to store only mesh for evaluation")
     # Use for comparison since Neural mesh renderer works with 64x64 images
-    parser.add_argument("--resize", type=str, default="False",
+    parser.add_argument("--resize", type=parse.bool, default="False",
                         help="Whether or not normal and depth map should be resized to 64x64")
     args = parser.parse_args(args)
     diff_ars(args)

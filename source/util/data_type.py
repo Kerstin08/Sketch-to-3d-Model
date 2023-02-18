@@ -1,3 +1,4 @@
+# Datatype to differentiate between given images by type
 from enum import Enum
 
 
