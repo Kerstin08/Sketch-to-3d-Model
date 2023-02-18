@@ -10,8 +10,8 @@ from source.util import OpenEXR_utils
 
 
 class DS(Dataset):
-    def __init__(self, train, type,  dir_input, dir_target="", size=0, full_ds=False):
-        self.data_type = type
+    def __init__(self, train, input_type, dir_input, dir_target="", size=0, full_ds=False):
+        self.data_type = input_type
         self.train = train
         self.classes = ['03001627', '02691156', '02828884', '02933112', '02958343', '03211117',
                         '03636649', '03691459', '04090263',

@@ -1,6 +1,7 @@
 import os
 import json
 
+
 def get_basic_mesh_path(number_holes, path=""):
     if not os.path.exists(path):
         raise Exception("Given genus dir path {} does not exits.".format(path))
@@ -19,4 +20,7 @@ def get_basic_mesh_path(number_holes, path=""):
                 if not os.path.exists(path):
                     raise Exception("No base mesh exists in {} for given genus {}".format(path, number_holes))
                 return path
-    raise Exception("No base mesh exists for given genus {} or json file basic_meshes.json matching genera to filenames does not exist! ".format(number_holes))
+    raise Exception(
+        "No base mesh exists for given genus {} or json file basic_meshes.json matching genera to filenames does not "
+        "exist! ".format(
+            number_holes))

@@ -17,6 +17,7 @@ import trimesh.sample
 from source.util import dir_utils
 from source.util import mesh_preprocess_operations
 
+
 def sample_mesh(mesh_file, num_samples, rejection_radius=None):
     try:
         mesh = trimesh.load(mesh_file)
@@ -27,6 +28,7 @@ def sample_mesh(mesh_file, num_samples, rejection_radius=None):
         return np.zeros((0, 3))
     samples, face_indices = trimesh.sample.sample_surface_even(mesh, num_samples, rejection_radius)
     return samples
+
 
 def chamfer_distance(file_in, file_ref, samples_per_model, num_processes=1):
     # http://graphics.stanford.edu/courses/cs468-17-spring/LectureSlides/L14%20-%203d%20deep%20learning%20on%20point%20cloud%20representation%20(analysis).pdf
@@ -51,12 +53,13 @@ def chamfer_distance(file_in, file_ref, samples_per_model, num_processes=1):
 
     return file_in, file_ref, chamfer_dist
 
-def get_signed_distance_pysdf(in_mesh: trimesh.Trimesh, query_pts_ms: np.ndarray):
 
+def get_signed_distance_pysdf(in_mesh: trimesh.Trimesh, query_pts_ms: np.ndarray):
     sdf = SDF(in_mesh.vertices, in_mesh.faces)
     dists_ms = sdf(query_pts_ms)
 
     return dists_ms
+
 
 def intersection_over_union(file_in, file_ref, num_samples, num_dims=3):
     # https://learnopencv.com/intersection-over-union-iou-in-object-detection-and-segmentation/
@@ -88,12 +91,9 @@ def intersection_over_union(file_in, file_ref, num_samples, num_dims=3):
 
     return file_in, file_ref, iou
 
-# Important -> which metric chamfer distance per kd tree point in other mesh sum
-# iou zufälliges mesh, bounding box 1, nicht so efficient
-# result/{.ply
-# num_samples ein paar seconds pro vergleich, ergebnisse um ein paar procent varianz
+
 def get_metric_mesh(pmf, shape_list: list,
-gt_mesh_files: list, num_samples: int,
+                    gt_mesh_files: list, num_samples: int,
                     metric: typing.Literal['chamfer', 'iou'] = 'chamfer') \
         -> typing.Iterable[np.ndarray]:
     cd_list = []
@@ -118,6 +118,7 @@ gt_mesh_files: list, num_samples: int,
             raise NotImplementedError()
         cd_list.append(metric_result)
     return cd_list
+
 
 def make_excel_file_comparison(cd_pred_list, human_readable_results, output_file, result_file_templates, val_set,
                                low_metrics_better=True):
@@ -176,11 +177,11 @@ def make_excel_file_comparison(cd_pred_list, human_readable_results, output_file
     ws.cell(row=bottom_row + 1, column=2).value = 'AVG'
     wb.save(output_file)
 
+
 def make_quantitative_comparison(
         shape_names: typing.Sequence[str], gt_mesh_files: typing.Sequence[str],
         result_headers: typing.Sequence[str], result_file_templates: typing.Sequence[str],
         comp_output_dir: str, num_samples=10000):
-
     iou_pred_list = []
     cd_pred_list = []
     for pmf in result_file_templates:
@@ -195,6 +196,7 @@ def make_quantitative_comparison(
     make_excel_file_comparison(cd_pred_list, result_headers, cd_output_file, result_file_templates, shape_names)
 
     return cd_pred_list, iou_pred_list
+
 
 def run(input_dir, comp_dir, output_dir, result_headers):
     if not os.path.exists(input_dir) or not os.path.exists(comp_dir):
@@ -215,21 +217,28 @@ def run(input_dir, comp_dir, output_dir, result_headers):
     dir_utils.create_general_folder(output_dir)
     make_quantitative_comparison(input_files, comp_files, result_headers, result_file_templates, output_dir)
 
+
 def diff_ars(args):
     run(args.input_dir, args.comp_dir, args.output_dir, args.result_headers)
+
 
 def main(args):
     parser = argparse.ArgumentParser(prog="evaluation")
     parser.add_argument("--input_dir", type=str, default="", help="Directory that holds predicted meshes.")
-    parser.add_argument("--comp_dir", type=str, default='..\\..\\resources\\topology_meshes', help="Directory that holds ground truth meshes.")
-    parser.add_argument("--output_dir", type=str, default='..\\..\\eval\\comparison\\output_eval\\evaluation_baseline_norm', help="Directory where excel output.")
-    parser.add_argument("--result_headers", type=list, default=["64x64", "256x256", "base_line", "kato"], help="Headers for results in excel file")
+    parser.add_argument("--comp_dir", type=str, default='..\\..\\resources\\topology_meshes',
+                        help="Directory that holds ground truth meshes.")
+    parser.add_argument("--output_dir", type=str,
+                        default='..\\..\\eval\\comparison\\output_eval\\evaluation_baseline_norm',
+                        help="Directory where excel output.")
+    parser.add_argument("--result_headers", type=list, default=["64x64", "256x256", "base_line", "kato"],
+                        help="Headers for results in excel file")
     args = parser.parse_args(args)
     diff_ars(args)
+
 
 if __name__ == '__main__':
     params = [
         '--input_dir', '..\\..\\eval\\comparison\\eval',
         '--comp_dir', '..\\..\\eval\\comparison\\ground_truth'
-        ]
+    ]
     main(params)

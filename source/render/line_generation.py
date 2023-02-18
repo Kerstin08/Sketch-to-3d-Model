@@ -3,7 +3,8 @@ import numpy as np
 
 from source.render.render_direct import Direct
 
-class LineGen():
+
+class LineGen:
     def __init__(self, views, fov=50, dim_int_width=1024, dim_final=256, emitter_samples=4):
         self.renderer = Direct(views, fov, dim_int_width, emitter_samples)
         self.dim_final = dim_final

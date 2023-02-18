@@ -5,16 +5,18 @@ from torch.utils.data import DataLoader
 from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.trainer import Trainer
+
 from source.map_generation_dataset import dataset
 from source.map_generation_dataset import dataset_ShapeNet
 from source.util import data_type
 from source.util import dir_utils
-def train(input_dir, output_dir, logs_dir, checkpoint_dir,
-        type, epochs, lr, batch_size, n_critic, weight_L1,
-        gradient_penalty_coefficient, log_frequency,
-        use_generated_model=False, generated_model_path="", devices=1,
-        shapenet=False, shapenet_train_size=200):
 
+
+def train(input_dir, output_dir, logs_dir, checkpoint_dir,
+          type, epochs, lr, batch_size, n_critic, weight_L1,
+          gradient_penalty_coefficient, log_frequency,
+          use_generated_model=False, generated_model_path="", devices=1,
+          shapenet=False, shapenet_train_size=200):
     sketch_dir = os.path.join(input_dir, "sketch_map_generation")
     target_dir = os.path.join(input_dir, "target_map_generation")
     if not os.path.exists(sketch_dir) or not os.path.exists(target_dir):
@@ -84,11 +86,13 @@ def train(input_dir, output_dir, logs_dir, checkpoint_dir,
     if shapenet:
         # Compute train, validation split based on ratio used by Kato et al. (Neural mesh renderer)
         split_train, split_val = 87.5, 12.5
-        split_train_val = shapenet_train_size/split_train * 100
+        split_train_val = shapenet_train_size / split_train * 100
         shapenet_val_size = int(split_train_val * 12.5 / 100)
-        print ("Validation size {0}".format(shapenet_val_size))
-        dataSet_train = dataset_ShapeNet.DS(True, given_type, sketch_train_dir, target_train_dir, size=shapenet_train_size, full_ds=False)
-        dataSet_val = dataset_ShapeNet.DS(True, given_type, sketch_val_dir, target_val_dir, size=shapenet_val_size, full_ds=False)
+        print("Validation size {0}".format(shapenet_val_size))
+        dataSet_train = dataset_ShapeNet.DS(True, given_type, sketch_train_dir, target_train_dir,
+                                            size=shapenet_train_size, full_ds=False)
+        dataSet_val = dataset_ShapeNet.DS(True, given_type, sketch_val_dir, target_val_dir, size=shapenet_val_size,
+                                          full_ds=False)
         dataSet_test = dataset_ShapeNet.DS(True, given_type, sketch_test_dir, target_test_dir, full_ds=True)
     else:
         dataSet_train = dataset.DS(True, given_type, sketch_train_dir, target_train_dir)
@@ -111,7 +115,6 @@ def train(input_dir, output_dir, logs_dir, checkpoint_dir,
                       strategy=strategy,
                       log_every_n_steps=log_frequency)
 
-
     dataloader_train = DataLoader(dataSet_train, batch_size=batch_size,
                                   shuffle=True, num_workers=48)
     dataloader_vaild = DataLoader(dataSet_val, batch_size=batch_size,
@@ -119,5 +122,5 @@ def train(input_dir, output_dir, logs_dir, checkpoint_dir,
     trainer.fit(model, dataloader_train, dataloader_vaild)
 
     dataloader_test = DataLoader(dataSet_test, batch_size=1,
-                                  shuffle=False, num_workers=48)
+                                 shuffle=False, num_workers=48)
     trainer.test(model, dataloader_test)

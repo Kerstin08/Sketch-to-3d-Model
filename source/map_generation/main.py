@@ -1,4 +1,6 @@
 import argparse
+import sys
+
 from source.map_generation.test import test
 from source.map_generation.train import train
 from source.util import dir_utils
@@ -20,11 +22,12 @@ def run(train_b_str, input_dir, output_dir, logs_dir, checkpoint_dir,
 
     if train_b:
         train(input_dir, output_dir, logs_dir, checkpoint_dir,
-        type, epochs, lr, batch_size, n_critic, weight_L1,
-        gradient_penalty_coefficient, log_frequency, use_generated_model, generated_model_path, devices,
-        shapenet_b, shapenet_train_size)
+              type, epochs, lr, batch_size, n_critic, weight_L1,
+              gradient_penalty_coefficient, log_frequency, use_generated_model, generated_model_path, devices,
+              shapenet_b, shapenet_train_size)
     else:
         test(input_dir, output_dir, logs_dir, type, generated_model_path, 1, shapenet_b)
+
 
 def diff_args(args):
     run(args.train,
@@ -49,7 +52,8 @@ def diff_args(args):
 
 def main(args):
     parser = argparse.ArgumentParser(prog="map_generation_dataset")
-    parser.add_argument("--train", type=str, default="True", help="If training should be executed, otherwise test is run; use \"True\" or \"False\" as parameter")
+    parser.add_argument("--train", type=str, default="True",
+                        help="If training should be executed, otherwise test is run; use \"True\" or \"False\" as parameter")
     parser.add_argument("--input_dir", type=str, default="..\\..\\resources\\sketch_meshes",
                         help="Directory where the input sketches for training are stored")
     parser.add_argument("--output_dir", type=str, default="output",
@@ -83,16 +87,4 @@ def main(args):
 
 
 if __name__ == '__main__':
-    params = [
-        '--input_dir', 'datasets/mixed_depth_ShapeNet',
-        '--type', 'depth',
-        '--epochs', '1000',
-        '--lr', '5e-5',
-        '--output_dir', "out",
-        "--logs_dir", "logs",
-        "--checkpoint_dir", "checkpoint",
-        "--batch_size", "91",
-        "--shapenet", "True",
-        "--shapenet_train_size", "392"
-    ]
-    main(params)
+    main(sys.argv[1:])

@@ -6,6 +6,7 @@ from source.util import data_type
 from source.util import OpenEXR_utils
 from source.util import dir_utils
 
+
 def save_exr(img, output_dirs, output_name, given_data_type=None):
     if given_data_type == data_type.Type.depth:
         filename = output_name + "_depth.exr"
@@ -22,8 +23,8 @@ def save_exr(img, output_dirs, output_name, given_data_type=None):
     path = os.path.join(output_dir, filename)
     OpenEXR_utils.writeImage(img, given_data_type, path)
 
-# Todo: check if filenamedir is necessary
-def save_png(img, output_dirs, output_name, given_data_type=None, dir_key = 'default', mode='RGB', filename_dir=None):
+
+def save_png(img, output_dirs, output_name, given_data_type=None, dir_key='default', mode='RGB', filename_dir=None):
     if given_data_type == data_type.Type.depth:
         img = img * 255
         output_dir_png = output_dirs['dd_png']
@@ -65,4 +66,3 @@ def save_png(img, output_dirs, output_name, given_data_type=None, dir_key = 'def
             dir_utils.create_general_folder(output_dir_png)
         output_dir = os.path.join(output_dir_png, output_name)
         Image.fromarray(img.astype('uint8'), mode=mode).save(output_dir)
-

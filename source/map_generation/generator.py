@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 
+
 class Encoder(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size=4, stride=2, padding=1, batch_norm=True):
         super().__init__()
@@ -39,6 +40,7 @@ class Decoder(nn.Module):
 
         return fx
 
+
 class Generator(nn.Module):
     def __init__(self, channel):
         super().__init__()
@@ -52,7 +54,7 @@ class Generator(nn.Module):
         self.e_conv7 = Encoder(512, 512)
         self.e_conv8 = Encoder(512, 512, batch_norm=False)
 
-        #Decoder
+        # Decoder
         self.d_deconv1 = Decoder(512, 512, dropout=True)
         self.d_deconv2 = Decoder(1024, 512, dropout=True)
         self.d_deconv3 = Decoder(1024, 512, dropout=True)
@@ -61,7 +63,6 @@ class Generator(nn.Module):
         self.d_deconv6 = Decoder(512, 128)
         self.d_deconv7 = Decoder(256, 64)
         self.d_deconv8 = nn.ConvTranspose2d(128, channel, kernel_size=4, stride=2, padding=1)
-
 
     def forward(self, x):
         # up: decoder

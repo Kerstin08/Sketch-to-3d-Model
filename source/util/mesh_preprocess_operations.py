@@ -2,6 +2,8 @@ import trimesh
 import math
 import numpy as np
 import argparse
+
+
 def preprocess(path, shapenet=False):
     try:
         mesh = trimesh.load(path)
@@ -12,7 +14,8 @@ def preprocess(path, shapenet=False):
     if not mesh.area > 0:
         print(str(path) + " contains no usable model!")
         return None
-    # Since data rencostructed form SDF has artifacts the body count is rarely 1, but that does not effect the images too much
+    # Since data rencostructed form SDF has artifacts the body count is rarely 1, but that does not effect the images
+    # too much
     if not shapenet and mesh.body_count > 1:
         print(str(path) + " contains more than one model!")
         return None
@@ -31,9 +34,10 @@ def preprocess(path, shapenet=False):
     if path.rsplit(".", 1)[1] != "ply":
         path = path.rsplit(".", 1)[0] + ".ply"
     ply = trimesh.exchange.ply.export_ply(trans_norm_mesh, encoding='binary', include_attributes=False)
-    with open (path, "wb+") as output:
+    with open(path, "wb+") as output:
         output.write(ply)
     return path
+
 
 def clean_mesh(path, mesh):
     mesh.process()
@@ -55,16 +59,17 @@ def clean_mesh(path, mesh):
         return None
     return mesh
 
+
 def normalize_mesh(mesh):
     bounds = mesh.bounds
     dim = abs(bounds[1] - bounds[0])
-    scale = 1
     dim_mag = math.sqrt(sum(pow(element, 2) for element in dim))
     scale = 1 / dim_mag
     matrix = np.eye(4)
     matrix[:3, :3] *= scale
     mesh.apply_transform(matrix)
     return mesh
+
 
 def align_Shapenet(mesh):
     angle = math.pi / 2
@@ -77,19 +82,22 @@ def align_Shapenet(mesh):
     mesh.apply_transform(rot)
     return mesh
 
+
 def translate_to_origin(mesh):
     bounds = mesh.bounds
     dim = abs(bounds[1] - bounds[0])
-    center = bounds[0] + dim/2
+    center = bounds[0] + dim / 2
     origin = np.zeros(3)
-    dist = origin-center
+    dist = origin - center
     matrix = np.eye(4)
     matrix[:, 3] = [dist[0], dist[1], dist[2], 1]
     mesh.apply_transform(matrix)
     return mesh
 
+
 def diff_ars(args):
     preprocess(args.input_mesh)
+
 
 def main(args):
     parser = argparse.ArgumentParser(prog="scene_rendering")
@@ -97,8 +105,9 @@ def main(args):
     args = parser.parse_args(args)
     diff_ars(args)
 
+
 if __name__ == '__main__':
     params = [
         '--input_mesh', '..\\..\\resources\\thinig10k\\2000_2499\\121396.stl',
-        ]
+    ]
     main(params)

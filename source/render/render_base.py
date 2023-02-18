@@ -7,10 +7,11 @@ import source.render.mi_create_scenedesc as create_scenedesc
 
 mi.set_variant('cuda_ad_rgb')
 
+
 class Render:
     # Load integrators provided by renderer at the beginning of the
     def __init__(self, views, fov=50, dim=256):
-        self.distance = math.floor(math.tan(math.radians(fov)) / 1.75 *10)/10
+        self.distance = math.floor(math.tan(math.radians(fov)) / 1.75 * 10) / 10
         self.near_distance = self.distance
         self.far_distance = self.distance * 3
         self.cameras = self.__load_cameras(views, fov, dim)
@@ -22,9 +23,9 @@ class Render:
 
     # center is assumed to be at 0,0,0, see mesh_preprocess_operations.py translate_to_origin
     # bounding box diagonal is assumed to be 1, see mesh_preprocess_operations.py normalize_mesh
-    def __load_cameras(self, views, fov,  dim):
+    def __load_cameras(self, views, fov, dim):
         cameras = []
-        radius = self.distance*2
+        radius = self.distance * 2
         for view in views:
             long, lat = view
             long = math.pi * long / 180
@@ -33,16 +34,17 @@ class Render:
             y = math.sin(long) * math.cos(lat)
             z = math.sin(lat)
             centroid = np.around(np.array([-x, y, z]) * radius, 5)
-            up = np.array([0, 0, 1-z])
-            # Up vector in direction other then z is not needed despite for zenit point, otherwise rendering returns nothing
-            if np.sum(up)<1e-5:
+            up = np.array([0, 0, 1 - z])
+            # Up vector in direction other than z is not needed despite for zenith point, otherwise rendering returns
+            # nothing
+            if np.sum(up) < 1e-5:
                 up = np.array([0, -1, 0])
             scene_desc = create_scenedesc.create_camera(T.look_at(target=(0.0, 0.0, 0.0),
-                                                     origin=tuple(centroid),
-                                                     up=tuple(up),
-                                                     ),
-                                           fov, self.near_distance, self.far_distance,
-                                           dim, dim)
+                                                                  origin=tuple(centroid),
+                                                                  up=tuple(up),
+                                                                  ),
+                                                        fov, self.near_distance, self.far_distance,
+                                                        dim, dim)
             cameras.append(scene_desc)
         return cameras
 

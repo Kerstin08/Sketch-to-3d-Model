@@ -9,8 +9,8 @@ from source.util import OpenEXR_utils
 
 
 class DS(Dataset):
-    def __init__(self, train, type, dir_input, dir_target=""):
-        self.data_type = type
+    def __init__(self, train, input_type, dir_input, dir_target=""):
+        self.data_type = input_type
         self.train = train
         self.dir_input = dir_input
         self.image_paths_input = sorted(self.create_dataSet(dir_input))
@@ -40,13 +40,14 @@ class DS(Dataset):
             self._image_paths_target = ""
 
     def __len__(self):
-        # return only length of one of the dirs since we want to iterate over both dirs at the same time and this function is only used for batch computations
+        # return only length of one of the dirs since we want to iterate over both dirs at the same time and this
+        # function is only used for batch computations
         length_input = len([entry for entry in os.listdir(self.dir_input) if os.path.isfile(os.path.join(self.dir_input, entry))])
         return length_input
 
-    def create_dataSet(self, dir):
+    def create_dataSet(self, input_dir):
         images = []
-        for root, _, fnames in sorted(os.walk(dir)):
+        for root, _, fnames in sorted(os.walk(input_dir)):
             for fname in fnames:
                 path = os.path.join(root, fname)
                 images.append(path)

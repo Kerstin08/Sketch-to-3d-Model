@@ -10,7 +10,8 @@ from source.render.render_aov import AOV
 
 mi.set_variant('cuda_ad_rgb')
 
-class MeshGen():
+
+class MeshGen:
     def __init__(self, output_name, output_dir, logs,
                  weight_depth, weight_normal, weight_smoothness, weight_edge, weight_silhouette,
                  epochs, log_frequency, lr, views, use_depth=True, eval_dir=None, dim=256):
@@ -44,10 +45,22 @@ class MeshGen():
         self.writer.add_images(image_name, images)
 
     def get_edge_dist(self, vertice_positions, edge_vert_indices):
-        x = dr.sqr(dr.gather(dr.cuda.ad.Float, vertice_positions[0], edge_vert_indices[0]) - dr.gather(dr.cuda.ad.Float, vertice_positions[0], edge_vert_indices[1]))
-        y = dr.sqr(dr.gather(dr.cuda.ad.Float, vertice_positions[1], edge_vert_indices[0]) - dr.gather(dr.cuda.ad.Float, vertice_positions[1], edge_vert_indices[1]))
-        z = dr.sqr(dr.gather(dr.cuda.ad.Float, vertice_positions[2], edge_vert_indices[0]) - dr.gather(dr.cuda.ad.Float, vertice_positions[2], edge_vert_indices[1]))
-        edge_lengths = dr.sqrt(x+y+z)
+        x = dr.sqr(dr.gather(dr.cuda.ad.Float, vertice_positions[0], edge_vert_indices[0]) - dr.gather(dr.cuda.ad.Float,
+                                                                                                       vertice_positions[
+                                                                                                           0],
+                                                                                                       edge_vert_indices[
+                                                                                                           1]))
+        y = dr.sqr(dr.gather(dr.cuda.ad.Float, vertice_positions[1], edge_vert_indices[0]) - dr.gather(dr.cuda.ad.Float,
+                                                                                                       vertice_positions[
+                                                                                                           1],
+                                                                                                       edge_vert_indices[
+                                                                                                           1]))
+        z = dr.sqr(dr.gather(dr.cuda.ad.Float, vertice_positions[2], edge_vert_indices[0]) - dr.gather(dr.cuda.ad.Float,
+                                                                                                       vertice_positions[
+                                                                                                           2],
+                                                                                                       edge_vert_indices[
+                                                                                                           1]))
+        edge_lengths = dr.sqrt(x + y + z)
 
         return edge_lengths
 
@@ -59,7 +72,7 @@ class MeshGen():
 
         l = dot_ab / (sqr_magnitude_a + 1e-6)
         c = a * l
-        cb = b-c
+        cb = b - c
         l1_cb = dr.sqrt(dr.sum(dr.sqr(cb)))
         return cb, l1_cb
 
@@ -75,7 +88,7 @@ class MeshGen():
             edge_vert_faces[xy].append(i)
 
     def preprocess_edge_params(self, face_indices):
-        edge_vert_indices = [[],[]]
+        edge_vert_indices = [[], []]
         edge_vert_faces = {}
         for i in range(len(face_indices[0])):
             x = face_indices[0][i]
@@ -109,11 +122,11 @@ class MeshGen():
         for key in edge_vert_faces:
             curr_faces = edge_vert_faces[key]
             vert_idx_face1 = [face_indices[0][curr_faces[0]],
-                                face_indices[1][curr_faces[0]],
-                                face_indices[2][curr_faces[0]]]
+                              face_indices[1][curr_faces[0]],
+                              face_indices[2][curr_faces[0]]]
             verts_idx_face2 = [face_indices[0][curr_faces[1]],
-                                face_indices[1][curr_faces[1]],
-                                face_indices[2][curr_faces[1]]]
+                               face_indices[1][curr_faces[1]],
+                               face_indices[2][curr_faces[1]]]
             joined_verts = list(set(vert_idx_face1).intersection(verts_idx_face2))
 
             generate_vertex_list(v1_x, v1_y, v1_z, joined_verts[0])
@@ -192,7 +205,8 @@ class MeshGen():
         edge_vert_indices, edge_vert_faces = self.preprocess_edge_params(face_indices)
         initial_edge_lengths = self.get_edge_dist(initial_vertex_positions, edge_vert_indices)
 
-        face_v1, face_v2, face_v3_face1, face_v3_face2 = self.preprocess_smoothness_params(edge_vert_faces, face_indices)
+        face_v1, face_v2, face_v3_face1, face_v3_face2 = self.preprocess_smoothness_params(edge_vert_faces,
+                                                                                           face_indices)
 
         opt = mi.ad.Adam(lr=self.lr, beta_1=0.9, beta_2=0.999)
         vertex_count = params[vertex_count_str]
@@ -201,6 +215,7 @@ class MeshGen():
         for epoch in range(self.epochs):
             self.offset_verts(params, opt, initial_vertex_positions)
 
+            # Using 16 rays per pixel, adjust if needed
             normal_img = self.renderer.render_normal(scene, basic_mesh, seed=epoch, spp=16, params=params)
             depth_img = self.renderer.render_depth(scene, basic_mesh, seed=epoch, spp=16, params=params)
             silhouette_img = self.renderer.render_silhouette(scene, basic_mesh, seed=epoch, spp=16, params=params)
@@ -210,7 +225,7 @@ class MeshGen():
                                        params[face_str], failed_deform=True)
                 raise Exception("Normal rendering contains nan!")
 
-            if epoch % self.log_frequency == 0 or epoch == epoch-1:
+            if epoch % self.log_frequency == 0 or epoch == epoch - 1:
                 image_name = "deformed_images" + str(epoch)
                 self.write_output_renders(normal_img, depth_img, silhouette_img, image_name)
 
@@ -221,33 +236,33 @@ class MeshGen():
             current_vertex_positions = dr.unravel(mi.Point3f, params[vertex_positions_str])
 
             current_edge_lengths = self.get_edge_dist(current_vertex_positions, edge_vert_indices)
-            edge_loss = dr.sum(dr.sqr(initial_edge_lengths - current_edge_lengths)) * 1/len(initial_edge_lengths)
+            edge_loss = dr.sum(dr.sqr(initial_edge_lengths - current_edge_lengths)) * 1 / len(initial_edge_lengths)
 
             raveled_vertice_positions = dr.ravel(current_vertex_positions)
             v1 = dr.cuda.ad.Array3f(
-                    dr.gather(dr.cuda.ad.Float, raveled_vertice_positions, face_v1[0]),
-                    dr.gather(dr.cuda.ad.Float, raveled_vertice_positions, face_v1[1]),
-                    dr.gather(dr.cuda.ad.Float, raveled_vertice_positions, face_v1[2])
+                dr.gather(dr.cuda.ad.Float, raveled_vertice_positions, face_v1[0]),
+                dr.gather(dr.cuda.ad.Float, raveled_vertice_positions, face_v1[1]),
+                dr.gather(dr.cuda.ad.Float, raveled_vertice_positions, face_v1[2])
             )
             v2 = dr.cuda.ad.Array3f(
-                    dr.gather(dr.cuda.ad.Float, raveled_vertice_positions, face_v2[0]),
-                    dr.gather(dr.cuda.ad.Float, raveled_vertice_positions, face_v2[1]),
-                    dr.gather(dr.cuda.ad.Float, raveled_vertice_positions, face_v2[2])
+                dr.gather(dr.cuda.ad.Float, raveled_vertice_positions, face_v2[0]),
+                dr.gather(dr.cuda.ad.Float, raveled_vertice_positions, face_v2[1]),
+                dr.gather(dr.cuda.ad.Float, raveled_vertice_positions, face_v2[2])
             )
             v3_face1 = dr.cuda.ad.Array3f(
-                    dr.gather(dr.cuda.ad.Float, raveled_vertice_positions, face_v3_face1[0]),
-                    dr.gather(dr.cuda.ad.Float, raveled_vertice_positions, face_v3_face1[1]),
-                    dr.gather(dr.cuda.ad.Float, raveled_vertice_positions, face_v3_face1[2])
+                dr.gather(dr.cuda.ad.Float, raveled_vertice_positions, face_v3_face1[0]),
+                dr.gather(dr.cuda.ad.Float, raveled_vertice_positions, face_v3_face1[1]),
+                dr.gather(dr.cuda.ad.Float, raveled_vertice_positions, face_v3_face1[2])
             )
             v3_face2 = dr.cuda.ad.Array3f(
-                    dr.gather(dr.cuda.ad.Float, raveled_vertice_positions, face_v3_face2[0]),
-                    dr.gather(dr.cuda.ad.Float, raveled_vertice_positions, face_v3_face2[1]),
-                    dr.gather(dr.cuda.ad.Float, raveled_vertice_positions, face_v3_face2[2])
+                dr.gather(dr.cuda.ad.Float, raveled_vertice_positions, face_v3_face2[0]),
+                dr.gather(dr.cuda.ad.Float, raveled_vertice_positions, face_v3_face2[1]),
+                dr.gather(dr.cuda.ad.Float, raveled_vertice_positions, face_v3_face2[2])
             )
             cb_1, l1_cb_1 = self.smoothness_helper(v1, v2, v3_face1)
             cb_2, l1_cb_2 = self.smoothness_helper(v1, v2, v3_face2)
             cos = dr.sum(cb_1 * cb_2) / (l1_cb_1 * l1_cb_2 + 1e-6)
-            smoothness_loss = dr.sum(dr.sqr(cos+1))
+            smoothness_loss = dr.sum(dr.sqr(cos + 1))
 
             if self.use_depth:
                 loss = normal_loss * self.weight_normal + depth_loss * self.weight_depth + silhouette_loss * self.weight_silhouette + edge_loss * self.weight_edge + smoothness_loss * self.weight_smoothness
@@ -272,7 +287,8 @@ class MeshGen():
                 self.writer.add_scalar("loss_depth", depth_loss[0], epoch)
                 self.writer.add_scalar("loss_depth_weighted", depth_loss[0] * self.weight_depth, epoch)
                 print(
-                    "Epochs {}: error={} loss_normal={} loss_depth={} loss_edge={} loss_smoothness={} loss_silhouette={}".format(
+                    "Epochs {}: error={} loss_normal={} loss_depth={} loss_edge={} loss_smoothness={} "
+                    "loss_silhouette={}".format(
                         epoch, loss[0], normal_loss[0], depth_loss[0], edge_loss[0], smoothness_loss[0],
                         silhouette_loss[0]))
             else:

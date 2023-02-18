@@ -11,13 +11,13 @@ background = 1
 bounds = 0
 fill = 0
 
+
 def startFill(image, image_path, output_dir, write_debug_png=True):
     image = image / 255
     start_points = find_start_points(image)
     for i in start_points:
         flood_fill_BFS(image, i)
 
-    # Todo: eval if this is needed
     image = sketch_utils.unpad(image, 1)
     filename = Path(image_path)
     exr_path = os.path.join(output_dir, filename.stem + "_filled.exr")
@@ -31,6 +31,7 @@ def startFill(image, image_path, output_dir, write_debug_png=True):
 
     return image, exr_path
 
+
 def flood_fill_BFS(image, seed):
     stack = deque()
     stack.append(seed)
@@ -38,7 +39,7 @@ def flood_fill_BFS(image, seed):
     while len(stack) > 0:
         x, y = stack.pop()
         shape_x, shape_y = image.shape
-        if x < 1 or y < 1 or x > shape_x-2 or y > shape_y-2:
+        if x < 1 or y < 1 or x > shape_x - 2 or y > shape_y - 2:
             continue
 
         image[x][y] = fill
@@ -65,6 +66,7 @@ def flood_fill_BFS(image, seed):
 
         if image[x - 1][y - 1] == background:
             stack.append((x - 1, y - 1))
+
 
 def find_start_points(image):
     seeds = deque()

@@ -9,6 +9,7 @@ import source.render.mi_create_scenedesc as create_scenedesc
 
 mi.set_variant('cuda_ad_rgb')
 
+
 class AOV(Render):
     def __init__(self, views, fov=50, dim=256):
         Render.__init__(self, views, fov, dim)
@@ -32,7 +33,8 @@ class AOV(Render):
         img = mi.render(scene, params, seed=seed, spp=spp, integrator=self._depth_integrator)
         # If mesh has invalid mesh vertices, rendering contains nan.
         if dr.any(dr.isnan(img)):
-            print("Rendered image  includes invalid data! Vertex normals in input model " + input_path + " might be corrupt.")
+            print(
+                "Rendered image  includes invalid data! Vertex normals in input model " + input_path + " might be corrupt.")
             return
 
         with dr.suspend_grad():
@@ -40,8 +42,8 @@ class AOV(Render):
             mask = single_channel_depth.array < (self.far_distance - self.near_distance)
 
         depth = dr.select(mask,
-                        img[:, :, 0].array / (self.far_distance - self.near_distance),
-                        1)
+                          img[:, :, 0].array / (self.far_distance - self.near_distance),
+                          1)
         depth_tens = mi.TensorXf(depth, shape=(self.dim, self.dim))
         return depth_tens
 
@@ -49,7 +51,8 @@ class AOV(Render):
         img = mi.render(scene, params, seed=seed, spp=spp, integrator=self._normal_integrator)
         # If mesh has invalid mesh vertices, rendering contains nan.
         if dr.any(dr.isnan(img)):
-            print("Rendered image includes invalid data! Vertex normals in input model " + input_path + " might be corrupt.")
+            print(
+                "Rendered image includes invalid data! Vertex normals in input model " + input_path + " might be corrupt.")
             return
         return img
 
@@ -57,6 +60,7 @@ class AOV(Render):
         img = mi.render(scene, params, seed=seed, spp=spp, integrator=self._silhouette_integrator)
         # If mesh has invalid mesh vertices, rendering contains nan.
         if dr.any(dr.isnan(img)):
-            print("Rendered image includes invalid data! Vertex normals in input model " + input_path + " might be corrupt.")
+            print(
+                "Rendered image includes invalid data! Vertex normals in input model " + input_path + " might be corrupt.")
             return
         return img

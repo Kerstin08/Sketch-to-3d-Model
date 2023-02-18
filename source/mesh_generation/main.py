@@ -1,17 +1,23 @@
 import argparse
-import deform_mesh
+import sys
 import os
-from pathlib import Path
 
+from source.mesh_generation import deform_mesh
 from source.util import OpenEXR_utils
 from source.util import data_type
 from source.util import dir_utils
 
-def run(normal_map_path, depth_map_path, silhouette_map_path, basic_mesh, output_name, output_dir, log_dir,
-        epochs, log_frequency, views, lr, weight_depth, weight_normal, weight_smoothness, weight_edge, weight_silhouette):
 
-    if not os.path.exists(normal_map_path) or not os.path.exists(depth_map_path) or not os.path.exists(silhouette_map_path) or not os.path.exists(basic_mesh):
-        raise Exception("Normal map {}, depth map {}, silhouette map {} or base mesh {} does not exist!".format(normal_map_path, depth_map_path, silhouette_map_path, basic_mesh))
+def run(normal_map_path, depth_map_path, silhouette_map_path, basic_mesh, output_name, output_dir, log_dir,
+        epochs, log_frequency, views, lr, weight_depth, weight_normal, weight_smoothness, weight_edge,
+        weight_silhouette):
+    if not os.path.exists(normal_map_path) or not os.path.exists(depth_map_path) or not os.path.exists(
+            silhouette_map_path) or not os.path.exists(basic_mesh):
+        raise Exception(
+            "Normal map {}, depth map {}, silhouette map {} or base mesh {} does not exist!".format(normal_map_path,
+                                                                                                    depth_map_path,
+                                                                                                    silhouette_map_path,
+                                                                                                    basic_mesh))
     if len(views) != 1:
         raise Exception("Only one view can be given to deform the mesh generation!")
 
@@ -19,22 +25,23 @@ def run(normal_map_path, depth_map_path, silhouette_map_path, basic_mesh, output
     output_dir = dir_utils.create_version_folder(output_dir)
     log_dir = dir_utils.create_version_folder(log_dir)
     mesh_gen = deform_mesh.MeshGen(output_name,
-                        output_dir,
-                        log_dir,
-                        weight_depth,
-                        weight_normal,
-                        weight_smoothness,
-                        weight_edge,
-                        weight_silhouette,
-                        epochs,
-                        log_frequency,
-                        lr,
-                        views)
+                                   output_dir,
+                                   log_dir,
+                                   weight_depth,
+                                   weight_normal,
+                                   weight_smoothness,
+                                   weight_edge,
+                                   weight_silhouette,
+                                   epochs,
+                                   log_frequency,
+                                   lr,
+                                   views)
     normal_map = OpenEXR_utils.getImageEXR(normal_map_path, data_type.Type.normal, 2)
     depth_map = OpenEXR_utils.getImageEXR(depth_map_path, data_type.Type.depth, 2).squeeze()
     silhouette_map = OpenEXR_utils.getImageEXR(silhouette_map_path, data_type.Type.silhouette, 2).squeeze()
 
     mesh_gen.deform_mesh(normal_map, depth_map, silhouette_map, basic_mesh)
+
 
 def diff_args(args):
     run(args.normal_file_path,
@@ -54,6 +61,7 @@ def diff_args(args):
         args.weight_edge,
         args.weight_silhouette,
         )
+
 
 def main(args):
     parser = argparse.ArgumentParser(prog="map_generation_dataset")
@@ -76,13 +84,6 @@ def main(args):
     args = parser.parse_args(args)
     diff_args(args)
 
+
 if __name__ == '__main__':
-    params = [
-        '--normal_file_path', 'temp/32770_normal.exr',
-        '--depth_file_path', 'temp/32770_depth.exr',
-        '--silhouette_file_path', 'temp/32770_sketch_filled.exr',
-        '--base_mesh_path', 'datasets/topology_meshes/genus0.ply',
-        '--output_dir', 'output_dir',
-        '--log_dir', 'logs/mesh_gen'
-    ]
-    main(params)
+    main(sys.argv[1:])

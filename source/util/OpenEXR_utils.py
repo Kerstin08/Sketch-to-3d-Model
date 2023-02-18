@@ -5,6 +5,7 @@ import torch
 
 import source.util.data_type as data_type
 
+
 def exr2numpy(exr_path, chanel_name):
     file = OpenEXR.InputFile(exr_path)
     dw = file.header()['dataWindow']
@@ -12,7 +13,7 @@ def exr2numpy(exr_path, chanel_name):
     Float_Type = Imath.PixelType(Imath.PixelType.FLOAT)
     channel_str = file.channel(chanel_name, Float_Type)
     channel = np.frombuffer(channel_str, dtype=np.float32).reshape(size[1], -1)
-    return (channel)
+    return channel
 
 
 def getImageEXR(path, given_data_type, axis):
@@ -31,6 +32,7 @@ def getImageEXR(path, given_data_type, axis):
     if np.isinf(array_sum):
         raise Exception("{} contains inf!".format(path))
     return image
+
 
 def writeImage(image, given_data_type, path):
     if torch.is_tensor(image):

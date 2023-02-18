@@ -4,15 +4,16 @@ import torch
 from torch.utils.data import DataLoader
 from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.trainer import Trainer
+
 from source.map_generation_dataset import dataset
 from source.map_generation_dataset import dataset_ShapeNet
 from source.util import data_type
 from source.util import dir_utils
 
-def test(input_dir, output_dir, logs_dir,
-        type, generated_model_path, devices=1,
-        shapenet=False):
 
+def test(input_dir, output_dir, logs_dir,
+         type, generated_model_path, devices=1,
+         shapenet=False):
     if len(input_dir) <= 0 or not os.path.exists(input_dir):
         raise Exception("Input directory: {} is not given or does not exist!".format(input_dir))
     if len(logs_dir) <= 0:
@@ -37,7 +38,7 @@ def test(input_dir, output_dir, logs_dir,
     if not os.path.exists(generated_model_path):
         raise Exception("Generated model paths are not given!")
     model = map_generation.MapGen.load_from_checkpoint(generated_model_path,
-                                  output_dir=output_dir)
+                                                       output_dir=output_dir)
 
     if shapenet and os.path.exists(test_dir_target):
         dataSet = dataset_ShapeNet.DS(False, given_type, test_dir_sketch, test_dir_target, full_ds=True)
@@ -67,5 +68,5 @@ def test(input_dir, output_dir, logs_dir,
                       logger=logger,
                       num_nodes=1)
     dataloader = DataLoader(dataSet, batch_size=1,
-                                shuffle=False, num_workers=48)
+                            shuffle=False, num_workers=48)
     trainer.test(model, dataloaders=dataloader)

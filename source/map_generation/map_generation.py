@@ -11,11 +11,12 @@ from source.map_generation.discriminator import Discriminator
 from source.util import OpenEXR_utils
 from source.util import data_type
 
+
 class MapGen(pl.LightningModule):
-    def __init__(self, data_type, n_critic, weight_L1, gradient_penalty_coefficient, output_dir, lr, batch_size):
+    def __init__(self, input_type, n_critic, weight_L1, gradient_penalty_coefficient, output_dir, lr, batch_size):
         super(MapGen, self).__init__()
         self.save_hyperparameters()
-        self.data_type = data_type
+        self.data_type = input_type
         self.G = Generator(self.channel)
         self.D = Discriminator(self.channel)
         self.n_critic = n_critic
@@ -33,14 +34,12 @@ class MapGen(pl.LightningModule):
         else:
             return 3
 
-
     def configure_optimizers(self):
         opt_g = torch.optim.RMSprop(self.G.parameters(), lr=(self.lr or self.learning_rate))
         opt_d = torch.optim.RMSprop(self.D.parameters(), lr=(self.lr or self.learning_rate))
 
         return [{'optimizer': opt_g, 'frequency': 1},
                 {'optimizer': opt_d, 'frequency': self.n_critic}]
-
 
     def forward(self, sample_batched):
         x = sample_batched['input']
@@ -123,9 +122,9 @@ class MapGen(pl.LightningModule):
     def test_step(self, sample_batched, batch_idx):
         predicted_image = self(sample_batched)
         imagename = Path(sample_batched['input_path'][0]).stem.rsplit("_", 1)[0]
-        predicted_image_norm = (predicted_image+1.0) * 127.5
+        predicted_image_norm = (predicted_image + 1.0) * 127.5
         if 'target' in sample_batched:
-            target_image_norm = (sample_batched['target']+1.0) * 127.5
+            target_image_norm = (sample_batched['target'] + 1.0) * 127.5
             comp = torch.cat((predicted_image_norm, target_image_norm), 3)
             temp = torch.squeeze(comp).int().cpu().numpy().astype(np.uint8)
         else:
@@ -140,9 +139,9 @@ class MapGen(pl.LightningModule):
 
         if self.data_type == data_type.Type.normal:
             predicted_image = torch.permute(predicted_image, (0, 2, 3, 1))
-            OpenEXR_utils.writeImage(predicted_image, self.data_type, os.path.join(self.output_dir, imagename + "_normal.exr"))
+            OpenEXR_utils.writeImage(predicted_image, self.data_type,
+                                     os.path.join(self.output_dir, imagename + "_normal.exr"))
         else:
             predicted_image = (predicted_image + 1) / 2
-            OpenEXR_utils.writeImage(predicted_image, self.data_type, os.path.join(self.output_dir, imagename + "_depth.exr"))
-
-
+            OpenEXR_utils.writeImage(predicted_image, self.data_type,
+                                     os.path.join(self.output_dir, imagename + "_depth.exr"))
