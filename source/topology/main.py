@@ -10,7 +10,11 @@ import source.util.sketch_utils as sketch_utils
 from source.util import dir_utils
 
 
-def run(image_path, genus_dir, output_dir):
+def run(
+        image_path: str,
+        genus_dir: str,
+        output_dir: str
+):
     if not os.path.exists(output_dir):
         dir_utils.create_general_folder(output_dir)
     image = sketch_utils.load_image(image_path, True)
@@ -25,7 +29,7 @@ def diff_ars(args):
 
 def main(args):
     parser = argparse.ArgumentParser(prog="topology_determination")
-    parser.add_argument("--image_path", type=str, default="",
+    parser.add_argument("--image_path", type=str, default="datasets/test.png",
                         help="Use image path to the image the tology should be determined from.")
     parser.add_argument("--genus_dir", type=str, default="datasets/topology_meshes",
                         help="Path to the directory where the genus templates are stored.")

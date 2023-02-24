@@ -1,6 +1,7 @@
 import argparse
 import os
 import sys
+import typing
 from pathlib import Path
 import numpy as np
 
@@ -38,10 +39,19 @@ if sys.platform == 'win32':
 # Manually delete returned variables in order to get memory problem (leak or fragmentation)
 # somewhat under control which seems to can occur if code is run on linux OS
 # Seems to stabilize memory consumption, however there may be better solutions for that problem
-def gen_images(path, datatype, renderer_aov, line_gen, output_dirs, spp_direct, spp_aov, create_debug_png,
-               shapenet_data):
+def gen_images(
+        path: str,
+        filetype: str,
+        renderer_aov: AOV,
+        line_gen: LineGen,
+        output_dirs: dir,
+        spp_direct: int,
+        spp_aov: int,
+        create_debug_png: bool,
+        shapenet_data: bool
+):
     filename = Path(path)
-    if os.path.isfile(path) and filename.suffix == datatype:
+    if os.path.isfile(path) and filename.suffix == filetype:
         path = mesh_preprocess.preprocess(path, shapenet_data)
         if not path:
             return
@@ -79,12 +89,24 @@ def gen_images(path, datatype, renderer_aov, line_gen, output_dirs, spp_direct, 
     for path, _, files in os.walk(path):
         for file in files:
             new_path = os.path.join(path, file)
-            gen_images(new_path, datatype, renderer_aov, line_gen, output_dirs, spp_direct, spp_aov, create_debug_png,
+            gen_images(new_path, filetype, renderer_aov, line_gen, output_dirs, spp_direct, spp_aov, create_debug_png,
                        shapenet_data)
 
 
-def run(input_dir, output_dir, datatype, fov, view, dim_render, dim_line_gen_intermediate, emitter_samples,
-        spp_direct, spp_aov, create_debug_png, shapenet_data):
+def run(
+        input_dir: str,
+        output_dir: str,
+        filetype: str,
+        fov: int,
+        view: typing.Sequence[typing.Tuple[int, int]],
+        dim_render: int,
+        dim_line_gen_intermediate: int,
+        emitter_samples: int,
+        spp_direct: int,
+        spp_aov: int,
+        create_debug_png: bool,
+        shapenet_data: bool
+):
     if not os.path.exists(input_dir):
         raise Exception("Input directory {} does not exits".format(input_dir))
     if len(view) > 1 or len(view) < 1:
@@ -101,14 +123,14 @@ def run(input_dir, output_dir, datatype, fov, view, dim_render, dim_line_gen_int
 
     renderer_aov = AOV(view, fov, dim_render)
     line_gen = LineGen(view, fov, dim_line_gen_intermediate, dim_render, emitter_samples)
-    gen_images(input_dir, datatype, renderer_aov, line_gen, output_dirs, spp_direct, spp_aov, create_debug_png,
+    gen_images(input_dir, filetype, renderer_aov, line_gen, output_dirs, spp_direct, spp_aov, create_debug_png,
                shapenet_data)
 
 
 def diff_args(args):
     run(args.input_dir,
         args.output_dir,
-        args.datatype,
+        args.filetype,
         args.fov,
         args.view,
         args.dim_render,
@@ -122,11 +144,11 @@ def diff_args(args):
 
 def main(args):
     parser = argparse.ArgumentParser(prog="map_generation_dataset")
-    parser.add_argument("--input_dir", type=str, default=r"datasets/thingi10k", help="path to reference objects")
+    parser.add_argument("--input_dir", type=str, default="datasets/thingi10k", help="path to reference objects")
     parser.add_argument("--output_dir", type=str, default="map_generation", help="path to output objects")
-    parser.add_argument("--datatype", type=str, default=".stl", help="Object datatype")
+    parser.add_argument("--filetype", type=str, default=".stl", help="Object datatype")
     parser.add_argument("--fov", type=int, default=50, help="define rendering fov")
-    parser.add_argument("--view", type=parse.views, default="225, 30", dest="view",
+    parser.add_argument("--view", type=parse.p_views, default="225, 30", dest="view",
                         help="define rendering view angles; string with tuples of azimuth and elveation "
                              "e.g. \"0, 30, 255, 30\"")
     parser.add_argument("--dim_render", type=int, default=256, help="final output format for images")
@@ -135,9 +157,9 @@ def main(args):
     parser.add_argument("--emitter_samples", type=int, default=4, help="# of emitter samples for direct rendering")
     parser.add_argument("--spp_direct", type=int, default=256, help="# of samples per pixel for direct rendering")
     parser.add_argument("--spp_aov", type=int, default=256, help="# of samples per pixel for aov rendering")
-    parser.add_argument("--create_debug_png", type=parse.bool, default="True", dest="create_debug_png",
+    parser.add_argument("--create_debug_png", type=parse.p_bool, default="True", dest="create_debug_png",
                         help="save pngs of aovs for easier debug; use \"True\" or \"False\" as parameter")
-    parser.add_argument("--shapenet_data", type=parse.bool, default="False", dest="shapenet_data",
+    parser.add_argument("--shapenet_data", type=parse.p_bool, default="False", dest="shapenet_data",
                         help="save pngs of aovs for easier debug; use \"True\" or \"False\" as parameter")
     args = parser.parse_args(args)
     diff_args(args)

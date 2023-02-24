@@ -1,13 +1,17 @@
 # Utils to work with OpenEXR files
 import OpenEXR
 import Imath
+import numpy
 import numpy as np
 import torch
 
 import source.util.data_type as data_type
 
 
-def exr2numpy(exr_path, chanel_name):
+def exr2numpy(
+        exr_path: str,
+        chanel_name: str
+) -> numpy.ndarray:
     file = OpenEXR.InputFile(exr_path)
     dw = file.header()['dataWindow']
     size = (dw.max.x - dw.min.x + 1, dw.max.y - dw.min.y + 1)
@@ -17,7 +21,11 @@ def exr2numpy(exr_path, chanel_name):
     return channel
 
 
-def getImageEXR(path, given_data_type, axis):
+def getImageEXR(
+        path: str,
+        given_data_type: data_type.Type,
+        axis: int
+) -> numpy.ndarray:
     if given_data_type == data_type.Type.normal:
         channel_names = ['R', 'G', 'B']
     else:
@@ -35,7 +43,11 @@ def getImageEXR(path, given_data_type, axis):
     return image
 
 
-def writeImage(image, given_data_type, path):
+def writeImage(
+        image: np.ndarray | torch.Tensor,
+        given_data_type: data_type.Type,
+        path: str
+):
     if torch.is_tensor(image):
         img = image.detach().cpu().numpy().squeeze()
     elif type(image).__module__ == np.__name__:

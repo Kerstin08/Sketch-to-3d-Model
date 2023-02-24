@@ -1,5 +1,12 @@
 # setup scene description for rendering process
-def create_shape(input_mesh, datatype, use_nmr=False):
+from mitsuba.scalar_rgb import Transform4f
+
+
+def create_shape(
+        input_mesh: str,
+        datatype: str,
+        use_nmr: bool = False
+) -> dir:
     # Values for neural mesh renderer
     if use_nmr:
         rgb_val = [0.8, 1, 1]
@@ -19,7 +26,10 @@ def create_shape(input_mesh, datatype, use_nmr=False):
     return shape
 
 
-def create_shape_kato(input_mesh, datatype):
+def create_shape_kato(
+        input_mesh: str,
+        datatype: str
+) -> dir:
     shape = {
         'type': datatype,
         'filename': input_mesh,
@@ -34,33 +44,37 @@ def create_shape_kato(input_mesh, datatype):
     return shape
 
 
-def create_integrator_depth():
+def create_integrator_depth() -> dir:
     integrator = {
         'type': 'depth_reparam'
     }
     return integrator
 
 
-def create_integrator_normal():
+def create_integrator_normal() -> dir:
     integrator = {
         'type': 'normal_reparam'
     }
     return integrator
 
 
-def create_integrator_silhouette():
+def create_integrator_silhouette() -> dir:
     integrator = {
         'type': 'silhouette_reparam'
     }
     return integrator
 
 
-def create_integrator_direct(emitter_samples):
+def create_integrator_direct(
+        emitter_samples: int
+) -> dir:
     integrator = {'type': 'direct', 'emitter_samples': emitter_samples}
     return integrator
 
 
-def create_emitter(use_nmr=False):
+def create_emitter(
+        use_nmr: bool = False
+) -> dir:
     # Values for neural mesh renderer
     if use_nmr:
         print("Emitter position does only work for used view (255, 30), reposition light for different views")
@@ -79,7 +93,14 @@ def create_emitter(use_nmr=False):
     return emitter
 
 
-def create_camera(transform, fov, near, far, width, height):
+def create_camera(
+        transform: Transform4f,
+        fov: int,
+        near: float,
+        far: float,
+        width: int,
+        height: int
+) -> dir:
     camera = {'type': 'perspective',
               'to_world': transform,
               'fov': fov,

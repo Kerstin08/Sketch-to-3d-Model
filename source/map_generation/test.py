@@ -12,9 +12,15 @@ from source.util import data_type
 from source.util import dir_utils
 
 
-def test(input_dir, output_dir, logs_dir,
-         type, generated_model_path, devices=1,
-         use_shapenet=False):
+def test(
+        input_dir: str,
+        output_dir: str,
+        logs_dir: str,
+        input_data_type: data_type.Type,
+        generated_model_path: str,
+        devices: int = 1,
+        use_shapenet: bool = False
+):
     if len(input_dir) <= 0 or not os.path.exists(input_dir):
         raise Exception("Input directory: {} is not given or does not exist!".format(input_dir))
     if len(logs_dir) <= 0:
@@ -29,12 +35,7 @@ def test(input_dir, output_dir, logs_dir,
     test_dir_sketch = os.path.join(sketch_dir, 'test')
     test_dir_target = os.path.join(target_dir, 'test')
 
-    if type == 'depth':
-        given_type = data_type.Type.depth
-    elif type == 'normal':
-        given_type = data_type.Type.normal
-    else:
-        raise Exception("Given type should either be \"normal\" or \"depth\"!")
+
 
     if not os.path.exists(generated_model_path):
         raise Exception("Generated model paths are not given or false!")
@@ -42,13 +43,13 @@ def test(input_dir, output_dir, logs_dir,
                                                        output_dir=output_dir)
 
     if use_shapenet and os.path.exists(test_dir_target):
-        dataSet = dataset_ShapeNet.DS(False, given_type, test_dir_sketch, test_dir_target, full_ds=True)
+        dataSet = dataset_ShapeNet.DS(False, input_data_type, test_dir_sketch, test_dir_target, full_ds=True)
     elif use_shapenet:
-        dataSet = dataset_ShapeNet.DS(False, given_type, test_dir_sketch, full_ds=True)
+        dataSet = dataset_ShapeNet.DS(False, input_data_type, test_dir_sketch, full_ds=True)
     elif os.path.exists(test_dir_target):
-        dataSet = dataset.DS(False, given_type, test_dir_sketch, test_dir_target)
+        dataSet = dataset.DS(False, input_data_type, test_dir_sketch, test_dir_target)
     else:
-        dataSet = dataset.DS(False, given_type, test_dir_sketch)
+        dataSet = dataset.DS(False, input_data_type, test_dir_sketch)
 
     strategy = None
     accelerator = 'gpu' if torch.cuda.is_available() else 'cpu'
@@ -62,12 +63,12 @@ def test(input_dir, output_dir, logs_dir,
     # for solely testing those folders are useful to distinct from training logs and
     # to get current version.
     logger = TensorBoardLogger(logs_dir, name=logs_dir_name)
-    trainer = Trainer(accelerator=accelerator,
-                      precision=16,
+    trainer = Trainer(accelerator='cpu',
+                      #precision=16,
                       devices=devices,
-                      strategy=strategy,
+                      #strategy=strategy,
                       logger=logger,
                       num_nodes=1)
     dataloader = DataLoader(dataSet, batch_size=1,
-                            shuffle=False, num_workers=48)
+                            shuffle=False, num_workers=1)
     trainer.test(model, dataloaders=dataloader)

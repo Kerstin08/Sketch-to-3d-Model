@@ -3,6 +3,7 @@
 # computing IoU and Chamfer distance for given models
 import argparse
 
+import numpy
 import numpy as np
 import os
 import typing
@@ -10,7 +11,10 @@ import sys
 import scipy.spatial as spatial
 import pandas as pd
 from pathlib import Path
+
+from numpy import ndarray
 from pysdf import SDF
+from typing import Iterable
 
 import trimesh
 import trimesh.sample
@@ -19,7 +23,11 @@ from source.util import dir_utils
 from source.util import mesh_preprocess_operations
 
 
-def sample_mesh(mesh_file, num_samples, rejection_radius=None):
+def sample_mesh(
+        mesh_file: str,
+        num_samples: int,
+        rejection_radius: float = None
+) -> numpy.ndarray:
     try:
         mesh = trimesh.load(mesh_file)
         # Scale and translate mesh to unify meshes for comparison
@@ -31,7 +39,12 @@ def sample_mesh(mesh_file, num_samples, rejection_radius=None):
     return samples
 
 
-def chamfer_distance(file_in, file_ref, samples_per_model, num_processes=1):
+def chamfer_distance(
+        file_in: str,
+        file_ref: str,
+        samples_per_model: int,
+        num_processes: int = 1
+) -> typing.Tuple[str, str, float]:
     # http://graphics.stanford.edu/courses/cs468-17-spring/LectureSlides/L14%20-%203d%20deep%20learning%20on%20point%20cloud%20representation%20(analysis).pdf
 
     new_mesh_samples = sample_mesh(file_in, samples_per_model, rejection_radius=0.0)
@@ -55,14 +68,22 @@ def chamfer_distance(file_in, file_ref, samples_per_model, num_processes=1):
     return file_in, file_ref, chamfer_dist
 
 
-def get_signed_distance_pysdf(in_mesh: trimesh.Trimesh, query_pts_ms: np.ndarray):
+def get_signed_distance_pysdf(
+        in_mesh: trimesh.Trimesh,
+        query_pts_ms: np.ndarray
+) -> numpy.ndarray:
     sdf = SDF(in_mesh.vertices, in_mesh.faces)
     dists_ms = sdf(query_pts_ms)
 
     return dists_ms
 
 
-def intersection_over_union(file_in, file_ref, num_samples, num_dims=3):
+def intersection_over_union(
+        file_in: str,
+        file_ref: str,
+        num_samples: int,
+        num_dims: int = 3
+) -> typing.Tuple[str, str, float]:
     # https://learnopencv.com/intersection-over-union-iou-in-object-detection-and-segmentation/
 
     rng = np.random.default_rng(seed=42)
@@ -93,10 +114,13 @@ def intersection_over_union(file_in, file_ref, num_samples, num_dims=3):
     return file_in, file_ref, iou
 
 
-def get_metric_mesh(pmf, shape_list: list,
-                    gt_mesh_files: list, num_samples: int,
-                    metric: typing.Literal['chamfer', 'iou'] = 'chamfer') \
-        -> typing.Iterable[np.ndarray]:
+def get_metric_mesh(
+        pmf: str,
+        shape_list: list[str],
+        gt_mesh_files: list[str],
+        num_samples: int,
+        metric: typing.Literal['chamfer', 'iou'] = 'chamfer'
+) -> typing.Iterable[np.ndarray]:
     cd_list = []
     for sni, shape_name in enumerate(shape_list):
         gt_mesh_file = gt_mesh_files[sni]
@@ -121,12 +145,18 @@ def get_metric_mesh(pmf, shape_list: list,
     return cd_list
 
 
-def make_excel_file_comparison(cd_pred_list, human_readable_results, output_file, result_file_templates, val_set,
-                               low_metrics_better=True):
+def make_excel_file_comparison(
+        cd_pred_list: list,
+        human_readable_results: list,
+        output_file: str,
+        result_file_templates: list,
+        val_set: list,
+        low_metrics_better: bool = True
+):
     # try https://realpython.com/openpyxl-excel-spreadsheets-python/
 
     filename = Path(output_file)
-    dir_utils.create_general_folder(filename.parents[0])
+    dir_utils.create_general_folder(str(filename.parents[0]))
 
     # check if writable
     try:
@@ -180,9 +210,13 @@ def make_excel_file_comparison(cd_pred_list, human_readable_results, output_file
 
 
 def make_quantitative_comparison(
-        shape_names: typing.Sequence[str], gt_mesh_files: typing.Sequence[str],
-        result_headers: typing.Sequence[str], result_file_templates: typing.Sequence[str],
-        comp_output_dir: str, num_samples=10000):
+        shape_names: list[str],
+        gt_mesh_files: list[str],
+        result_headers: list[str],
+        result_file_templates: list[str],
+        comp_output_dir: str,
+        num_samples: int = 10000
+) -> tuple[list[Iterable[ndarray]], list[Iterable[ndarray]]]:
     iou_pred_list = []
     cd_pred_list = []
     for pmf in result_file_templates:
@@ -199,7 +233,12 @@ def make_quantitative_comparison(
     return cd_pred_list, iou_pred_list
 
 
-def run(input_dir, comp_dir, output_dir, result_headers):
+def run(
+        input_dir: str,
+        comp_dir: str,
+        output_dir: str,
+        result_headers: list
+):
     if not os.path.exists(input_dir) or not os.path.exists(comp_dir):
         raise Exception("Input dir {} or ground truth dir {} does not exist".format(input_dir, comp_dir))
 
@@ -207,8 +246,8 @@ def run(input_dir, comp_dir, output_dir, result_headers):
     comp_files = []
     input_files = []
     for root, dirs, files in os.walk(input_dir):
-        for dir in dirs:
-            result_file_templates.append(os.path.join(root, dir))
+        for input_dir in dirs:
+            result_file_templates.append(os.path.join(root, input_dir))
     for root, dirs, files in os.walk(comp_dir):
         for file in files:
             if file.endswith('.ply'):
@@ -225,13 +264,16 @@ def diff_ars(args):
 
 def main(args):
     parser = argparse.ArgumentParser(prog="evaluation")
-    parser.add_argument("--input_dir", type=str, default="", help="Directory that holds predicted meshes.")
-    parser.add_argument("--comp_dir", type=str, default="..\\..\\resources\\topology_meshes",
+    parser.add_argument("--input_dir", type=str,
+                        default="predicted",
+                        help="Directory that holds predicted meshes.")
+    parser.add_argument("--comp_dir", type=str,
+                        default="ground_truth",
                         help="Directory that holds ground truth meshes.")
     parser.add_argument("--output_dir", type=str,
-                        default="..\\..\\eval\\comparison\\output_eval\\evaluation_baseline_norm",
+                        default="output",
                         help="Directory where excel output.")
-    parser.add_argument("--result_headers", type=list, default=["64x64", "256x256", "base_line", "kato"],
+    parser.add_argument("--result_headers", type=list, default=["64x64", "256x256", "base_line", "nmr"],
                         help="Headers for results in excel file")
     args = parser.parse_args(args)
     diff_ars(args)

@@ -6,7 +6,10 @@ import numpy as np
 import argparse
 
 
-def preprocess(path, shapenet=False):
+def preprocess(
+        path: str,
+        shapenet: bool = False
+) -> str | None:
     try:
         mesh = trimesh.load(path)
     except Exception as e:
@@ -42,7 +45,10 @@ def preprocess(path, shapenet=False):
     return path
 
 
-def clean_mesh(path, mesh):
+def clean_mesh(
+        path: str,
+        mesh: trimesh.Trimesh
+) -> trimesh.Trimesh | None:
     mesh.process()
     mesh.remove_unreferenced_vertices()
     mesh.remove_degenerate_faces()
@@ -63,7 +69,9 @@ def clean_mesh(path, mesh):
     return mesh
 
 
-def normalize_mesh(mesh):
+def normalize_mesh(
+        mesh: trimesh.Trimesh
+) -> trimesh.Trimesh | None:
     bounds = mesh.bounds
     dim = abs(bounds[1] - bounds[0])
     dim_mag = math.sqrt(sum(pow(element, 2) for element in dim))
@@ -74,7 +82,9 @@ def normalize_mesh(mesh):
     return mesh
 
 
-def align_Shapenet(mesh):
+def align_Shapenet(
+        mesh: trimesh.Trimesh
+) -> trimesh.Trimesh | None:
     angle = math.pi / 2
     direction = [1, 0, 0]
     center = [0, 0, 0]
@@ -86,7 +96,9 @@ def align_Shapenet(mesh):
     return mesh
 
 
-def translate_to_origin(mesh):
+def translate_to_origin(
+        mesh: trimesh.Trimesh
+) -> trimesh.Trimesh | None:
     bounds = mesh.bounds
     dim = abs(bounds[1] - bounds[0])
     center = bounds[0] + dim / 2
@@ -104,7 +116,8 @@ def diff_ars(args):
 
 def main(args):
     parser = argparse.ArgumentParser(prog="scene_rendering")
-    parser.add_argument("--input_mesh", type=str)
+    parser.add_argument("--input_mesh", type=str, default="datasets/thingi10k/0_499/32770.stl",
+                        help="path to input model")
     args = parser.parse_args(args)
     diff_ars(args)
 

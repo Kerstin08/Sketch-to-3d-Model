@@ -3,7 +3,10 @@ import os
 import json
 
 
-def get_basic_mesh_path(number_holes, path=''):
+def get_basic_mesh_path(
+        number_holes: int,
+        path: str = ''
+) -> str:
     if not os.path.exists(path):
         raise Exception("Given genus dir path {} does not exits.".format(path))
 

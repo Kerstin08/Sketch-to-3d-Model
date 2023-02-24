@@ -1,6 +1,7 @@
 # reparam silhouette integrator
 from __future__ import annotations
 
+import typing
 import drjit as dr
 import mitsuba as mi
 
@@ -15,7 +16,7 @@ class SilhouetteReparamIntegrator(ADIntegrator):
 
         # Specifies the max depth up to which reparameterization is applied
         self.reparam_max_depth = props.get('reparam_max_depth', 2)
-        assert(self.reparam_max_depth <= 2)
+        assert (self.reparam_max_depth <= 2)
 
         # Specifies the number of auxiliary rays used to evaluate the
         # reparameterization
@@ -36,7 +37,7 @@ class SilhouetteReparamIntegrator(ADIntegrator):
     def reparam(self,
                 scene: mi.Scene,
                 rng: mi.PCG32,
-                params: Any,
+                params: typing.Any,
                 ray: mi.Ray3f,
                 depth: mi.UInt32,
                 active: mi.Bool):
@@ -60,12 +61,12 @@ class SilhouetteReparamIntegrator(ADIntegrator):
                scene: mi.Scene,
                sampler: mi.Sampler,
                ray: mi.Ray3f,
-               reparam: Optional[
-                   Callable[[mi.Ray3f, mi.Bool],
-                            Tuple[mi.Ray3f, mi.Float]]],
+               reparam: typing.Optional[
+                   typing.Callable[[mi.Ray3f, mi.Bool],
+                                   typing.Tuple[mi.Ray3f, mi.Float]]],
                active: mi.Bool,
-               **kwargs # Absorbs unused arguments
-    ) -> Tuple[mi.Spectrum, mi.Bool, mi.Spectrum]:
+               **kwargs  # Absorbs unused arguments
+               ) -> typing.Tuple[mi.Spectrum, mi.Bool, mi.Spectrum]:
         """
         See ``ADIntegrator.sample()`` for a description of this interface and
         the role of the various parameters and return values.
@@ -81,5 +82,5 @@ class SilhouetteReparamIntegrator(ADIntegrator):
 
         return L, active, None
 
-mi.register_integrator("silhouette_reparam", lambda props: SilhouetteReparamIntegrator(props))
 
+mi.register_integrator("silhouette_reparam", lambda props: SilhouetteReparamIntegrator(props))

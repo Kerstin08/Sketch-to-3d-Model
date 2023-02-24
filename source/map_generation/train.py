@@ -14,11 +14,25 @@ from source.util import data_type
 from source.util import dir_utils
 
 
-def train(input_dir, output_dir, logs_dir, checkpoint_dir,
-          type, epochs, lr, batch_size, n_critic, weight_L1,
-          gradient_penalty_coefficient, log_frequency,
-          use_generated_model=False, generated_model_path='', devices=1,
-          use_shapenet=False, shapenet_train_size=200):
+def train(
+        input_dir: str,
+        output_dir: str,
+        logs_dir: str,
+        checkpoint_dir: str,
+        input_data_type: data_type.Type,
+        epochs: int,
+        lr: float,
+        batch_size: int,
+        n_critic: int,
+        weight_L1: int,
+        gradient_penalty_coefficient: int,
+        log_frequency: int,
+        use_generated_model: bool = False,
+        generated_model_path: str = '',
+        devices: int = 1,
+        use_shapenet: bool = False,
+        shapenet_train_size: int = 200
+):
     sketch_dir = os.path.join(input_dir, 'sketch_map_generation')
     target_dir = os.path.join(input_dir, 'target_map_generation')
     if not os.path.exists(sketch_dir) or not os.path.exists(target_dir):
@@ -30,14 +44,7 @@ def train(input_dir, output_dir, logs_dir, checkpoint_dir,
     # Use general folder instead of logs dir since pytorch already takes care of folder versioning.
     dir_utils.create_general_folder(os.path.join(logs_dir, logs_dir_name))
 
-    if type == 'depth':
-        given_type = data_type.Type.depth
-    elif type == 'normal':
-        given_type = data_type.Type.normal
-    else:
-        raise Exception("Given type should either be \"normal\" or \"depth\"!")
-
-    model = map_generation.MapGen(input_type=given_type,
+    model = map_generation.MapGen(input_type=input_data_type,
                                   n_critic=n_critic,
                                   weight_L1=weight_L1,
                                   gradient_penalty_coefficient=gradient_penalty_coefficient,
@@ -91,15 +98,15 @@ def train(input_dir, output_dir, logs_dir, checkpoint_dir,
         split_train_val = shapenet_train_size / split_train * 100
         shapenet_val_size = int(split_train_val * 12.5 / 100)
         print("Validation size {0}".format(shapenet_val_size))
-        dataSet_train = dataset_ShapeNet.DS(True, given_type, sketch_train_dir, target_train_dir,
+        dataSet_train = dataset_ShapeNet.DS(True, input_data_type, sketch_train_dir, target_train_dir,
                                             size=shapenet_train_size, full_ds=False)
-        dataSet_val = dataset_ShapeNet.DS(True, given_type, sketch_val_dir, target_val_dir, size=shapenet_val_size,
+        dataSet_val = dataset_ShapeNet.DS(True, input_data_type, sketch_val_dir, target_val_dir, size=shapenet_val_size,
                                           full_ds=False)
-        dataSet_test = dataset_ShapeNet.DS(True, given_type, sketch_test_dir, target_test_dir, full_ds=True)
+        dataSet_test = dataset_ShapeNet.DS(True, input_data_type, sketch_test_dir, target_test_dir, full_ds=True)
     else:
-        dataSet_train = dataset.DS(True, given_type, sketch_train_dir, target_train_dir)
-        dataSet_val = dataset.DS(True, given_type, sketch_val_dir, target_val_dir)
-        dataSet_test = dataset.DS(True, given_type, sketch_test_dir, target_test_dir)
+        dataSet_train = dataset.DS(True, input_data_type, sketch_train_dir, target_train_dir)
+        dataSet_val = dataset.DS(True, input_data_type, sketch_val_dir, target_val_dir)
+        dataSet_test = dataset.DS(True, input_data_type, sketch_test_dir, target_test_dir)
 
     # While CPU training is technically possible, it would take unreasobaly long
     strategy = None

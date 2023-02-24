@@ -4,7 +4,14 @@ import torch.nn as nn
 
 
 class Encoder(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size=4, stride=2, padding=1, batch_norm=True):
+    def __init__(
+            self,
+            in_channels: int,
+            out_channels: int,
+            kernel_size: int = 4,
+            stride: int = 2,
+            padding: int = 1,
+            batch_norm: bool = True):
         super().__init__()
         self.lrelu = nn.LeakyReLU(0.2, inplace=True)
         self.conv = nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding)
@@ -13,7 +20,10 @@ class Encoder(nn.Module):
         if batch_norm:
             self.bn = nn.BatchNorm2d(out_channels)
 
-    def forward(self, x):
+    def forward(
+            self,
+            x: torch.Tensor
+    ):
         fx = self.conv(self.lrelu(x))
 
         if self.bn is not None:
@@ -23,7 +33,14 @@ class Encoder(nn.Module):
 
 
 class Decoder(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size=4, stride=2, padding=1, dropout=False):
+    def __init__(
+            self,
+            in_channels: int,
+            out_channels: int,
+            kernel_size: int = 4,
+            stride: int = 2,
+            padding: int = 1,
+            dropout: bool = False):
         super().__init__()
         self.relu = nn.ReLU(inplace=True)
         self.deconv = nn.ConvTranspose2d(in_channels, out_channels, kernel_size, stride, padding)
@@ -33,7 +50,10 @@ class Decoder(nn.Module):
         if dropout:
             self.dropout = nn.Dropout2d(p=0.5, inplace=True)
 
-    def forward(self, x):
+    def forward(
+            self,
+            x: torch.Tensor
+    ):
         fx = self.bn(self.deconv(self.relu(x)))
 
         if self.dropout is not None:
@@ -43,7 +63,10 @@ class Decoder(nn.Module):
 
 
 class Generator(nn.Module):
-    def __init__(self, channel):
+    def __init__(
+            self,
+            channel: int
+    ):
         super().__init__()
         # Encoder
         self.e_conv1 = nn.Conv2d(channel, 64, kernel_size=4, stride=2, padding=1)
@@ -65,7 +88,10 @@ class Generator(nn.Module):
         self.d_deconv7 = Decoder(256, 64)
         self.d_deconv8 = nn.ConvTranspose2d(128, channel, kernel_size=4, stride=2, padding=1)
 
-    def forward(self, x):
+    def forward(
+            self,
+            x: torch.Tensor
+    ):
         # up: decoder
         # down: encoder
         # outermost: downconv, uprelu, upconv, nn.Tanh

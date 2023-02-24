@@ -1,5 +1,7 @@
 import argparse
 import sys
+import typing
+
 import numpy as np
 
 from source.render.render_direct import Direct
@@ -10,7 +12,14 @@ from source.util import dir_utils
 from source.util import parse
 
 
-def run(render_type, line_gen, input_path, output_dir, output_name, views):
+def run(
+        render_type: str,
+        line_gen: bool,
+        input_path: str,
+        output_dir: str,
+        output_name: str,
+        views: typing.Sequence[typing.Tuple[int, int]]
+):
     dir_utils.create_general_folder(output_dir)
     output_dirs = {'default': output_dir}
 
@@ -51,7 +60,7 @@ def run(render_type, line_gen, input_path, output_dir, output_name, views):
             silhouette = 1 - np.expand_dims(np.array(renders_aov.render_silhouette(scenes_aov, input_path))[:, :, 0], 2)
             alpha = np.concatenate([direct, silhouette], 2)
             output = alpha * 255
-            save_renderings.save_png(output.astype('uint8'), output_dirs,  str(count) + '_' + output_name, mode='RGBA')
+            save_renderings.save_png(output.astype('uint8'), output_dirs, str(count) + '_' + output_name, mode='RGBA')
             count = count + 1
 
     if line_gen:
@@ -72,16 +81,16 @@ def main(args):
     parser = argparse.ArgumentParser(prog="scene_rendering")
     parser.add_argument("--render_type", type=str, default="combined",
                         help="use \"aov\", \"rendering\", \"kato\", or \"combined\"")
-    parser.add_argument("--line_gen", type=parse.bool, default="True", dest="line_gen",
+    parser.add_argument("--line_gen", type=parse.p_bool, default="True", dest="line_gen",
                         help="if sketch should be generated; use \"True\" or \"False\" as parameter")
-    parser.add_argument("--input_path", type=str, default="..\\..\\resources\\thingi10k\\0_499\\32770.ply",
+    parser.add_argument("--input_path", type=str, default="datasets/thingi10k/0_499/32770.ply",
                         help="path to input model")
     parser.add_argument("--output_dir", type=str, default="output",
                         help="Directory where the output is stored")
     parser.add_argument("--output_name", type=str, default="test", help="Name of output images")
-    parser.add_argument("--view", type=parse.views, default="225, 30", dest="view",
-                        help="define rendering view angles; string with tuples of azimuth and elveation "
-                             "e.g. \"0, 30, 255, 30\"")
+    parser.add_argument("--views", type=parse.p_views, default="225, 30", dest="views",
+                        help="define rendering view angles; string with tuples of azimuth and elevation "
+                             "e.g. \"0, 30, 225, 30\"")
     args = parser.parse_args(args)
     diff_ars(args)
 

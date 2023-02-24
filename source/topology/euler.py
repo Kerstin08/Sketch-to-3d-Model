@@ -1,6 +1,11 @@
 # Determination of Euler
+import typing
+import numpy
 
-def get_number_holes(image):
+
+def get_number_holes(
+        image: numpy.ndarray
+) -> int:
     matches_Q1, matches_Q3, matches_QD = compute_matches_Q(image)
     # invert Q3 and Q1 since in this case black is object instead of white
     euler = matches_Q3 - matches_Q1 - 2 * matches_QD
@@ -8,7 +13,9 @@ def get_number_holes(image):
     return 1 - int(euler / 4)
 
 
-def compute_matches_Q(image):
+def compute_matches_Q(
+        image: numpy.ndarray
+) -> typing.Tuple[int, int, int]:
     shape_x, shape_y = image.shape
     Q1, Q3, QD = 0, 0, 0
     for x in range(shape_x - 1):
@@ -18,13 +25,13 @@ def compute_matches_Q(image):
             neighbor_sum = 0
             for i in neighbors:
                 neighbor_sum += image[i[0], i[1]]
-            sum = neighbor_sum + current_pixel
+            q_sum = neighbor_sum + current_pixel
 
-            if sum == 1:
+            if q_sum == 1:
                 Q1 += 1
-            elif sum == 3:
+            elif q_sum == 3:
                 Q3 += 1
-            elif sum == 2:
+            elif q_sum == 2:
                 if current_pixel == 1 and image[neighbors[2][0], neighbors[2][1]] == 1:
                     QD += 1
                 if current_pixel == 0 and image[neighbors[2][0], neighbors[2][1]] == 0:

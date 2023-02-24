@@ -1,20 +1,39 @@
 # renderer for line generation using mitsuba direct renderer and opencv
+import typing
+
 import cv2 as cv
+import mitsuba as mi
+import numpy
 import numpy as np
 
 from source.render.render_direct import Direct
 
 
 class LineGen:
-    def __init__(self, views, fov=50, dim_int_width=1024, dim_final=256, emitter_samples=4):
+    def __init__(
+            self,
+            views: typing.Sequence[typing.Tuple[int, int]],
+            fov: int = 50,
+            dim_int_width: int = 1024,
+            dim_final: int = 256,
+            emitter_samples: int = 4
+    ):
         self.renderer = Direct(views, fov, dim_int_width, emitter_samples)
         self.dim_final = dim_final
 
-    def create_scenes(self, input_path):
+    def create_scenes(
+            self,
+            input_path: str
+    ) -> list[mi.Scene] | None:
         scenes = self.renderer.create_scene(input_path)
         return scenes
 
-    def create_line_images(self, scene, input_path, spp=256):
+    def create_line_images(
+            self,
+            scene: mi.Scene,
+            input_path: str,
+            spp: int = 256
+    ) -> numpy.ndarray | None:
         img_direct = np.array(self.renderer.render(scene, input_path, spp=spp))
         img_direct = (img_direct * 255).astype(np.uint8)
         if img_direct is None:

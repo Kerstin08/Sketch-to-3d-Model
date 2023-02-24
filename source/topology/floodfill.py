@@ -1,5 +1,8 @@
 # 8-connected stack-based floodfill to preprocess for hole determination and create silhouette image
 import os.path
+import typing
+
+import numpy
 from PIL import Image
 from collections import deque
 from pathlib import Path
@@ -13,7 +16,12 @@ bounds = 0
 fill = 0
 
 
-def startFill(image, image_path, output_dir, write_debug_png=True):
+def startFill(
+        image: numpy.ndarray,
+        image_path: str,
+        output_dir: str,
+        write_debug_png: bool = True
+) -> typing.Tuple[numpy.ndarray, str]:
     image = image / 255
     start_points = find_start_points(image)
     for i in start_points:
@@ -33,7 +41,10 @@ def startFill(image, image_path, output_dir, write_debug_png=True):
     return image, exr_path
 
 
-def flood_fill_BFS(image, seed):
+def flood_fill_BFS(
+        image: numpy.ndarray,
+        seed: int
+):
     stack = deque()
     stack.append(seed)
 
@@ -69,7 +80,9 @@ def flood_fill_BFS(image, seed):
             stack.append((x - 1, y - 1))
 
 
-def find_start_points(image):
+def find_start_points(
+        image: numpy.ndarray
+) -> deque:
     seeds = deque()
     shape_x, shape_y = image.shape
     for x in range(shape_x):

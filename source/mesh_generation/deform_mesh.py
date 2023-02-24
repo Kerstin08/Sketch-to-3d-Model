@@ -1,8 +1,11 @@
 # mesh deformation module
 import os.path
+import typing
+from typing import Tuple, List, Any
 
 import drjit as dr
 import mitsuba as mi
+import numpy
 import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
@@ -13,9 +16,24 @@ mi.set_variant('cuda_ad_rgb')
 
 
 class MeshGen:
-    def __init__(self, output_name, output_dir, logs,
-                 weight_depth, weight_normal, weight_smoothness, weight_edge, weight_silhouette,
-                 epochs, log_frequency, lr, views, use_depth=True, eval_dir=None, dim=256):
+    def __init__(
+            self,
+            output_name: str,
+            output_dir: str,
+            logs_dir: str,
+            weight_depth: float,
+            weight_normal: float,
+            weight_smoothness: float,
+            weight_edge: float,
+            weight_silhouette: float,
+            epochs: int,
+            log_frequency: int,
+            lr: float,
+            views: typing.Sequence[typing.Tuple[int, int]],
+            use_depth: bool = True,
+            eval_dir: str = None,
+            dim: int = 256
+    ):
         super(MeshGen, self).__init__()
         if views is None:
             views = [(225, 30)]
@@ -27,15 +45,21 @@ class MeshGen:
         self.output_dir = output_dir
         self.output_name = output_name
         self.lr = lr
-        self.logs = logs
-        self.writer = SummaryWriter(logs)
+        self.logs = logs_dir
+        self.writer = SummaryWriter(logs_dir)
         self.epochs = epochs
         self.log_frequency = log_frequency
         self.renderer = AOV(views, dim=dim)
         self.use_depth = use_depth
         self.eval_dir = eval_dir
 
-    def write_output_renders(self, render_normal, render_depth, silhouette, image_name):
+    def write_output_renders(
+            self,
+            render_normal: numpy.ndarray,
+            render_depth: numpy.ndarray,
+            silhouette: numpy.ndarray,
+            image_name: str
+    ):
         bpm_normal = mi.util.convert_to_bitmap(render_normal)
         np_normal = np.transpose(np.array(bpm_normal), (2, 0, 1))
         bpm_depth = mi.util.convert_to_bitmap(render_depth)
@@ -45,27 +69,36 @@ class MeshGen:
         images = np.stack([np_normal, np_depth, np_silhouette])
         self.writer.add_images(image_name, images)
 
-    def get_edge_dist(self, vertice_positions, edge_vert_indices):
-        x = dr.sqr(dr.gather(dr.cuda.ad.Float, vertice_positions[0], edge_vert_indices[0]) - dr.gather(dr.cuda.ad.Float,
-                                                                                                       vertice_positions[
+    def get_edge_dist(
+            self,
+            vertex_positions: mi.Point3f,
+            edge_vert_indices: list[list[int], list[int]]
+    ) -> typing.Sized:
+        x = dr.sqr(dr.gather(dr.cuda.ad.Float, vertex_positions[0], edge_vert_indices[0]) - dr.gather(dr.cuda.ad.Float,
+                                                                                                      vertex_positions[
                                                                                                            0],
-                                                                                                       edge_vert_indices[
+                                                                                                      edge_vert_indices[
                                                                                                            1]))
-        y = dr.sqr(dr.gather(dr.cuda.ad.Float, vertice_positions[1], edge_vert_indices[0]) - dr.gather(dr.cuda.ad.Float,
-                                                                                                       vertice_positions[
+        y = dr.sqr(dr.gather(dr.cuda.ad.Float, vertex_positions[1], edge_vert_indices[0]) - dr.gather(dr.cuda.ad.Float,
+                                                                                                      vertex_positions[
                                                                                                            1],
-                                                                                                       edge_vert_indices[
+                                                                                                      edge_vert_indices[
                                                                                                            1]))
-        z = dr.sqr(dr.gather(dr.cuda.ad.Float, vertice_positions[2], edge_vert_indices[0]) - dr.gather(dr.cuda.ad.Float,
-                                                                                                       vertice_positions[
+        z = dr.sqr(dr.gather(dr.cuda.ad.Float, vertex_positions[2], edge_vert_indices[0]) - dr.gather(dr.cuda.ad.Float,
+                                                                                                      vertex_positions[
                                                                                                            2],
-                                                                                                       edge_vert_indices[
+                                                                                                      edge_vert_indices[
                                                                                                            1]))
         edge_lengths = dr.sqrt(x + y + z)
 
         return edge_lengths
 
-    def smoothness_helper(self, v1, v2, v3):
+    def smoothness_helper(
+            self,
+            v1: dr.cuda.ad.Array3f,
+            v2: dr.cuda.ad.Array3f,
+            v3: dr.cuda.ad.Array3f
+    ) -> typing.Tuple[float, float]:
         a = v2 - v1
         b = v3 - v1
         sqr_magnitude_a = dr.sum(dr.sqr(a))
@@ -77,7 +110,14 @@ class MeshGen:
         l1_cb = dr.sqrt(dr.sum(dr.sqr(cb)))
         return cb, l1_cb
 
-    def preprocess_edge_helper(self, i, x, y, edge_vert_indices, edge_vert_faces):
+    def preprocess_edge_helper(
+            self,
+            i: int,
+            x: int,
+            y: int,
+            edge_vert_indices:  list[list[int], list[int]],
+            edge_vert_faces: dir
+    ):
         xy = (x, y) if x < y else (y, x)
         indices_x = [j for j, a in enumerate(edge_vert_indices[0]) if a == xy[0]]
         indices_y = [j for j, a in enumerate(edge_vert_indices[1]) if a == xy[1]]
@@ -88,7 +128,10 @@ class MeshGen:
         else:
             edge_vert_faces[xy].append(i)
 
-    def preprocess_edge_params(self, face_indices):
+    def preprocess_edge_params(
+            self,
+            face_indices: mi.Point3f
+    ) -> typing.Tuple[list[list[int], list[int]], dir]:
         edge_vert_indices = [[], []]
         edge_vert_faces = {}
         for i in range(len(face_indices[0])):
@@ -109,8 +152,17 @@ class MeshGen:
                      'lr': self.lr}
         self.writer.add_hparams(self_vars, {'hparam_metric': -1}, run_name='.')
 
-    def preprocess_smoothness_params(self, edge_vert_faces, face_indices):
-        def generate_vertex_list(vertex_list_x, vertex_list_y, vertex_list_z, vertex_index):
+    def preprocess_smoothness_params(
+            self,
+            edge_vert_faces: dir,
+            face_indices: mi.Point3f
+    ) -> tuple[list[list[Any]], list[list[Any]], list[list[Any]], list[list[Any]]]:
+        def generate_vertex_list(
+                vertex_list_x: list[int],
+                vertex_list_y: list[int],
+                vertex_list_z: list[int],
+                vertex_index: int
+        ):
             vertex_list_x.append(3 * vertex_index)
             vertex_list_y.append(3 * vertex_index + 1)
             vertex_list_z.append(3 * vertex_index + 2)
@@ -143,12 +195,24 @@ class MeshGen:
         v3_face2_idx = [v3_x_f2, v3_y_f2, v3_z_f2]
         return v1, v2, v3_face1_idx, v3_face2_idx
 
-    def offset_verts(self, params, opt, initial_vertex_positions):
+    def offset_verts(
+            self,
+            params: mi.SceneParameters,
+            opt: typing.Any,
+            initial_vertex_positions
+    ):
         trafo = mi.Transform4f.translate(opt['deform_verts'])
         params['shape.vertex_positions'] = dr.ravel(trafo @ initial_vertex_positions)
         params.update()
 
-    def write_output_mesh(self, vertex_count, vertex_positions, face_count, faces, failed_deform=False):
+    def write_output_mesh(
+            self,
+            vertex_count: int,
+            vertex_positions: mi.Point3f,
+            face_count: int,
+            faces: mi.Point3f,
+            failed_deform: bool = False
+    ):
         output_name = self.output_name
         if failed_deform:
             output_name = output_name + '_failed'
@@ -177,21 +241,31 @@ class MeshGen:
         dims = tuple(range(x.ndimension())[1:])
         return torch.sum(x, dim=dims)
 
-    def iou(self, predict, target):
+    def iou(
+            self,
+            predict: mi.TensorXf,
+            target:  mi.TensorXf
+    ) -> dr.cuda.ad.Float:
         intersect = self.torch_add(predict * target)
         union = self.torch_add(predict + target - predict * target)
         intersect_shape_x = intersect.shape
         x = 1.0 - dr.sum(intersect / (union + 1e-6)) / intersect_shape_x[0]
         return x
 
-    def deform_mesh(self, normal_map_target, depth_map_target, silhouette_target, basic_mesh):
+    def deform_mesh(
+            self,
+            normal_map_target: numpy.ndarray,
+            depth_map_target: numpy.ndarray,
+            silhouette_target: numpy.ndarray,
+            base_mesh_path: str
+    ):
         self.write_output_renders(normal_map_target, depth_map_target, silhouette_target, 'target_images')
         self.log_hparams()
 
-        scene = self.renderer.create_scene(basic_mesh)[0]
-        normal_img_init = self.renderer.render_normal(scene, basic_mesh)
-        depth_img_init = self.renderer.render_depth(scene, basic_mesh)
-        silhouette_img_init = self.renderer.render_silhouette(scene, basic_mesh)
+        scene = self.renderer.create_scene(base_mesh_path)[0]
+        normal_img_init = self.renderer.render_normal(scene, base_mesh_path)
+        depth_img_init = self.renderer.render_depth(scene, base_mesh_path)
+        silhouette_img_init = self.renderer.render_silhouette(scene, base_mesh_path)
         self.write_output_renders(normal_img_init, depth_img_init, silhouette_img_init, 'init_images')
 
         params = mi.traverse(scene)
@@ -217,9 +291,9 @@ class MeshGen:
             self.offset_verts(params, opt, initial_vertex_positions)
 
             # Using 16 rays per pixel, adjust if needed
-            normal_img = self.renderer.render_normal(scene, basic_mesh, seed=epoch, spp=16, params=params)
-            depth_img = self.renderer.render_depth(scene, basic_mesh, seed=epoch, spp=16, params=params)
-            silhouette_img = self.renderer.render_silhouette(scene, basic_mesh, seed=epoch, spp=16, params=params)
+            normal_img = self.renderer.render_normal(scene, base_mesh_path, seed=epoch, spp=16, params=params)
+            depth_img = self.renderer.render_depth(scene, base_mesh_path, seed=epoch, spp=16, params=params)
+            silhouette_img = self.renderer.render_silhouette(scene, base_mesh_path, seed=epoch, spp=16, params=params)
 
             if normal_img is None:
                 self.write_output_mesh(vertex_count, params[vertex_positions_str], params[face_count_str],
@@ -233,7 +307,7 @@ class MeshGen:
             if self.use_depth:
                 depth_loss = dr.sum(abs((depth_img - depth_map_target)))
             normal_loss = dr.sum(abs((normal_img * 0.5 + 0.5) - (normal_map_target * 0.5 + 0.5)))
-            silhouette_loss = self.iou(silhouette_img[:, :, 0], silhouette_target)
+            silhouette_loss = self.iou(silhouette_img[:, :, 0], mi.TensorXf(silhouette_target))
             current_vertex_positions = dr.unravel(mi.Point3f, params[vertex_positions_str])
 
             current_edge_lengths = self.get_edge_dist(current_vertex_positions, edge_vert_indices)
@@ -291,12 +365,12 @@ class MeshGen:
                     "Epochs {}: error={} loss_normal={} loss_depth={} loss_edge={} loss_smoothness={} "
                     "loss_silhouette={}".format(
                         epoch, loss[0], normal_loss[0], depth_loss[0], edge_loss[0], smoothness_loss[0],
-                        silhouette_loss[0]))
+                        silhouette_loss))
             else:
                 print(
                     "Epochs {}: error={} loss_normal={} loss_edge={} loss_smoothness={} loss_silhouette={}".format(
                         epoch, loss[0], normal_loss[0], edge_loss[0], smoothness_loss[0],
-                        silhouette_loss[0]))
+                        silhouette_loss))
 
         self.writer.close()
         self.write_output_mesh(vertex_count, params[vertex_positions_str], params[face_count_str], params[face_str])

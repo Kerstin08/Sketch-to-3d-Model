@@ -10,53 +10,73 @@ from source.util import OpenEXR_utils
 
 
 class DS(Dataset):
-    def __init__(self, train, input_type, dir_input, dir_target=''):
-        self.data_type = input_type
+    def __init__(
+            self,
+            train: bool,
+            input_data_type: data_type.Type,
+            input_dir: str,
+            target_dir: str = ''
+    ):
+        self.data_type = input_data_type
         self.train = train
-        self.dir_input = dir_input
-        self.image_paths_input = sorted(self.create_dataSet(dir_input))
-        self._dir_target = dir_target
-        self._image_paths_target = sorted(self.create_dataSet(dir_target))
+        self.input_dir = input_dir
+        self.input_image_paths = sorted(self.create_dataSet(input_dir))
+        self._target_dir = target_dir
+        self._target_image_paths = sorted(self.create_dataSet(target_dir))
 
     @property
-    def dir_target(self):
-        return self.dir_target
+    def target_dir(self) -> list:
+        return self.target_dir
 
-    @dir_target.setter
-    def dir_target(self, dir_target=''):
+    @target_dir.setter
+    def target_dir(
+            self,
+            dir_target: str = ''
+    ):
         if self.train:
-            self._dir_target = dir_target
+            self._target_dir = dir_target
         else:
-            self._dir_target = ''
+            self._target_dir = ''
 
     @property
-    def image_paths_target(self):
-        return self._image_paths_target
+    def target_image_paths(self) -> list:
+        return self._target_image_paths
 
-    @image_paths_target.setter
-    def image_paths_target(self, dir_target=''):
+    @target_image_paths.setter
+    def target_image_paths(
+            self,
+            dir_target: str = ''
+    ):
         if self.train:
-            self._image_paths_target = sorted(self.create_dataSet(dir_target))
+            self._target_image_paths = sorted(self.create_dataSet(dir_target))
         else:
-            self._image_paths_target = ''
+            self._target_image_paths = ''
 
-    def __len__(self):
+    def __len__(self) -> int:
         # return only length of one of the dirs since we want to iterate over both dirs at the same time and this
         # function is only used for batch computations
-        length_input = len([entry for entry in os.listdir(self.dir_input) if os.path.isfile(os.path.join(self.dir_input, entry))])
+        length_input = len(
+            [entry for entry in os.listdir(self.input_dir) if os.path.isfile(os.path.join(self.input_dir, entry))]
+        )
         return length_input
 
-    def create_dataSet(self, input_dir):
+    def create_dataSet(
+            self,
+            given_dir: str
+    ) -> list:
         images = []
-        for root, _, fnames in sorted(os.walk(input_dir)):
+        for root, _, fnames in sorted(os.walk(given_dir)):
             for fname in fnames:
                 path = os.path.join(root, fname)
                 images.append(path)
         return images
 
-    def __getitem__(self, index):
+    def __getitem__(
+            self,
+            index: int
+    ) -> dir:
         # input is sketch, therefore png file
-        input_path = self.image_paths_input[index]
+        input_path = self.input_image_paths[index]
         if self.data_type == data_type.Type.normal:
             input_image = Image.open(input_path).convert('RGB')
         else:
@@ -65,8 +85,8 @@ class DS(Dataset):
         input_image_tensor = transform(input_image).float() / 127.5 - 1.
 
         # target is either normal or depth file, therefore exr
-        if self._image_paths_target:
-            target_path = self._image_paths_target[index]
+        if self._target_image_paths:
+            target_path = self._target_image_paths[index]
             target_image = OpenEXR_utils.getImageEXR(target_path, self.data_type, 0)
             target_image_tensor = torch.from_numpy(target_image)
             if self.data_type.value == data_type.Type.depth.value:
@@ -78,4 +98,3 @@ class DS(Dataset):
         else:
             return {'input': input_image_tensor,
                     'input_path': input_path}
-

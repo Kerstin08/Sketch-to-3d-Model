@@ -1,4 +1,8 @@
 # utils for saving pngs and exr files
+import typing
+
+import numpy
+import torch
 from PIL import Image
 from pathlib import Path
 import os
@@ -8,7 +12,12 @@ from source.util import OpenEXR_utils
 from source.util import dir_utils
 
 
-def save_exr(img, output_dirs, output_name, given_data_type=None):
+def save_exr(
+        img: numpy.ndarray | torch.Tensor,
+        output_dirs: dir,
+        output_name: str,
+        given_data_type: data_type = None
+):
     if given_data_type == data_type.Type.depth:
         filename = output_name + '_depth.exr'
         output_dir = output_dirs['dd.y']
@@ -25,7 +34,15 @@ def save_exr(img, output_dirs, output_name, given_data_type=None):
     OpenEXR_utils.writeImage(img, given_data_type, path)
 
 
-def save_png(img, output_dirs, output_name, given_data_type=None, dir_key='default', mode='RGB', filename_dir=None):
+def save_png(
+        img: numpy.ndarray | torch.Tensor,
+        output_dirs: dir,
+        output_name: str,
+        given_data_type: data_type = None,
+        dir_key: str = 'default',
+        mode: typing.Any = 'RGB',
+        filename_dir: str = None
+):
     if given_data_type == data_type.Type.depth:
         img = img * 255
         output_dir_png = output_dirs['dd_png']
