@@ -5,7 +5,7 @@
 run [source/render/main.py](../../source/render/main.py) for a model to create an input image for the Neural Mesh Renderer. 
 The models used in this thesis are listed in [../dataset_ShapeNet/evaluation_comparison.txt](../dataset_ShapeNet/evaluation_comparison.txt).
 ```
-python source/render/main.py --render_type "kato" --input_path "dataset/eval_images/test.ply" --output_dir "output" --output_name "test.ply" -- views "225, 30"
+python source/render/main.py --render_type "kato" --input_path "dataset/eval_images/test.ply" -- views "225, 30"
 ```
 
 ## Download pretrained models

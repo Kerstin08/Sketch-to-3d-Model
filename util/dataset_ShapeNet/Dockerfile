@@ -1,7 +1,5 @@
 FROM pymesh/pymesh
 
-ENV LD_LIBRARY_PATH=/usr/local/lib/
-
 RUN apt-get update
 RUN apt-get install ffmpeg libsm6 libxext6  -y
 RUN apt-get install libglu1-mesa
@@ -17,5 +15,3 @@ RUN wget -q -O /tmp/libpng12.deb http://mirrors.kernel.org/ubuntu/pool/main/libp
 
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir h5py joblib trimesh==3.14.1 mkl==2019.0 Pillow
-
-CMD python -u /workspace/preprocessing/create_point_sdf_grid.py --thread_num 1 --category 'car'
