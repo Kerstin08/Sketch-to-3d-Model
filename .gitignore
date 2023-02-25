@@ -2,6 +2,7 @@
 __pycache__
 mitsuba2_scripts
 output
+!data/output
 resources
 source/map_generation/runs
 logs
