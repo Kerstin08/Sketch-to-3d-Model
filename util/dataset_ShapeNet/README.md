@@ -3,7 +3,7 @@
 ## Download and preprocess ShapeNet dataset
 *The reconstruction used code from [DISN (Xu et al. 2019)](https://arxiv.org/pdf/1905.10711.pdf) and [Vega (Sin, Schroeder, and Barbiˇc 2013)](https://viterbi-web.usc.edu/~jbarbic/vega/SinSchroederBarbic2012.pdf)*
 - Download the ShapeNet v1 dataset from [https://shapenet.org/](https://shapenet.org/)
--- DISN provides a partial reconstruction of the ShapeNet dataset, which can be found [here](https://drive.google.com/drive/folders/1QGhDW335L7ra31uw5U-0V7hB-viA0JXr)
+    - DISN provides a partial reconstruction of the ShapeNet dataset, which can be found [here](https://drive.google.com/drive/folders/1QGhDW335L7ra31uw5U-0V7hB-viA0JXr)
 If this is used, remove already reconstructed meshes from ShapeNet data
 - Clone the DISN repo from [https://github.com/Xharlie/DISN](https://github.com/Xharlie/DISN)
 - copy ShapeNet data fodler in DISN folder
@@ -28,6 +28,7 @@ python source/map_generation_dataset/main.py --input_dir "dataset/reconstructed_
 ```
 - split resulting images accoding to [train](train), [test](test) and [val](val)
 mapgen_dataset
+```
 |- sketch_map_generation
 |-- train
 |--- 02691156 (folder containing training input images of ShapeNet class 02691156)
@@ -54,6 +55,7 @@ mapgen_dataset
 |--- 02691156 (folder containing validation target images of ShapeNet class 02691156)
 |--- 02828884 (folder containing validation target images of ShapeNet class 02828884)
 |--- ...
+```
 - make sure to use set --use_shapenet and --shapenet_train_size when using reconstructed Shapenet dataset with [source/map_generation/main.py](../../source/map_generation/main.py)
 
 - for the evaluation use the images provided in [data/input/comparison](../../data/input/comparison/) or run [source/render/main.py](../../source/render/main.py) 
