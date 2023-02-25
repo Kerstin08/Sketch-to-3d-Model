@@ -3,9 +3,9 @@
 ## Generate eval images
 - Either use the images provided in [data/input/comparison/nmr](../../data/input/comparison/nmr) or 
 run [source/render/main.py](../../source/render/main.py) for a model to create an input image for the Neural Mesh Renderer. 
-The models used in this thesis are listed in [../dataset_ShapeNet/evaluation_comparison.txt](../dataset_ShapeNet/evaluation_comparison.txt).
+The models used in this thesis are listed in [dataset_ShapeNet/evaluation/evaluation_comparison.txt](../dataset_ShapeNet/evaluation/evaluation_comparison.txt).
 ```
-python source/render/main.py --render_type "kato" --input_path "dataset/eval_images/test.ply" -- views "225, 30"
+python source/render/main.py --render_type "kato" --line_gen "True" --input_path "dataset/eval_images/test.ply" -- views "225, 30"
 ```
 
 ## Download pretrained models

@@ -59,7 +59,7 @@ mapgen_dataset
 - make sure to use set --use_shapenet and --shapenet_train_size when using reconstructed Shapenet dataset with [source/map_generation/main.py](../../source/map_generation/main.py)
 
 - for the evaluation use the images provided in [data/input/comparison](../../data/input/comparison/) or run [source/render/main.py](../../source/render/main.py) 
-The models used in this thesis are listed in [../dataset_ShapeNet/evaluation_comparison.txt](../dataset_ShapeNet/evaluation_comparison.txt).
+The models used in this thesis are listed in [evaluation/evaluation_comparison.txt](evaluation/evaluation_comparison.txt).
 The following command creates input images for the Neural Mesh Renderer as well as this thesis' framework.
 ```
 python source/render/main.py --render_type "kato" --line_gen "True" --input_path "dataset/eval_images/test.ply" -- views "225, 30"
