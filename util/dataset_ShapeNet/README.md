@@ -27,8 +27,8 @@ python -u /workspace/preprocessing/create_point_sdf_grid.py --thread_num 1 --cat
 python source/map_generation_dataset/main.py --input_dir "dataset/reconstructed_ShapeNet" --filetype ".obj" --view "225, 30" --spp_direct 100 --spp_aov 256 --shapenet_data "True"
 ```
 - split resulting images accoding to [train](train), [test](test) and [val](val)
-mapgen_dataset
 ```
+mapgen_dataset
 |- sketch_map_generation
 |-- train
 |--- 02691156 (folder containing training input images of ShapeNet class 02691156)
@@ -58,9 +58,10 @@ mapgen_dataset
 ```
 - make sure to use set --use_shapenet and --shapenet_train_size when using reconstructed Shapenet dataset with [source/map_generation/main.py](../../source/map_generation/main.py)
 
+## Render evaluation images
 - for the evaluation use the images provided in [data/input/comparison](../../data/input/comparison/) or run [source/render/main.py](../../source/render/main.py) 
 The models used in this thesis are listed in [evaluation/evaluation_comparison.txt](evaluation/evaluation_comparison.txt).
-The following command creates input images for the Neural Mesh Renderer as well as this thesis' framework.
+The following command creates input images for the Neural Mesh Renderer as well as this thesis' framework. The sketches used for this thesis' framework need to be refined and seeded manually.
 ```
 python source/render/main.py --render_type "kato" --line_gen "True" --input_path "dataset/eval_images/test.ply" -- views "225, 30"
 ```
