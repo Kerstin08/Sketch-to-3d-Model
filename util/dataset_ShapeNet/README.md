@@ -5,20 +5,19 @@
 - Download the ShapeNet v1 dataset from [https://shapenet.org/](https://shapenet.org/)
     - DISN provides a partial reconstruction of the ShapeNet dataset, which can be found [here](https://drive.google.com/drive/folders/1QGhDW335L7ra31uw5U-0V7hB-viA0JXr)
 If this is used, remove already reconstructed meshes from ShapeNet data
-- Clone the DISN repo from [https://github.com/Xharlie/DISN](https://github.com/Xharlie/DISN)
+- Clone the DISN repo from https://github.com/Xharlie/DISN](https://github.com/Xharlie/DISN
 - copy ShapeNet data fodler in DISN folder
 - adjust DISN/preprocessing/info.json as well as DISN/data/filelists/ based on how the ShapeNetv1 dataset is altered and where in the DISN folder it is located
+- change cathegory CMD command in [Dockerfile](Dockerfile) according to the cathegory that should be reconstructed
+    - see [DISN](https://github.com/Xharlie/DISN](https://github.com/Xharlie/DISN) for more information
+    - do not change --thread_num, since in docker with this setup only 1 thread works
 - Run *docker build* using the provided [Dockerfile](Dockerfile). Optionally use --network host if your setup requires that to download python packages and github code.
 ```
 docker build --network host -t shapenet .
 ```
-- Run *docker run* interactively. Mount the DISN folder in the docker contaienr and set the LD_LIBRARY_PATH to '/usr/local/lib/'. The later part can be also accomplished by adding the respective parameter to the docker file.
+- Run *docker run* interactively. Mount the DISN folder in the docker container.
 ```
-docker run -it -v $(pwd)/DISN:/workspace -e LD_LIBRARY_PATH='/usr/local/lib/' test
-```
-- Run the reconstruction command, either for a specific category of for all. The thread_num needs to be 1, otherwise using this code in a docker container with this setup will not work.
-```
-python -u /workspace/preprocessing/create_point_sdf_grid.py --thread_num 1 --category 'car'
+docker run -it -v $(pwd)/DISN:/workspace -t shapenet
 ```
 
 ## Render map generation dataset
