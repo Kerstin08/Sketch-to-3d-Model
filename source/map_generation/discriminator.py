@@ -16,10 +16,7 @@ class Discriminator(nn.Module):
         self.conv5 = nn.Conv2d(512, 1, kernel_size=4, stride=1, padding=1)
         self.lrelu = nn.LeakyReLU(0.2, inplace=True)
 
-    def forward(
-            self,
-            x: torch.Tensor
-    ):
+    def forward(self, x: torch.Tensor):
         d1 = self.lrelu(self.conv1(x))
         d2 = self.lrelu(self.conv2_ln(self.conv2(d1)))
         d3 = self.lrelu(self.conv3_ln(self.conv3(d2)))

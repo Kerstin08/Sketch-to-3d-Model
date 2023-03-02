@@ -51,18 +51,11 @@ class MapGen(pl.LightningModule):
         return [{'optimizer': opt_g, 'frequency': 1},
                 {'optimizer': opt_d, 'frequency': self.n_critic}]
 
-    def forward(
-            self,
-            sample_batched: torch.Tensor
-    ):
+    def forward(self, sample_batched):
         x = sample_batched['input']
         return self.G(x)
 
-    def generator_step(
-            self,
-            sample_batched: torch.Tensor,
-            fake_images: torch.Tensor
-    ) -> torch.Tensor:
+    def generator_step(self, sample_batched, fake_images):
         print("Generator")
         input_predicted = torch.cat((sample_batched['input'], fake_images), 1)
         pred_false = self.D(input_predicted)
@@ -72,11 +65,7 @@ class MapGen(pl.LightningModule):
         self.log('g_loss', float(g_loss.item()), on_epoch=False, prog_bar=True)
         return g_loss
 
-    def gradient_penalty(
-            self,
-            real_images: torch.Tensor,
-            fake_images: torch.Tensor
-    ) -> torch.Tensor:
+    def gradient_penalty(self, real_images, fake_images):
         alpha = torch.rand((real_images.size(0), 1, 1, 1)).to(real_images.device)
         alpha = alpha.expand_as(real_images)
         interpolation = alpha * real_images + ((1 - alpha) * fake_images).requires_grad_(True)
@@ -92,11 +81,7 @@ class MapGen(pl.LightningModule):
         grad_norm = gradients.norm(2, 1)
         return torch.mean(torch.square(grad_norm - 1))
 
-    def discriminator_step(
-            self,
-            sample_batched: torch.Tensor,
-            fake_images: torch.Tensor
-    ) -> torch.Tensor:
+    def discriminator_step(self, sample_batched, fake_images):
         print("Discriminator")
         input_predicted = torch.cat((sample_batched['input'], fake_images), 1)
         pred_false = self.D(input_predicted.detach())
@@ -115,12 +100,7 @@ class MapGen(pl.LightningModule):
 
         return d_loss
 
-    def training_step(
-            self,
-            sample_batched: torch.Tensor,
-            batch_idx: int,
-            optimizer_idx: int
-    ) -> torch.Tensor:
+    def training_step(self, sample_batched, batch_idx, optimizer_idx):
         fake_images = self(sample_batched)
         if optimizer_idx == 0:
             loss = self.generator_step(sample_batched, fake_images)
@@ -129,11 +109,7 @@ class MapGen(pl.LightningModule):
             loss = self.discriminator_step(sample_batched, fake_images)
         return loss
 
-    def validation_step(
-            self,
-            sample_batched: torch.Tensor,
-            batch_idx: torch.Tensor
-    ):
+    def validation_step(self, sample_batched, batch_idx):
         predicted_image = self(sample_batched)
         pixelwise_loss = self.L1(predicted_image, sample_batched['target'])
         self.log('val_loss', pixelwise_loss.item(), batch_size=self.batch_size, sync_dist=True)
@@ -153,11 +129,7 @@ class MapGen(pl.LightningModule):
         image_name_pred = str(self.global_step) + 'generated_and_target_images'
         logger.add_image(image_name_pred, grid, 0)
 
-    def test_step(
-            self,
-            sample_batched: torch.Tensor,
-            batch_idx: torch.Tensor
-    ):
+    def test_step(self, sample_batched, batch_idx):
         predicted_image = self(sample_batched)
         imagename = Path(sample_batched['input_path'][0]).stem.rsplit('_', 1)[0]
         predicted_image_norm = (predicted_image + 1.0) * 127.5

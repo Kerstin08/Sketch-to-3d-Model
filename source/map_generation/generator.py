@@ -20,10 +20,7 @@ class Encoder(nn.Module):
         if batch_norm:
             self.bn = nn.BatchNorm2d(out_channels)
 
-    def forward(
-            self,
-            x: torch.Tensor
-    ):
+    def forward(self, x):
         fx = self.conv(self.lrelu(x))
 
         if self.bn is not None:
@@ -50,10 +47,7 @@ class Decoder(nn.Module):
         if dropout:
             self.dropout = nn.Dropout2d(p=0.5, inplace=True)
 
-    def forward(
-            self,
-            x: torch.Tensor
-    ):
+    def forward(self, x):
         fx = self.bn(self.deconv(self.relu(x)))
 
         if self.dropout is not None:
@@ -88,10 +82,7 @@ class Generator(nn.Module):
         self.d_deconv7 = Decoder(256, 64)
         self.d_deconv8 = nn.ConvTranspose2d(128, channel, kernel_size=4, stride=2, padding=1)
 
-    def forward(
-            self,
-            x: torch.Tensor
-    ):
+    def forward(self, x):
         # up: decoder
         # down: encoder
         # outermost: downconv, uprelu, upconv, nn.Tanh
