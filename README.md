@@ -1,7 +1,8 @@
 # Sketch23D - Masterthesis Kerstin Hofer
 
-This repository contains the [source code](source) and [utility code](util) for my Masterthesis *Sketch to 3d-Model using Deep Learning and Differentiable Rendering*, which was completed at the University of Applied Sciences Salzburg, Austria. The results of this thesis and how to use the code will be presented briefly in the following. If there are further questions, please contact me via email at kerstin_hofer90@gmx.at.
 ![](images/teaser_image.png)
+
+This repository contains the [source code](source) and [utility code](util) for my Masterthesis *Sketch to 3d-Model using Deep Learning and Differentiable Rendering*, which was completed at the University of Applied Sciences Salzburg, Austria. The results of this thesis and how to use the code will be presented briefly in the following. If there are further questions, please contact me via email at kerstin_hofer90@gmx.at.
 
 ---
 
