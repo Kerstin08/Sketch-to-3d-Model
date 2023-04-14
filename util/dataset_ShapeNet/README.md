@@ -8,7 +8,7 @@ If this is used, remove already reconstructed meshes from ShapeNet data
 - Clone the DISN repo from https://github.com/Xharlie/DISN](https://github.com/Xharlie/DISN
 - copy ShapeNet data fodler in DISN folder
 - adjust DISN/preprocessing/info.json as well as DISN/data/filelists/ based on how the ShapeNetv1 dataset is altered and where in the DISN folder it is located
-- change cathegory CMD command in [Dockerfile](Dockerfile) according to the cathegory that should be reconstructed
+- change category CMD command in [Dockerfile](Dockerfile) according to the category that should be reconstructed
     - see [DISN](https://github.com/Xharlie/DISN](https://github.com/Xharlie/DISN) for more information
     - do not change --thread_num, since in docker with this setup only 1 thread works
 - Run *docker build* using the provided [Dockerfile](Dockerfile). Optionally use --network host if your setup requires that to download python packages and github code.
